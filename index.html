@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Salento — Aracne & Tarantula (Chasse au trésor)</title>
+<style>
+  /* ===== Base ===== */
+  html,body{height:100%;margin:0;background:#f6f1e1;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  *{-webkit-tap-highlight-color:transparent}
+  .wrap{display:flex;flex-direction:column;height:100%}
+  .game{position:relative;flex:1;overflow:hidden}
+  canvas{width:100%;height:100%;display:block;background:#e2eef7;touch-action:none}
+
+  /* ===== Overlay (Start) ===== */
+  .overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(246,241,225,.84);backdrop-filter:blur(3px);z-index:50
+  }
+  .card{
+    width:min(560px,92vw);border:2px solid #c8b37a;border-radius:14px;background:#fffdf5;
+    box-shadow:0 10px 26px rgba(0,0,0,.18);padding:18px;text-align:center
+  }
+  .card h1{margin:0 0 6px 0;font-size:22px}
+  .card p{margin:6px 0 14px 0;opacity:.82}
+  .card button{border:1px solid #c8b37a;background:#ffe8a6;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+
+  /* ===== HUD (colonne gauche, étroit) ===== */
+  .hud{
+    position:absolute;left:8px;top:50%;transform:translateY(-50%);
+    width:116px; /* étroit */
+    background:rgba(255,248,220,.96);
+    border:2px solid #c8b37a;border-radius:10px;
+    padding:10px 10px 12px 10px;font-size:14px;z-index:22
+  }
+  .hud h3{margin:0 0 2px 0;font-size:14px;line-height:1}
+  .score{font-weight:700;margin:0 0 6px 0}
+  .stars{display:flex;flex-wrap:wrap;gap:4px}
+  .star{width:18px;height:18px;opacity:.95}
+
+  /* ===== Tarantula bandeau (horizontal), ancré au HUD ===== */
+  .tarTop{
+    position:absolute;display:none;align-items:flex-start;gap:8px;z-index:40;
+    max-width:min(760px,92vw)
+  }
+  .tarTop.show{display:flex}
+  .tarTop img{width:56px;height:56px;object-fit:contain;background:transparent;border:none;border-radius:0;box-shadow:none}
+  .bdBubble{
+    background:#fff;border:1px solid #bbb;border-radius:14px;
+    padding:10px 12px;box-shadow:0 4px 10px rgba(0,0,0,.12);
+    font-size:14px;line-height:1.35
+  }
+  .bdTitle{font-weight:700;margin:0 0 4px 0}
+  /* petite flèche en haut (optionnel) */
+  .bdBubble:after{
+    content:"";position:absolute;top:-10px;left:18px;border-width:10px;border-style:solid;
+    border-color:transparent transparent #bbb transparent
+  }
+  .bdBubble:before{
+    content:"";position:absolute;top:-9px;left:19px;border-width:9px;border-style:solid;
+    border-color:transparent transparent #fff transparent
+  }
+
+  /* ===== D-Pad (réduit) ===== */
+  .touch{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:none;gap:10px;align-items:center;z-index:30}
+  .touch.show{display:flex}
+  .dpad{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px 56px;gap:10px}
+  .btn{width:56px;height:56px;border-radius:12px;border:2px solid #c8b37a;background:#fff7de;
+       display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;font-weight:800;font-size:20px;box-shadow:0 3px 0 #c8b37a}
+  .btn:active{transform:translateY(1px)}
+
+  /* ===== Actions ===== */
+  #musicBtn{
+    position:absolute;top:10px;right:10px;z-index:45;
+    background:#ffe8a6;border:2px solid #c8b37a;border-radius:10px;padding:8px 12px;font-weight:700;display:none
+  }
+  #replayFloat{
+    position:absolute;bottom:12px;right:12px;z-index:46;display:none;
+    border:2px solid #7ac37a;background:#eaffea;font-weight:800;border-radius:12px;padding:10px 16px;
+    box-shadow:0 6px 14px rgba(0,0,0,.15);opacity:0.94
+  }
+
+  /* ===== Erreurs / Debug ===== */
+  .err{position:absolute;right:10px;top:10px;background:#ffefef;border:2px solid #d66;border-radius:10px;padding:8px 10px;font-size:12px;color:#900;z-index:60;max-width:min(320px,60vw)}
+  .err b{display:block;margin-bottom:4px}
+  #debugBox{position:fixed;left:10px;bottom:10px;z-index:9999;background:#ffefef;border:2px solid #d66;
+    padding:8px 10px;border-radius:8px;font:12px/1.3 system-ui;max-width:80vw;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="game">
+    <!-- ===== Overlay Start ===== -->
+    <div class="overlay" id="overlay">
+      <div class="card" id="overlayCard">
+        <h1>Salento — Aracne & Tarantula</h1>
+        <p>Collecte les 10 étoiles et découvre les lieux secrets.</p>
+        <button id="startBtn" type="button" onclick="window.startGame && window.startGame()">Démarrer</button>
+      </div>
+    </div>
+
+    <!-- ===== UI ===== -->
+    <button id="musicBtn">🎵 Musique</button>
+    <button id="replayFloat">⟲ Rejouer</button>
+    <div class="err" id="err" style="display:none"><b>⚠️ Problème d’assets</b><div id="errText"></div></div>
+    <canvas id="c"></canvas>
+
+    <!-- HUD colonne gauche étroit -->
+    <div class="hud" id="hudBox">
+      <h3>Étoiles</h3>
+      <div class="score" id="score">0/10</div>
+      <div class="stars" id="stars"></div>
+    </div>
+
+    <!-- Bulle Tarantula (ancrée au HUD) -->
+    <div class="tarTop" id="tarTop">
+      <img id="tarAvatar" alt="Tarantula">
+      <div class="bdBubble">
+        <div class="bdTitle" id="bdTitle">Tarantula</div>
+        <div id="bdText"></div>
+      </div>
+    </div>
+
+    <!-- D-pad tactile (réduit) -->
+    <div class="touch" id="touch">
+      <div class="dpad">
+        <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
+        <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div> <div class="btn" data-dx="1" data-dy="0">→</div>
+        <div></div> <div class="btn" data-dx="0" data-dy="1">↓</div> <div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="debugBox"></div>
+
+<script>
+/* =========================================================
+   BOOT / REPLAY
+========================================================= */
+window.startGame = function(){
+  try{
+    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('touch').classList.add('show');
+    document.getElementById('musicBtn').style.display = 'inline-block';
+    resetGame(false);
+    if (typeof startMusic === 'function') startMusic(); // iOS: geste utilisateur
+    if (typeof resize === 'function') resize();
+    positionTarBubble(); // placer la bulle au HUD
+    window.running = true;
+    requestAnimationFrame(loop);
+  }catch(e){ alert('Erreur au démarrage: '+e.message); }
+};
+document.getElementById('replayFloat').addEventListener('click', ()=>{ resetGame(true); window.startGame(); });
+
+/* Debug à l’écran */
+function debug(msg){const box=document.getElementById('debugBox');box.style.display='block';box.innerHTML+=(box.innerHTML?'<br>':'')+'⚠️ '+msg;}
+window.addEventListener('error',e=>debug(e.message));
+window.addEventListener('unhandledrejection',e=>debug(e.reason&&e.reason.message?e.reason.message:e.reason));
+
+/* =========================================================
+   ASSETS
+========================================================= */
+/* Chemins EXACTS (y compris espaces) */
+const MAP_URL       = "assets/salento-map.jpeg";
+const BIRD_URL      = "assets/aracne .PNG";
+const TARANTULA_URL = "assets/tarantula .PNG";
+
+/* Canvas */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W=0,H=0,dpr=1;
+function resize(){
+  dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+  W=canvas.clientWidth=canvas.parentElement.clientWidth;
+  H=canvas.clientHeight=canvas.parentElement.clientHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  positionTarBubble();
+}
+resize(); addEventListener('resize', resize);
+
+/* UI refs */
+const touch     = document.getElementById('touch');
+const scoreEl   = document.getElementById('score');
+const starsEl   = document.getElementById('stars');
+const tarTop    = document.getElementById('tarTop');
+const tarAvatar = document.getElementById('tarAvatar');
+const bdTitle   = document.getElementById('bdTitle');
+const bdText    = document.getElementById('bdText');
+const errBox    = document.getElementById('err');
+const errText   = document.getElementById('errText');
+const musicBtn  = document.getElementById('musicBtn');
+const replayBtn = document.getElementById('replayFloat');
+const hudBox    = document.getElementById('hudBox');
+tarAvatar.src   = TARANTULA_URL;
+
+/* Images */
+const mapImg=new Image(), birdImg=new Image(), spiderImg=new Image();
+mapImg.onload=()=>{ drawSplash(); };
+mapImg.onerror=()=>assetFail('Carte', MAP_URL, true);
+birdImg.onerror=()=>assetFail('Aracne', BIRD_URL);
+spiderImg.onerror=()=>assetFail('Tarantula', TARANTULA_URL);
+mapImg.src=MAP_URL; birdImg.src=BIRD_URL; spiderImg.src=TARANTULA_URL;
+function assetFail(who,url,showPlaceholder){
+  errBox.style.display='block';
+  errText.innerHTML += (errText.innerHTML? "<br>":"") + `• ${who} introuvable : "${url}"`;
+  if(showPlaceholder) drawSplash(true);
+}
+
+/* =========================================================
+   DONNÉES / POIS / JOUEUR
+========================================================= */
+/* Carte un peu plus grande : on réservera moins de bas et de haut */
+const UI_BOTTOM = 150; // plus compact (D-pad réduit)
+const UI_TOP    = 130; // plus compact (bulle fine en haut)
+
+const SHIFT_EAST = 0.04;
+/* POI décalés à droite et un peu vers le bas pour “coller” à la côte jaune */
+const POIS = [
+  { key:"otranto",       name:"Otranto — Cathédrale",          x:0.86+SHIFT_EAST+0.03, y:0.52+0.02, info:"la cathédrale aux mosaïques médiévales (Arbre de Vie) et la chapelle des 800 martyrs" },
+  { key:"portobadisco",  name:"Porto Badisco — Calanque",      x:0.80+SHIFT_EAST+0.03, y:0.56+0.02, info:"la grande calanque turquoise entourée de falaises" },
+  { key:"santacesarea",  name:"Santa Cesarea Terme",           x:0.74+SHIFT_EAST+0.03, y:0.60+0.02, info:"les thermes soufrés et la Villa Sticchi au bord de mer" },
+  { key:"castro",        name:"Castro — Castrum Minervae",     x:0.70+SHIFT_EAST+0.03, y:0.65+0.02, info:"la grotte Zinzulusa et la légende du temple d’Athéna" },
+  { key:"ciolo",         name:"Il Ciolo",                      x:0.64+SHIFT_EAST+0.03, y:0.75+0.02, info:"le petit fjord avec le pont routier au-dessus de l’eau" },
+  { key:"leuca",         name:"Santa Maria di Leuca",          x:0.60+0.03,             y:0.88+0.02, info:"le phare très haut et la cascade monumentale du Finibus Terrae" },
+  { key:"gallipoli",     name:"Gallipoli",                     x:0.35, y:0.62, info:"la vieille ville sur l’îlot relié par un pont" },
+  { key:"portocesareo",  name:"Porto Cesareo",                 x:0.22, y:0.46, info:"les plages claires et la réserve marine" },
+  { key:"nardo",         name:"Nardò",                         x:0.28, y:0.50, info:"le centre baroque et Porto Selvaggio tout proche" },
+  { key:"lecce",         name:"Lecce",                         x:0.53, y:0.28, info:"le baroque en pietra leccese, Santa Croce et le Duomo" }
+];
+
+const player   = { x:0.55, y:0.25, speed:0.0048, size:0.11 }; // normalisé [0..1]
+const collected= new Set();
+let currentIdx = 0;
+
+/* =========================================================
+   AUDIO (bg loop, success, fail, finale infinie)
+========================================================= */
+let audioCtx=null, masterGain=null, musicOn=false, loopTimer=null, finaleLoopTimer=null;
+function createAudioOnce(){
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain(); masterGain.gain.value = 0.60; masterGain.connect(audioCtx.destination);
+  // iOS unlock
+  const b = audioCtx.createBuffer(1,1,22050); const s = audioCtx.createBufferSource(); s.buffer=b; s.connect(masterGain); s.start(0);
+}
+async function startMusic(){
+  try{
+    createAudioOnce();
+    if (audioCtx.state==='suspended') await audioCtx.resume();
+    ping(720,0.20);
+    musicOn=true; musicBtn.textContent="⏹️ Musique";
+    playPhrase();
+  }catch(e){}
+}
+function stopMusic(){
+  musicOn=false;
+  if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
+  if(audioCtx && audioCtx.state!=="closed"){ audioCtx.suspend(); }
+  musicBtn.textContent="🎵 Musique";
+}
+function toggleMusic(){ musicOn?stopMusic():startMusic(); }
+musicBtn.addEventListener('click', toggleMusic);
+
+function scheduleSquare(freq,start,dur=0.25,amp=0.30){
+  if(!audioCtx||!masterGain) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='square'; o.frequency.value=freq;
+  g.gain.setValueAtTime(amp,start);
+  g.gain.exponentialRampToValueAtTime(0.001,start+dur);
+  o.connect(g).connect(masterGain);
+  o.start(start); o.stop(start+dur);
+}
+function ping(freq=440, amp=0.2){ if(!audioCtx||!masterGain) return; const t=audioCtx.currentTime; scheduleSquare(freq,t,0.16,amp); }
+function playPhrase(){
+  if(!musicOn||!audioCtx) return;
+  const notes=[262,294,330,349,392,440,494,523];
+  let t=audioCtx.currentTime;
+  notes.forEach(f=>{ scheduleSquare(f,t,0.26,0.30); t+=0.30; });
+  loopTimer=setTimeout(playPhrase,3000);
+}
+function starEmphasis(){ if(!audioCtx||!masterGain) return; const base=audioCtx.currentTime; [784,880,988,1175].forEach((f,i)=> scheduleSquare(f, base+i*0.08, 0.18, 0.48)); }
+function failSfx(){ if(!audioCtx||!masterGain) return; const t=audioCtx.currentTime; scheduleSquare(196,t,0.20,0.45); scheduleSquare(165,t+0.18,0.20,0.38); scheduleSquare(147,t+0.34,0.25,0.34); }
+
+/* Fanfare finale en boucle (jusqu’à Rejouer) + arrêt musique bg */
+function playFinaleLong(){
+  if(!audioCtx||!masterGain) return;
+  if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; } // stop bg
+  const t0=audioCtx.currentTime+0.05;
+  const seq1=[523,659,784,988,1175,1319], seq2=[1319,1175,988,784,659,523], chord=[523,659,784];
+  let t=t0;
+  seq1.forEach((f,i)=> scheduleSquare(f, t + i*0.14, 0.24, 0.58)); t+=seq1.length*0.14 + 0.12;
+  seq2.forEach((f,i)=> scheduleSquare(f, t + i*0.14, 0.24, 0.52)); t+=seq2.length*0.14 + 0.24;
+  chord.forEach(f=> scheduleSquare(f,   t, 1.0, 0.50)); t+=1.05;
+  chord.forEach(f=> scheduleSquare(f*2, t, 1.0, 0.48));
+  finaleLoopTimer = setTimeout(playFinaleLong, 10500);
+}
+
+/* =========================================================
+   FEUX D’ARTIFICE + DANSE
+========================================================= */
+let fireworks=[], finale=false, finaleTimer=0, finaleZoom=1, dancePhase=0;
+let danceBird={x:0,y:0,scale:1,angle:0}, danceSpider={x:0,y:0,scale:1,angle:0};
+
+function launchFireworksBurst(cx,cy,parts=42, big=true){
+  for(let i=0;i<parts;i++){
+    const ang=(i/parts)*Math.PI*2, speed=(big?160:90)+Math.random()*(big?180:90);
+    fireworks.push({ x:cx,y:cy, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, life:1.3+Math.random()*0.8, age:0, color:`hsl(${Math.floor(Math.random()*360)},82%,60%)`, baseSize: big?3.6:2.2 });
+  }
+}
+function updateFireworks(dt){ const g=140; fireworks=fireworks.filter(p=>{ p.age+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=g*dt*0.5; return p.age<p.life; }); }
+function drawFireworks(){
+  ctx.save();
+  if(finale){
+    const cx=W/2, cy=(UI_TOP + (H-UI_BOTTOM-UI_TOP)/2);
+    ctx.translate(cx,cy); ctx.scale(finaleZoom,finaleZoom); ctx.translate(-cx,-cy);
+  }
+  for(const p of fireworks){
+    const a=1-(p.age/p.life); ctx.globalAlpha=Math.max(0,a); ctx.fillStyle=p.color;
+    const r=(p.baseSize+(finale?2.0:0))*(1+0.6*(1-a));
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function triggerFireworksShow(){ const slots=[0,500,1000,1600,2200,3000]; slots.forEach((t,i)=> setTimeout(()=> launchFireworksBurst((0.2+0.6*Math.random())*W, UI_TOP+(0.1+0.7*Math.random())*(H-UI_BOTTOM-UI_TOP), 40+(i*4), true), t)); }
+
+/* =========================================================
+   BULLE / QUESTIONS (sans nom)
+========================================================= */
+function asQuestionFromInfo(info){ const s=(info||"ce lieu").trim(); return `Dis-moi, où est ${s} ?`; }
+function askQuestionFor(p){
+  bdTitle.textContent="Tarantula";
+  bdText.textContent=asQuestionFromInfo(p.info);
+  tarTop.classList.add('show');
+  positionTarBubble();
+}
+function showTarantulaSuccess(p){
+  bdTitle.textContent="Tarantula";
+  bdText.textContent=`Bravo, c’est exactement ça : ${p.name.split(" — ")[0]} !`;
+  tarTop.classList.add('show');
+  positionTarBubble();
+}
+/* Ancrage de la bulle au coin haut-gauche du HUD, en restant en haut de l’écran */
+function positionTarBubble(){
+  const hud = hudBox.getBoundingClientRect();
+  const tar = tarTop;
+  // place la bulle à droite du HUD, alignée en haut de l’écran (petit offset)
+  const left = Math.round(hud.left + hud.width + 8);
+  tar.style.left = left + "px";
+  tar.style.top  = "8px";
+}
+
+/* =========================================================
+   RENDU & LOGIQUE
+========================================================= */
+window.running=false;
+let lastTS=0, frameDT=0, lastFailAt=0;
+
+/* util: arrondi */
+function roundRect(ctx,x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr,y);
+  ctx.arcTo(x+w,y,  x+w,y+h, rr);
+  ctx.arcTo(x+w,y+h,x,  y+h, rr);
+  ctx.arcTo(x,  y+h,x,  y,   rr);
+  ctx.arcTo(x,  y,  x+w,y,   rr);
+  ctx.closePath();
+  return ctx;
+}
+
+/* étoile */
+function drawStarfish(cx,cy,R){
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
+  ctx.beginPath(); const pts=5,inner=R*0.45;
+  for(let i=0;i<pts*2;i++){const ang=(Math.PI/pts)*i - Math.PI/2; const r=(i%2===0)?R:inner; const x=cx+Math.cos(ang)*r; const y=cy+Math.sin(ang)*r; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);}
+  ctx.closePath(); ctx.fillStyle='#d26f45'; ctx.strokeStyle='#8c3f28'; ctx.lineWidth=3; ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+/* HUD minis */
+function starSVG(fill){ const f=fill||"#d26f45"; return "data:image/svg+xml;base64,"+btoa(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 5 L61 36 L94 36 L67 55 L77 88 L50 68 L23 88 L33 55 L6 36 L39 36 Z' fill='${f}' stroke='#8c3f28' stroke-width='4' stroke-linejoin='round'/></svg>`); }
+function refreshStars(){
+  scoreEl.textContent = `${collected.size}/10`;
+  starsEl.innerHTML='';
+  for(let i=0;i<10;i++){
+    const im=new Image(); im.className='star';
+    im.src=starSVG(i<collected.size?"#d26f45":"#f0c9a7");
+    starsEl.appendChild(im);
+  }
+}
+refreshStars();
+
+/* Dessin + logique */
+function draw(ts){
+  if(ts){
+    if(!lastTS) lastTS=ts;
+    frameDT=Math.min(0.05,(ts-lastTS)/1000); lastTS=ts;
+    if(finale){
+      updateFireworks(frameDT);
+      // zoom & danse
+      finaleTimer+=frameDT; finaleZoom=Math.min(1.35,1+finaleTimer*0.12);
+      dancePhase+=frameDT*2.4;
+      const cx=W/2, cy=(UI_TOP + (H-UI_BOTTOM-UI_TOP)/2);
+      danceBird.x+=(cx-90-danceBird.x)*0.06; danceBird.y+=(cy-danceBird.y)*0.06;
+      danceSpider.x+=(cx+90-danceSpider.x)*0.06; danceSpider.y+=(cy-danceSpider.y)*0.06;
+      danceBird.scale+=(1.65-danceBird.scale)*0.05; danceSpider.scale+=(1.55-danceSpider.scale)*0.05;
+      danceBird.angle=Math.sin(dancePhase)*0.25; danceSpider.angle=Math.sin(dancePhase+Math.PI/2)*0.20;
+    }
+  }
+
+  /* Zone carte: sous UI_TOP, au-dessus D-pad */
+  const mw=mapImg.naturalWidth||1920, mh=mapImg.naturalHeight||1080;
+  const availW=W, availH=Math.max(200, H-UI_BOTTOM-UI_TOP);
+  const scale=Math.min(availW/mw, availH/mh), dw=mw*scale, dh=mh*scale;
+  const ox=(W-dw)/2, oy=UI_TOP + Math.max(0,(availH-dh)/2);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Carte
+  if (mapImg.complete && mapImg.naturalWidth) ctx.drawImage(mapImg,ox,oy,dw,dh);
+  else { ctx.fillStyle="#d9e6f2"; ctx.fillRect(ox,oy,dw,dh); ctx.fillStyle="#445"; ctx.font="16px system-ui"; ctx.fillText("Carte non chargée : "+MAP_URL, ox+14, oy+24); }
+
+  // Rideau doux finale
+  if(finale){ ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.fillRect(0,UI_TOP,W,H-UI_BOTTOM-UI_TOP); }
+
+  /* POI : X identiques si pas trouvés ; étoile si trouvé (aucune étoile avant) */
+  for(const p of POIS){
+    const x=ox+p.x*dw, y=oy+p.y*dh;
+    if(collected.has(p.key)){
+      drawStarfish(x, y-22, Math.max(16,Math.min(22,Math.min(W,H)*0.028)));
+    }else{
+      ctx.save(); ctx.strokeStyle='#b04123'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
+      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* Chemin progressif uniquement entre POI validés */
+  if(!finale && collected.size>0){
+    ctx.save(); ctx.strokeStyle="#7a4c25"; ctx.lineWidth=4; ctx.lineCap="round"; ctx.lineJoin="round";
+    ctx.beginPath();
+    for(let i=0;i<collected.size;i++){
+      const a=POIS[i], b=POIS[i+1]; if(!b) break;
+      const ax=ox+a.x*dw, ay=oy+a.y*dh, bx=ox+b.x*dw, by=oy+b.y*dh;
+      const mx=(ax+bx)/2, my=(ay+by)/2 + ((i%2?1:-1)*8);
+      if(i===0) ctx.moveTo(ax,ay);
+      ctx.quadraticCurveTo(mx,my,bx,by);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+
+  /* Aracne (jeu) / danse (finale) */
+  const bw=Math.min(170,Math.max(90,dw*player.size));
+  const bx=ox+player.x*dw, by=oy+player.y*dh;
+  if(!finale){
+    if (birdImg.complete && birdImg.naturalWidth) ctx.drawImage(birdImg, bx-bw/2, by-bw/2, bw, bw);
+    else { ctx.fillStyle="#333"; ctx.beginPath(); ctx.arc(bx,by,bw*0.35,0,Math.PI*2); ctx.fill(); }
+  }
+
+  /* Collisions : succès (bon POI) / échec (mauvais X) */
+  if(!finale && currentIdx < POIS.length){
+    const p=POIS[currentIdx]; const px=ox+p.x*dw, py=oy+p.y*dh;
+    const onTarget = Math.hypot(bx-px,by-py)<44;
+
+    if(onTarget){
+      collected.add(p.key); refreshStars();
+      starEmphasis();
+      showTarantulaSuccess(p);
+      currentIdx++;
+      if(currentIdx===POIS.length){
+        beginFinale(bx,by, ox+POIS[POIS.length-1].x*dw, oy+POIS[POIS.length-1].y*dh);
+        replayBtn.style.display='inline-block'; // fanfare continue tant qu’on ne rejoue pas
+      }else{
+        askQuestionFor(POIS[currentIdx]); // prochaine devinette
+      }
+    }else{
+      // si on touche un autre X non encore validé → échec (cooldown 900ms)
+      const now = performance.now();
+      if(now - lastFailAt > 900){
+        for(let i=0;i<POIS.length;i++){
+          if(i===currentIdx) continue;
+          const q=POIS[i]; if(collected.has(q.key)) continue;
+          const qx=ox+q.x*dw, qy=oy+q.y*dh;
+          if(Math.hypot(bx-qx,by-qy)<44){ failSfx(); lastFailAt = now; break; }
+        }
+      }
+    }
+  }
+
+  // Feux + Danse
+  if(finale || fireworks.length>0){ drawFireworks(); }
+  if(finale){
+    drawDancer(birdImg,   danceBird.x,   danceBird.y,   bw*danceBird.scale,      danceBird.angle);
+    drawDancer(spiderImg, danceSpider.x, danceSpider.y, bw*danceSpider.scale*0.9, danceSpider.angle);
+  }
+}
+
+function drawDancer(img, cx, cy, size, angle){
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
+  if(img.complete && img.naturalWidth) ctx.drawImage(img, -size/2, -size/2, size, size);
+  else { ctx.fillStyle="#333"; ctx.beginPath(); ctx.arc(0,0,size*0.35,0,Math.PI*2); ctx.fill(); }
+  ctx.restore();
+}
+
+function loop(ts){ if(!window.running) return; draw(ts); requestAnimationFrame(loop); }
+
+/* =========================================================
+   FINALE & RESET
+========================================================= */
+function beginFinale(bx,by,lastPx,lastPy){
+  finale=true;
+  touch.classList.remove('show');
+  tarTop.classList.add('show');
+
+  // init danse
+  danceBird.x=bx; danceBird.y=by; danceSpider.x=lastPx; danceSpider.y=lastPy;
+  danceBird.scale=1.0; danceSpider.scale=1.0; dancePhase=0; finaleTimer=0; finaleZoom=1.0;
+
+  // stop musique de fond + lancer fanfare en boucle
+  if(loopTimer){ clearTimeout(loopTimer); loopTimer=null; }
+  musicOn = false;                     // empêche toute relance du fond
+  musicBtn.textContent = "🎵 Musique"; // bouton redevient "Musique"
+
+  playFinaleLong();
+  triggerFireworksShow();
+  window.__fwInterval__ = setInterval(triggerFireworksShow, 4500);
+  replayBtn.style.display='inline-block';
+}
+function resetGame(hideOverlay){
+  // Stop finale
+  finale=false; fireworks.length=0; dancePhase=0; finaleTimer=0; finaleZoom=1;
+  if(window.__fwInterval__){ clearInterval(window.__fwInterval__); window.__fwInterval__=null; }
+  if(finaleLoopTimer){ clearTimeout(finaleLoopTimer); finaleLoopTimer=null; }
+  replayBtn.style.display='none';
+  // Progression
+  collected.clear(); currentIdx=0; refreshStars();
+  player.x=0.55; player.y=0.25;
+  // Première question
+  askQuestionFor(POIS[currentIdx]);
+  // Musique de fond si activée par l’utilisateur
+  if(musicOn){ if(loopTimer){ clearTimeout(loopTimer); } playPhrase(); }
+  if(hideOverlay){ const ov=document.getElementById('overlay'); ov.style.display='none'; }
+}
+
+/* =========================================================
+   CONTRÔLES (D-pad + drag)
+========================================================= */
+for(const el of document.querySelectorAll('.btn')){
+  const dx=parseFloat(el.dataset.dx), dy=parseFloat(el.dataset.dy);
+  let press=false, id=null;
+  const step=()=>{ if(!press || finale) return;
+    player.x=Math.max(0,Math.min(1,player.x+dx*player.speed));
+    player.y=Math.max(0,Math.min(1,player.y+dy*player.speed));
+    id=requestAnimationFrame(step);
+  };
+  el.addEventListener('touchstart',e=>{press=true;step();e.preventDefault();},{passive:false});
+  el.addEventListener('touchend',()=>{press=false;cancelAnimationFrame(id);});
+}
+/* Drag direct sur l’oiseau (désactivé en finale) */
+let dragging=false;
+canvas.addEventListener('touchstart',e=>{
+  if(finale) return;
+  const t=e.touches[0];
+  // projeter en pixels actuels
+  const mw=mapImg.naturalWidth||1920, mh=mapImg.naturalHeight||1080;
+  const availW=W, availH=Math.max(200, H-UI_BOTTOM-UI_TOP);
+  const scale=Math.min(availW/mw, availH/mh), dw=mw*scale, dh=mh*scale;
+  const ox=(W-dw)/2, oy=UI_TOP + Math.max(0,(availH-dh)/2);
+  const bx=ox+player.x*dw, by=oy+player.y*dh;
+  if(Math.hypot(t.clientX-bx,t.clientY-by)<Math.min(W,H)*player.size*0.6){dragging=true; e.preventDefault();}
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  if(!dragging||finale) return; const t=e.touches[0];
+  // convertir en normalisé
+  const mw=mapImg.naturalWidth||1920, mh=mapImg.naturalHeight||1080;
+  const availW=W, availH=Math.max(200, H-UI_BOTTOM-UI_TOP);
+  const scale=Math.min(availW/mw, availH/mh), dw=mw*scale, dh=mh*scale;
+  const ox=(W-dw)/2, oy=UI_TOP + Math.max(0,(availH-dh)/2);
+  player.x=Math.max(0,Math.min(1,(t.clientX-ox)/dw));
+  player.y=Math.max(0,Math.min(1,(t.clientY-oy)/dh));
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',()=>dragging=false);
+document.addEventListener('touchmove',e=>{
+  if(e.target.closest('.btn')||e.target.closest('canvas')) e.preventDefault();
+},{passive:false});
+
+/* =========================================================
+   SPLASH
+========================================================= */
+function drawSplash(force){
+  resize();
+  if (mapImg.complete && mapImg.naturalWidth){
+    const mw=mapImg.naturalWidth, mh=mapImg.naturalHeight;
+    const availW=W, availH=Math.max(200, H - UI_BOTTOM - UI_TOP);
+    const scale=Math.min(availW/mw, availH/mh), dw=mw*scale, dh=mh*scale;
+    const ox=(W-dw)/2, oy=UI_TOP + Math.max(0,(availH-dh)/2);
+    ctx.drawImage(mapImg,ox,oy,dw,dh);
+  } else if (force){
+    ctx.fillStyle="#d9e6f2"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#445"; ctx.font="16px system-ui"; ctx.fillText("Carte non chargée : "+MAP_URL, 14, 28);
+  }
+}
+
+/* Première devinette au chargement (overlay visible) */
+askQuestionFor(POIS[0]);
+
+</script>
+</body>
+</html>
