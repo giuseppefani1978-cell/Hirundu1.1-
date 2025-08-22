@@ -4,15 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+  <!-- Ta feuille de styles existante -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Badge version (debug visuel) -->
-  <div id="__ver__">v2025-08-20-h • host=<span id="__host__"></span></div>
+  <!-- Badge version + host (debug) -->
+  <div id="__ver__"
+       style="position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;
+              font:12px system-ui;padding:4px 6px;border-radius:6px;pointer-events:none">
+    v2025-08-20-g • host=<span id="__host__"></span>
+  </div>
 
   <div class="wrap">
     <div class="game">
-      <!-- ===== Overlay Start ===== -->
+      <!-- Overlay Start -->
       <div class="overlay" id="overlay">
         <div class="card" id="overlayCard">
           <div class="heroes">
@@ -26,22 +31,18 @@
         </div>
       </div>
 
-      <!-- UI -->
+      <!-- UI / HUD -->
       <button id="musicBtn" type="button">🎵 Musique</button>
       <button id="replayFloat" type="button">⟲ Rejouer</button>
-      <div class="err" id="err" style="display:none">
-        <b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div>
-      </div>
+      <div class="err" id="err" style="display:none"><b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div></div>
       <canvas id="c"></canvas>
 
-      <!-- HUD -->
       <div class="hud" id="hud">
         <h3 id="hudLabel">Étoiles</h3>
         <div class="score" id="score">0/10</div>
         <div class="stars" id="stars"></div>
       </div>
 
-      <!-- Bulle Tarantula -->
       <div class="tarTop" id="tarTop">
         <img id="tarAvatar" alt="Tarantula">
         <div class="bdBubble">
@@ -61,32 +62,27 @@
     </div>
   </div>
 
-  <div id="debugBox"></div>
+  <div id="debugBox" style="display:none"></div>
 
   <!-- Force Refresh -->
   <button id="__force__" type="button"
-          style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
+          style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;
+                 border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
     Force Refresh
   </button>
 
-  <!-- Utilitaires: SW cleanup + host + force refresh -->
+  <!-- Nettoyage SW/caches + badge host + bouton refresh -->
   <script>
     (function(){
-      var host=document.getElementById("__host__"); if(host) host.textContent = location.hostname;
-
-      // Purge anciens Service Workers & caches (évite des states bizarres)
+      var s=document.getElementById("__host__"); if(s) s.textContent = location.hostname;
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then(list=>{
-            list.forEach(r=>r.unregister());
-            if (window.caches && caches.keys) {
-              caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
-            }
-          })
-          .catch(()=>{});
+        navigator.serviceWorker.getRegistrations().then(list=>{
+          list.forEach(r=>r.unregister());
+          if (window.caches && caches.keys) {
+            caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
+          }
+        }).catch(()=>{});
       }
-
-      // Force refresh (ajoute un cache-buster à l’URL)
       document.getElementById('__force__')?.addEventListener('click', function(){
         var url = new URL(location.href);
         url.searchParams.set('t', Date.now());
@@ -95,37 +91,16 @@
     })();
   </script>
 
-  <!-- OPTION B: charge directement le module du jeu -->
-  <script type="module" src="./src/game.js?v=2025-08-20-h"></script>
-
-  <!-- Mini fallback : si le module n’a pas encore exposé startGame au clic -->
-  <script>
-    (function(){
-      const btn = document.getElementById('startBtn');
-      if (!btn) return;
-
-      btn.addEventListener('click', async function(){
-        // Si le module a déjà attaché window.startGame, on l'utilise
-        if (typeof window.startGame === 'function') {
-          try { window.startGame(); } catch(e){ alert('Start error: '+(e?.message||e)); }
-          return;
-        }
-        // Sinon on tente un import dynamique (au cas où le module n’était pas prêt)
-        try {
-          const m = await import('./src/game.js?v=2025-08-20-h&dyn=1');
-          if (typeof m.startGame === 'function') {
-            m.startGame();
-          } else if (typeof window.startGame === 'function') {
-            window.startGame();
-          } else {
-            alert("Le jeu n'est pas prêt (startGame indisponible). Vérifie src/game.js.");
-          }
-        } catch(e) {
-          alert('Chargement du jeu impossible : ' + (e?.message || e));
-          console.error(e);
-        }
-      });
-    })();
+  <!-- CHARGEMENT UNIQUE du jeu : game.js importe i18n/ui/audio. AUCUN autre <script type="module"> -->
+  <script type="module">
+    import { boot } from './src/game.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      try { boot(); }
+      catch(e){
+        console.error(e);
+        alert('Chargement du jeu impossible : ' + (e?.message || e));
+      }
+    });
   </script>
 </body>
 </html>
