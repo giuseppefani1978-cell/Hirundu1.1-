@@ -12,15 +12,19 @@ export const asset = (path) => `${path}${APP_Q}`;
 
 // --- Assets (⚠️ Assure-toi que les noms de fichiers côté /assets/ correspondent) ---
 // Si tes fichiers sont en .PNG majuscule, garde .PNG. Évite les espaces dans les noms.
-export const ASSETS = {
-  // Carte & personnages
-  MAP_URL:        asset("assets/salento-map.PNG"),
-  BIRD_URL:       asset("assets/aracne.PNG"),        // ex: "aracne.PNG" (SANS espace)
-  TARANTULA_URL:  asset("assets/tarantula.PNG"),
+export const APP_VERSION = "v2025-08-20-f";
+export const APP_Q = `?v=${APP_VERSION}`;
+export const asset = (p) => `${p}${APP_Q}`;
 
-  // Ennemis (sprites PNG avec fond transparent)
-  CROW_URL:       asset("assets/crow.PNG"),
-  JELLY_URL:      asset("assets/jelly.PNG"),
+// Chemins canoniques SANS espaces
+export const ASSETS = {
+  MAP_URL:       asset("assets/salento-map.PNG"),   // ou .PNG si tes fichiers sont en .PNG
+  BIRD_URL:      asset("assets/aracne .PNG"),        // <-- renomme le fichier si besoin
+  TARANTULA_URL: asset("assets/tarantula .PNG"),
+  CROW_URL:      asset("assets/crow.PNG"),
+  JELLY_URL:     asset("assets/jelly.PNG")
+};
+
 
   // (Optionnel) SFX ou musiques pré-générées si un jour tu ajoutes des fichiers
   // MUSIC_URL:   asset("assets/music.ogg"),
