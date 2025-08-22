@@ -1,21 +1,80 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Le Vol d’Aracne — Salento</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <canvas id="c"></canvas>
-  <div id="hud"></div>
+  <div class="wrap">
+    <div class="game">
+      <!-- ===== Overlay Start ===== -->
+      <div class="overlay" id="overlay">
+        <div class="card" id="overlayCard">
+          <div class="heroes">
+            <img id="heroAr" alt="Aracne">
+            <img id="heroTa" alt="Tarantula">
+          </div>
+          <h1 id="titleH1">Le Vol d’Aracne</h1>
+          <p id="subtitleP">Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.</p>
+          <p class="inspiration" id="inspiredP">Inspiré par le fameux roman</p>
+          <button id="startBtn" type="button">Démarrer</button>
+        </div>
+      </div>
 
-  <!-- JS séparés -->
-  <script src="src/config.js"></script>
-  <script src="src/i18n.js"></script>
-  <script src="src/audio.js"></script>
-  <script src="src/ui.js"></script>
-  <script src="src/enemies.js"></script>
-  <script src="src/game.js"></script>
+      <!-- ===== UI ===== -->
+      <button id="musicBtn" type="button">🎵 Musique</button>
+      <button id="replayFloat" type="button">⟲ Rejouer</button>
+      <div class="err" id="err" style="display:none">
+        <b id="errTitle">⚠️ Problème d’assets</b>
+        <div id="errText"></div>
+      </div>
+      <canvas id="c"></canvas>
+
+      <!-- HUD colonne gauche -->
+      <div class="hud" id="hud">
+        <h3 id="hudLabel">Étoiles</h3>
+        <div class="score" id="score">0/10</div>
+        <div class="stars" id="stars"></div>
+        <!-- ⚡️ la barre NRJ sera injectée par ui.js -->
+      </div>
+
+      <!-- Bulle Tarantula -->
+      <div class="tarTop" id="tarTop">
+        <img id="tarAvatar" alt="Tarantula">
+        <div class="bdBubble">
+          <div class="bdTitle" id="bdTitle">Tarantula</div>
+          <p id="bdText"></p>
+        </div>
+      </div>
+
+      <!-- D-pad tactile -->
+      <div class="touch" id="touch">
+        <div class="dpad">
+          <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
+          <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div>
+          <div class="btn" data-dx="1" data-dy="0">→</div>
+          <div></div> <div class="btn" data-dx="0" data-dy="1">↓</div> <div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Force Refresh debug -->
+  <button id="__force__" type="button"
+          style="position:fixed;left:8px;bottom:8px;z-index:9999;
+                 background:#ffd;border:1px solid #cc3;
+                 border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
+    Force Refresh
+  </button>
+
+  <!-- ⚡️ Nouveau : import du jeu via modules -->
+  <script type="module">
+    import { startGame } from './src/game.js';
+    // On expose sur window si besoin externe
+    window.startGame = startGame;
+  </script>
 </body>
 </html>
