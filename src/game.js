@@ -7,7 +7,7 @@ import { startMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetA
 import * as ui from './ui.js';
 
 const DEBUG = false;
-function dbg(msg){ if(DEBUG){ console.log('[GAME]', msg); const b=document.getElementById('debugBox'); if(b){ b.style.display='block'; b.innerHTML+=(b.innerHTML?'<br>':'')+msg; } } }
+function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 
 // ------------------------
 // Config (fusionnée ici)
@@ -16,10 +16,10 @@ const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
 
-// ⚠️ ces noms doivent correspondre EXACTEMENT aux fichiers présents dans /assets
+// ⚠️ les noms doivent correspondre exactement aux fichiers dans /assets
 const ASSETS = {
   MAP_URL:       asset('assets/salento-map.PNG'),
-  BIRD_URL:      asset('assets/aracne .PNG'),
+  BIRD_URL:      asset('assets/aracne .PNG'),     // (avec espace si le fichier l’a vraiment)
   TARANTULA_URL: asset('assets/tarantula .PNG'),
   CROW_URL:      asset('assets/crow.PNG'),
   JELLY_URL:     asset('assets/jellyfish.PNG'),
@@ -75,9 +75,9 @@ const ENEMY_CONFIG = {
 const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
-// ----------------------------------
+// ------------------------
 // BOOT
-// ----------------------------------
+// ------------------------
 export function boot(){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
@@ -90,7 +90,7 @@ export function boot(){
   ui.updateEnergy(100);
   ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
-  ui.onClickReplay(() => resetGame());
+  ui.onClickReplay(() => startGame());
 
   // Images
   const mapImg   = new Image();
@@ -99,12 +99,14 @@ export function boot(){
   const crowImg  = new Image();
   const jellyImg = new Image();
 
-  mapImg.onerror    = () => ui.assetFail('Map', ASSETS.MAP_URL);
-  birdImg.onerror   = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
-  spiderImg.onerror = () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
-  crowImg.onerror   = () => ui.assetFail('Crow', ASSETS.CROW_URL);
-  jellyImg.onerror  = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
+  mapImg.onload    = () => { dbg('map load OK'); resize(); };
+  mapImg.onerror   = () => ui.assetFail('Map', ASSETS.MAP_URL);
+  birdImg.onerror  = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
+  spiderImg.onerror= () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
+  crowImg.onerror  = () => ui.assetFail('Crow', ASSETS.CROW_URL);
+  jellyImg.onerror = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
 
+  // Splash avatars
   const heroAr = document.getElementById('heroAr');
   const heroTa = document.getElementById('heroTa');
   const tarAvatar = document.getElementById('tarAvatar');
@@ -112,6 +114,7 @@ export function boot(){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
+  // Charge assets (avec ?v=...)
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
   spiderImg.src = ASSETS.TARANTULA_URL;
@@ -119,22 +122,26 @@ export function boot(){
   jellyImg.src  = ASSETS.JELLY_URL;
 
   // ===== Canvas sizing =====
-  let W=0, H=0, dpr=1;
+  let W = 0, H = 0, dpr = 1;
   function resize(){
     dpr = pickDPR();
     const parent = canvas.parentElement || document.body;
     W = parent.clientWidth  || window.innerWidth  || 360;
     H = parent.clientHeight || window.innerHeight || 640;
-    canvas.width  = Math.max(1, Math.round(W*dpr));
-    canvas.height = Math.max(1, Math.round(H*dpr));
+
+    // IMPORTANT: bitmap + style CSS (évite le bug iOS “readonly property”)
+    canvas.width  = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
     canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
   window.addEventListener('resize', resize, { passive:true });
 
   // ------- Game state -------
+  let mode = 'splash'; // 'splash' | 'play' | 'win' | 'dead'
   let running = false;
   let lastTS = 0;
   let collected = new Set();
@@ -152,174 +159,85 @@ export function boot(){
   let playerSlowTimer = 0;
   let hitShake = 0;
 
-  // ===== Finale & Game Over =====
-  let finale = false;               // quand 10/10 atteint
-  let fireworks = [];               // particules
-  let finaleTimer = 0;              // pour zoom progressif
-  let dancePhase = 0;
-  const dancers = { bird:{x:0,y:0,scale:1,angle:0}, spider:{x:0,y:0,scale:1,angle:0} };
+  // Win animation state
+  const winFx = {
+    t: 0,
+    fw: [],                // particles
+    fwTimer: 0,
+  };
 
-  // D-pad
-  setupDpad(player, () => getSpeed());
+  // D-pad (actif seulement en mode 'play')
+  setupDpad(
+    player,
+    () => getSpeed(),
+    () => mode === 'play'
+  );
 
+  // Start button
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startGame);
 
+  // Première question
   if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || `Où est ${poiInfo(QUEST[0].key)} ?`);
 
-  function setEnergy(p){ energy = Math.max(0, Math.min(ENERGY.MAX, p|0)); ui.updateEnergy((energy/ENERGY.MAX)*100); }
-  function getSpeed(){ const slow = (playerSlowTimer>0)?0.45:1.0; return PLAYER_BASE.speed * slow; }
-
-  // ---------- Fireworks helpers ----------
-  function launchFireworksBurst(cx, cy, parts=40){
-    for(let i=0;i<parts;i++){
-      const ang=(i/parts)*Math.PI*2, speed=140+Math.random()*180;
-      fireworks.push({
-        x:cx, y:cy, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
-        age:0, life:1.3+Math.random()*0.8
-      });
-    }
+  // ---------- helpers ----------
+  function setEnergy(p){
+    energy = Math.max(0, Math.min(ENERGY.MAX, p|0));
+    ui.updateEnergy((energy / ENERGY.MAX) * 100);
   }
-  function updateFireworks(dt){
-    const g = 140;
-    fireworks = fireworks.filter(p=>{
-      p.age += dt;
-      p.x   += p.vx*dt;
-      p.y   += p.vy*dt;
-      p.vy  += g*dt*0.5;
-      return p.age < p.life;
-    });
+  function getSpeed(){
+    const slowFactor = (playerSlowTimer > 0) ? 0.45 : 1.0;
+    return PLAYER_BASE.speed * slowFactor;
   }
-  function drawFireworks(){
-    for(const p of fireworks){
-      const a = 1 - (p.age/p.life);
-      ctx.globalAlpha = Math.max(0, a);
-      ctx.beginPath(); ctx.arc(p.x, p.y, 2 + 2*(1-a), 0, Math.PI*2); ctx.fillStyle = '#ffd24a'; ctx.fill();
-      ctx.globalAlpha = 1;
-    }
+  function spawnEnemy(now){
+    if (enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) return;
+    const type = (Math.random() < 0.5) ? ENEMY.JELLY : ENEMY.CROW;
+    const x = Math.random()*0.9 + 0.05;
+    const y = Math.random()*0.9 + 0.05;
+    const dir = Math.random() * Math.PI * 2;
+    const speed = ENEMY_CONFIG.SPEED[type];
+    enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
   }
-  function drawDancer(img, cx, cy, size, angle){
-    ctx.save();
-    ctx.translate(cx,cy);
-    ctx.rotate(angle);
-    if(img.complete && img.naturalWidth) ctx.drawImage(img, -size/2, -size/2, size, size);
-    else { ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(0,0,size*0.35,0,Math.PI*2); ctx.fill(); }
-    ctx.restore();
-  }
-  function beginFinale(bx, by, lastPoiX, lastPoiY){
-    finale = true;
-    ui.showReplay(true);
-    // position de départ des danseurs
-    dancers.bird.x = bx;      dancers.bird.y = by;
-    dancers.spider.x = lastPoiX; dancers.spider.y = lastPoiY;
-    dancers.bird.scale = 1;   dancers.spider.scale = 1;
-    dancePhase = 0; finaleTimer = 0;
-
-    // premier burst + boucles simples
-    const midX = W/2, midY = UI_CONST.TOP + (H-UI_CONST.TOP-UI_CONST.BOTTOM)/2;
-    launchFireworksBurst(midX, midY, 44);
-    const id = setInterval(()=> launchFireworksBurst(midX + (Math.random()*0.6-0.3)*W*0.4,
-                                                     midY + (Math.random()*0.6-0.3)*(H-UI_CONST.TOP-UI_CONST.BOTTOM)*0.6, 36), 900);
-    // on arrête automatiquement après ~10s
-    setTimeout(()=> clearInterval(id), 10000);
-  }
-
-  function startGame(){
-    try{
-      ui.hideOverlay();
-      ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
-      ui.setMusicLabel(isMusicOn());
-      resetGame();
-      if (!running){ running = true; requestAnimationFrame(draw); }
-    }catch(e){
-      alert('Chargement du jeu impossible : ' + (e?.message || e));
-    }
-  }
-
-  function resetGame(){
-    collected = new Set();
-    QUEST = shuffle(POIS);
-    currentIdx = 0;
-
-    player.x = PLAYER_BASE.x; player.y = PLAYER_BASE.y;
-    setEnergy(ENERGY.START);
-
-    enemies.length = 0; bonuses.length = 0;
-    enemySpawnAt = performance.now() + 800;
-    bonusSpawnAt = performance.now() + 1400;
-    playerSlowTimer = 0; hitShake = 0;
-
-    finale = false; fireworks.length = 0; finaleTimer = 0; dancePhase = 0;
-
-    ui.updateScore(0, STARS_TARGET);
-    ui.renderStars(0, STARS_TARGET);
-    resetAudioForNewGame();
-
-    if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
+  function spawnBonus(){
+    bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
   }
 
   // ---------- Game loop ----------
   function draw(ts){
     if(!running) return;
 
-    // time
     if(ts){
       if(!lastTS) lastTS = ts;
-      const dt = Math.min(0.05, (ts - lastTS) / 1000);
+      const dt = Math.min(0.05, (ts - lastTS)/1000);
       lastTS = ts;
 
-      // MAJ gameplay (pas de spawn pendant finale)
-      if (!finale){
+      if (mode === 'play') {
         tickEnemies(dt);
-      }
-      if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-      if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-
-      // Finale animation
-      if (finale){
-        updateFireworks(dt);
-        finaleTimer += dt;
-        dancePhase  += dt*2.4;
-
-        const cx = W/2, cy = UI_CONST.TOP + (H-UI_CONST.TOP-UI_CONST.BOTTOM)/2;
-        // easing vers centre + zoom doux
-        dancers.bird.x   += (cx-90 - dancers.bird.x)   * 0.06;
-        dancers.bird.y   += (cy      - dancers.bird.y) * 0.06;
-        dancers.spider.x += (cx+90 - dancers.spider.x) * 0.06;
-        dancers.spider.y += (cy      - dancers.spider.y)*0.06;
-        dancers.bird.scale   += (1.65 - dancers.bird.scale)   * 0.05;
-        dancers.spider.scale += (1.55 - dancers.spider.scale) * 0.05;
-        dancers.bird.angle   =  Math.sin(dancePhase)*0.25;
-        dancers.spider.angle =  Math.sin(dancePhase+Math.PI/2)*0.20;
+        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+      } else if (mode === 'win') {
+        tickWin(dt);
       }
     }
 
-    // viewport carte
+    // viewport + fond
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
     const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
 
-    // fond
     ctx.clearRect(0,0,W,H);
     if (mapImg.complete && mapImg.naturalWidth){
       ctx.drawImage(mapImg, ox, oy, dw, dh);
     } else {
-      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H-UI_CONST.TOP-UI_CONST.BOTTOM));
+      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
       ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
       ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
     }
 
-    if (finale){
-      // petit assombrissement de la zone de jeu
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      ctx.fillRect(0, UI_CONST.TOP, W, H-UI_CONST.TOP-UI_CONST.BOTTOM);
-    }
-
-    // POIs
-    for (const p of POIS){
+    // POIs (affichés tout le temps)
+    for(const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
-      if (collected.has(p.key)){
+      if(collected.has(p.key)){
         drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
         ctx.save();
@@ -327,7 +245,8 @@ export function boot(){
         ctx.beginPath();
         ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
         ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
-        ctx.stroke(); ctx.restore();
+        ctx.stroke();
+        ctx.restore();
       }
     }
 
@@ -336,80 +255,70 @@ export function boot(){
     const bx = ox + player.x*dw;
     const by = oy + player.y*dh;
 
-    // collisions + bonus (désactivés si finale)
-    if (!finale){
+    if (mode === 'play') {
+      // collisions + bonus
       const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
       if (collided) setEnergy(energy - 18);
       if (picked)   setEnergy(energy + 14);
-    }
-
-    // mort => HARD STOP + replay
-    if (!finale && energy <= 0){
-      ui.showSuccess('Game Over');
-      ui.showReplay(true);
-      running = false;
-      return;
+      const dead = energy <= 0;
+      if (dead) { return triggerGameOver(); }
     }
 
     // sous-joueur
-    if (!finale){
+    if (mode === 'play') {
       drawBonuses(ctx, bonuses, { ox, oy, dw, dh });
       drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
-    } else {
-      drawFireworks();
     }
 
-    // shake
+    // shake visuel
     let sx=0, sy=0;
-    if (!finale && hitShake > 0){
+    if (mode === 'play' && hitShake > 0){
       const a = Math.min(1, hitShake / SHAKE.MAX_S);
       const mag = 6 * a;
       sx = (Math.random()*2-1)*mag;
       sy = (Math.random()*2-1)*mag;
     }
 
-    // joueur (ou danse)
-    if (!finale){
+    // joueur
+    if (mode === 'play') {
       if (birdImg.complete && birdImg.naturalWidth){
         ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      } else {
+      }else{
         ctx.fillStyle = '#333';
         ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
       }
-    } else {
-      // danse centrale
-      drawDancer(birdImg,   dancers.bird.x,   dancers.bird.y,   bw*dancers.bird.scale,     dancers.bird.angle);
-      drawDancer(spiderImg, dancers.spider.x, dancers.spider.y, bw*dancers.spider.scale*0.9, dancers.spider.angle);
     }
 
-    // progression → passage à la finale
-    if (!finale && currentIdx < QUEST.length){
+    // progression
+    if (mode === 'play' && currentIdx < QUEST.length){
       const p = QUEST[currentIdx];
       const px = ox + p.x*dw, py = oy + p.y*dh;
       const onTarget = Math.hypot(bx - px, by - py) < 44;
-      if (onTarget){
+      if(onTarget){
         collected.add(p.key);
         ui.updateScore(collected.size, STARS_TARGET);
         ui.renderStars(collected.size, STARS_TARGET);
         starEmphasis();
-
         const nameShort = poiName(p.key);
         ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
-
         currentIdx++;
         if (currentIdx === QUEST.length){
-          // on fige la progression et on lance la finale
-          const last = POIS[POIS.length-1];
-          beginFinale(bx, by, ox + last.x*dw, oy + last.y*dh);
+          triggerWin();
         } else {
           setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 900);
         }
       }
     }
 
+    // scène win (dessin par-dessus)
+    if (mode === 'win') {
+      renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
+    }
+
     requestAnimationFrame(draw);
   }
 
+  // ---------- ticks ----------
   function tickEnemies(dt){
     const now = performance.now();
     if (now > enemySpawnAt){
@@ -417,17 +326,15 @@ export function boot(){
       enemySpawnAt = now + ENEMY_CONFIG.BASE_SPAWN_MS + Math.random()*ENEMY_CONFIG.SPAWN_JITTER_MS;
     }
     if (now > bonusSpawnAt){
-      bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
+      spawnBonus();
       bonusSpawnAt = now + BONUS_CONFIG.BASE_SPAWN_MS + Math.random()*BONUS_CONFIG.SPAWN_JITTER_MS;
     }
-
     enemies = enemies.filter(e => (now - (e.bornAt || now)) < ENEMY_CONFIG.LIFETIME_S*1000);
-
     const PAD = 0.02;
     for (const e of enemies){
       e.t += dt;
       if (e.state === 'flee'){
-        if (now >= e.fleeUntil) { e._remove = true; }
+        if (now >= e.fleeUntil) e._remove = true;
         else { e.vx*=0.995; e.vy*=0.995; }
       } else if (e.type === ENEMY.JELLY){
         e.vx += Math.sin(e.t*1.7)*0.0008;
@@ -447,15 +354,31 @@ export function boot(){
     }
   }
 
+  function tickWin(dt){
+    winFx.t += dt;
+    winFx.fwTimer -= dt;
+    if (winFx.fwTimer <= 0){
+      spawnFirework(winFx.fw);
+      winFx.fwTimer = 0.7 + Math.random()*0.7;
+    }
+    // avancer particules
+    for (let i=winFx.fw.length-1;i>=0;i--){
+      const p = winFx.fw[i];
+      p.vx *= 0.98; p.vy = p.vy*0.98 + 18*dt; // légère gravité
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.life -= dt;
+      if (p.life <= 0) winFx.fw.splice(i,1);
+    }
+  }
+
+  // ---------- collisions ----------
   function handleCollisions({ bx, by, ox, oy, dw, dh }){
     let collided=false, picked=false;
     const now = performance.now();
-
     for (const e of enemies){
       if (e.state === 'flee') continue;
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
-      const d  = Math.hypot(bx-ex, by-ey);
-      if (d < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
+      if (Math.hypot(bx-ex, by-ey) < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
         collided = true;
         failSfx();
         playerSlowTimer = Math.max(playerSlowTimer, 1.25);
@@ -467,7 +390,6 @@ export function boot(){
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
       }
     }
-
     for (let i=bonuses.length-1;i>=0;i--){
       const b = bonuses[i];
       const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
@@ -480,6 +402,57 @@ export function boot(){
       }
     }
     return { collided, picked };
+  }
+
+  // ---------- modes ----------
+  function triggerWin(){
+    mode = 'win';
+    ui.showReplay(true);
+    ui.showSuccess(t.win?.() || "Bravo ! Tu as trouvé les 10 étoiles 🌟");
+    // reset FX
+    winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
+  }
+
+  function triggerGameOver(){
+    mode = 'dead';
+    running = false;                  // arrêt net de la boucle
+    ui.showReplay(true);
+    ui.showSuccess(t.gameover?.() || "Game Over — appuie sur Rejouer.");
+  }
+
+  // ---------- controls ----------
+  function startGame(){
+    try{
+      ui.hideOverlay();
+      ui.showTouch(true);
+      if (!isMusicOn()) startMusic();
+      ui.setMusicLabel(isMusicOn());
+      resetGame();
+      mode = 'play';
+      if (!running){ running = true; requestAnimationFrame(draw); }
+    }catch(e){
+      alert('Chargement du jeu impossible : ' + (e?.message || e));
+    }
+  }
+
+  function resetGame(){
+    collected = new Set();
+    QUEST = shuffle(POIS);
+    currentIdx = 0;
+
+    player.x = PLAYER_BASE.x; player.y = PLAYER_BASE.y;
+    setEnergy(ENERGY.START);
+
+    enemies.length = 0; bonuses.length = 0;
+    enemySpawnAt = performance.now() + 800;
+    bonusSpawnAt = performance.now() + 1400;
+    playerSlowTimer = 0; hitShake = 0;
+
+    ui.updateScore(0, STARS_TARGET);
+    ui.renderStars(0, STARS_TARGET);
+    resetAudioForNewGame();
+
+    if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
   }
 }
 
@@ -540,16 +513,14 @@ function drawEnemies(ctx, enemies, bounds, sprites){
 }
 function drawBonuses(ctx, bonuses, bounds){
   const { ox, oy, dw, dh } = bounds;
-  for(const b of bonuses){
+  for (const b of bonuses){
     const x = ox + b.x*dw, y = oy + b.y*dh;
     const r = 10 + Math.sin(b.pulse*6)*2;
     ctx.save();
     ctx.globalAlpha = 0.9 * (1 - b.age / b.life);
-    ctx.fillStyle = '#ffe06b';
-    ctx.strokeStyle = '#8c6a1a';
-    ctx.lineWidth = 2;
+    ctx.fillStyle = '#ffe06b'; ctx.strokeStyle = '#8c6a1a'; ctx.lineWidth = 2;
     ctx.beginPath();
-    for(let i=0;i<5;i++){
+    for (let i=0;i<5;i++){
       const a = i*2*Math.PI/5 - Math.PI/2;
       const xi=x+Math.cos(a)*r, yi=y+Math.sin(a)*r;
       if(i===0) ctx.moveTo(xi,yi); else ctx.lineTo(xi,yi);
@@ -559,33 +530,103 @@ function drawBonuses(ctx, bonuses, bounds){
   }
 }
 
+// --------- Win scene rendering + FX ----------
+function renderWin(ctx, view, sprites, winFx){
+  const { ox, oy, dw, dh } = view;
+  const { birdImg, spiderImg } = sprites;
+  const cx = ox + dw/2;
+  const cy = oy + dh/2;
+
+  // Duo au centre (zoom + légère rotation "danse")
+  const t = winFx.t;
+  const base = Math.min(dw, dh) * 0.18;
+  const s = 0.9 + 0.08*Math.sin(t*4);
+  const rot = 0.08*Math.sin(t*3.2);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+
+  const w = base*s;
+  if (birdImg.complete && birdImg.naturalWidth) {
+    ctx.drawImage(birdImg, -w-10, -w, w, w);
+  } else {
+    ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(-w*0.5-10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
+  }
+  if (spiderImg.complete && spiderImg.naturalWidth) {
+    ctx.drawImage(spiderImg, 10, -w, w, w);
+  } else {
+    ctx.fillStyle='#b04123'; ctx.beginPath(); ctx.arc(w*0.5+10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Feux d’artifice (particules)
+  for (const p of winFx.fw){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / p.life0);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function spawnFirework(store){
+  const COLORS = ['#ffd166','#ef476f','#06d6a0','#118ab2','#f78c6b'];
+  const cx = (Math.random()*0.5 + 0.25) * (window.innerWidth  || 800);
+  const cy = (Math.random()*0.4 + 0.20) * (window.innerHeight || 600);
+  const n = 36 + (Math.random()*24)|0;
+  const col = COLORS[(Math.random()*COLORS.length)|0];
+  for (let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2;
+    const sp = 90 + Math.random()*160;
+    store.push({
+      x: cx, y: cy,
+      vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+      r: 2 + Math.random()*2,
+      color: col,
+      life: 0.9 + Math.random()*0.8,
+      life0: 1.7
+    });
+  }
+}
+
 // ------------------------
 // Utils
 // ------------------------
 function shuffle(arr){
   const a = arr.slice();
-  for(let i=a.length-1;i>0;i++){
+  for(let i=a.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1));
     [a[i],a[j]]=[a[j],a[i]];
   }
   return a;
 }
-function setupDpad(player, getSpeed){
+
+/**
+ * D-pad tactile/souris. Ne bouge que si canMove() === true
+ */
+function setupDpad(player, getSpeed, canMove){
   document.querySelectorAll('.btn').forEach((el) => {
     const dx = parseFloat(el.dataset.dx);
     const dy = parseFloat(el.dataset.dy);
     let press = false, rafId = null;
+
     const step = () => {
       if (!press) return;
+      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
       const s = getSpeed();
       player.x = Math.max(0, Math.min(1, player.x + dx * s));
       player.y = Math.max(0, Math.min(1, player.y + dy * s));
       rafId = requestAnimationFrame(step);
     };
+
+    // tactile
     el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
     el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    // souris (facilite les tests desktop)
+    // souris (debug desktop)
     el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if(press){ press=false; cancelAnimationFrame(rafId); }});
+    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
   });
 }
