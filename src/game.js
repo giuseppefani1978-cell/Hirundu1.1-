@@ -84,7 +84,7 @@ const SCORE = {
   GAMEOVER: 0,   // bonus de fin en cas de mort
 };
 
-// ----- HALL OF FAME -----
+// ----- HALL OF FAME (local) -----
 const HOF_KEY = 'salento_hof_v1';
 const HOF_SIZE = 10;
 function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
@@ -97,32 +97,17 @@ function addToHof(entry){
   saveHof(trimmed);
   return trimmed;
 }
-function fmtTime(ms){
-  const s = Math.max(0, Math.round(ms/1000));
-  const m = Math.floor(s/60), r = s%60;
-  return `${m}m${String(r).padStart(2,'0')}s`;
-}
+function fmtTime(ms){ const s = Math.max(0, Math.round(ms/1000)); const m = Math.floor(s/60), r = s%60; return `${m}m${String(r).padStart(2,'0')}s`; }
 function getCountry(){
   try{
     const lang = navigator.language || (Intl.DateTimeFormat().resolvedOptions().locale);
     const region = (lang && lang.includes('-')) ? lang.split('-')[1] : null;
     if (!region) return { code:'??', flag:'🏳️', label:'??' };
-    const dn = new Intl.DisplayNames([lang], { type:'region' });
-    const label = dn.of(region);
-    // petit mapping flag Unicode
     const flag = region.replace(/./g, c => String.fromCodePoint(127397 + c.toUpperCase().charCodeAt()));
-    return { code:region, flag, label };
-  }catch{
-    return { code:'??', flag:'🏳️', label:'??' };
-  }
+    return { code:region, flag, label:region };
+  }catch{ return { code:'??', flag:'🏳️', label:'??' }; }
 }
-function leaderboardText(hof){
-  return hof.map((e,i)=>{
-    const stats = `${e.stars}★, ${e.bonuses} bonus, ${e.hits} coups, ${fmtTime(e.time)}`;
-    const country = e.country?.flag ? `${e.country.flag} ` : '';
-    return `#${i+1} ${e.score} — ${country}${e.name} (${stats})`;
-  }).join('\n');
-}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 // ------- UI HOF PANEL -------
 function ensureHofPanel(){
@@ -143,7 +128,7 @@ function ensureHofPanel(){
           style="background:#fff;color:#000;border:0;border-radius:8px;padding:8px 12px;cursor:pointer">Fermer</button>
       </div>
       <div id="__hof_table" style="margin-top:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:10px;overflow:hidden"></div>
-      <div style="margin-top:18px;opacity:.75">Les scores sont stockés localement sur cet appareil. Pour un classement mondial, on peut brancher un petit serveur (API) — dis-moi et je te prépare ça.</div>
+      <div style="margin-top:18px;opacity:.75">Les scores sont stockés localement sur cet appareil.</div>
     </div>
   `;
   document.body.appendChild(panel);
@@ -187,9 +172,6 @@ function renderHofTable(list){
 }
 function openHofPanel(){ renderHofTable(loadHof()); }
 
-// petite évasion HTML ultra simple
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
 // ------------------------
 // BOOT
 // ------------------------
@@ -207,28 +189,22 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Bouton Rejouer en haut-droite
+  // Déplacer le bouton Rejouer un peu sous le coin haut-droite
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
-    replayBtn.style.top = '8px';
+    replayBtn.style.top = '48px';   // ↓ sous le score live
     replayBtn.style.right = '8px';
     replayBtn.style.left = 'auto';
     replayBtn.style.bottom = 'auto';
     replayBtn.style.zIndex = '10001';
   }
 
-  // Bouton Hall of Fame en haut-gauche
-  let hofBtn = document.getElementById('__hof_btn');
-  if (!hofBtn){
-    hofBtn = document.createElement('button');
-    hofBtn.id='__hof_btn';
-    hofBtn.type='button';
-    hofBtn.textContent = '🏆 Hall of Fame';
-    hofBtn.style.cssText = 'position:fixed;top:8px;left:8px;z-index:10001;background:#fff;border:0;border-radius:8px;padding:6px 10px;font:12px system-ui;cursor:pointer';
-    document.body.appendChild(hofBtn);
-  }
-  hofBtn.onclick = openHofPanel;
+  // Lien Hall of Fame DANS le HUD (tout en bas)
+  ensureHofLinkInHud();
+
+  // Score live (top-right, “arcade”)
+  const scoreLive = ensureScoreLive();
 
   // Images
   const mapImg   = new Image();
@@ -252,7 +228,7 @@ export function boot(){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  // Charge assets (avec ?v=...)
+  // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
   spiderImg.src = ASSETS.TARANTULA_URL;
@@ -266,13 +242,10 @@ export function boot(){
     const parent = canvas.parentElement || document.body;
     W = parent.clientWidth  || window.innerWidth  || 360;
     H = parent.clientHeight || window.innerHeight || 640;
-
-    // IMPORTANT: bitmap + style CSS (évite le bug iOS “readonly property”)
     canvas.width  = Math.max(1, Math.round(W * dpr));
     canvas.height = Math.max(1, Math.round(H * dpr));
     canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
-
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
@@ -311,6 +284,7 @@ export function boot(){
     score = 0; hits = 0; bonusesPicked = 0; starsPicked = 0;
     gameStartAt = performance.now();
     finalized = false;
+    updateScoreLive();
   }
 
   // Win animation state
@@ -365,26 +339,18 @@ export function boot(){
       date: new Date().toISOString(),
       won: !!won,
     };
-    const hof = addToHof(entry);
+    addToHof(entry);
 
     const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
     const lines = [
       `${title}`,
-      `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}, ${won?`Win: +${SCORE.WIN}`:`Fin: +${SCORE.GAMEOVER}`})`,
+      `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
-      `Hall of Fame :`,
-      leaderboardText(hof),
-      ``,
-      `👉 <a href="#hof" id="__open_hof__" style="color:#ffe06b">Voir le Hall of Fame</a>`
+      `👉 Le Hall of Fame est disponible en bas du HUD.`
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
-
-    // activer le lien
-    setTimeout(()=>{
-      document.getElementById('__open_hof__')?.addEventListener('click', (e)=>{ e.preventDefault(); openHofPanel(); });
-    }, 0);
   }
 
   // ---------- Game loop ----------
@@ -480,17 +446,20 @@ export function boot(){
         ui.updateScore(collected.size, STARS_TARGET);
         ui.renderStars(collected.size, STARS_TARGET);
         starEmphasis();
+
+        // scoring +1 étoile
+        score += SCORE.STAR; starsPicked++; updateScoreLive();
+
         const nameShort = poiName(p.key);
         ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
-        score += SCORE.STAR;
-        starsPicked++;
-
         currentIdx++;
+
         if (currentIdx === QUEST.length){
           triggerWin();
         } else {
-          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 900);
+          // ⏱️ attendre 1 seconde avant la prochaine question
+          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1000);
         }
       }
     }
@@ -571,8 +540,8 @@ export function boot(){
         e.state='flee';
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
 
-        score += SCORE.HIT;
-        hits++;
+        // scoring coup reçu
+        score += SCORE.HIT; hits++; updateScoreLive();
       }
     }
     for (let i=bonuses.length-1;i>=0;i--){
@@ -585,8 +554,8 @@ export function boot(){
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
         bonuses.splice(i,1);
 
-        score += SCORE.BONUS;
-        bonusesPicked++;
+        // scoring bonus
+        score += SCORE.BONUS; bonusesPicked++; updateScoreLive();
       }
     }
     return { collided, picked };
@@ -647,11 +616,49 @@ export function boot(){
     if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
   }
 
-  // route hash #hof -> ouvrir directement le panel
-  window.addEventListener('hashchange', ()=>{
-    if (location.hash === '#hof') openHofPanel();
-  });
+  // hash #hof → ouvrir panel
+  window.addEventListener('hashchange', ()=>{ if (location.hash === '#hof') openHofPanel(); });
   if (location.hash === '#hof') openHofPanel();
+
+  // ---------- helpers UI internes ----------
+  function ensureScoreLive(){
+    let el = document.getElementById('__score_live');
+    if (!el){
+      el = document.createElement('div');
+      el.id='__score_live';
+      el.style.cssText = `
+        position:fixed; top:8px; right:8px; z-index:10002;
+        background:rgba(0,0,0,.65); color:#00ff88;
+        padding:6px 10px; border-radius:8px; font:700 18px/1.1 "Courier New", ui-monospace, monospace;
+        text-shadow:0 0 6px rgba(0,255,136,.55);
+      `;
+      el.textContent = '000000';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  function updateScoreLive(){
+    const el = document.getElementById('__score_live');
+    if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
+  }
+  function ensureHofLinkInHud(){
+    const hud = document.getElementById('hud');
+    if (!hud) return;
+    let link = document.getElementById('__hof_in_hud');
+    if (!link){
+      link = document.createElement('button');
+      link.id='__hof_in_hud';
+      link.type='button';
+      link.textContent = '🏆 Hall of Fame';
+      link.style.cssText = `
+        margin-top:8px; width:100%;
+        background:#fff; color:#000; border:0; border-radius:10px; padding:6px 10px;
+        font:600 12px system-ui; cursor:pointer;
+      `;
+      hud.appendChild(link);
+      link.addEventListener('click', openHofPanel);
+    }
+  }
 }
 
 // ------------------------
@@ -735,9 +742,9 @@ function renderWin(ctx, view, sprites, winFx){
   const cx = ox + dw/2;
   const cy = oy + dh/2;
 
-  // Duo au centre (zoom + légère rotation "danse")
+  // Duo au centre (zoom + légère rotation "danse") — 2× plus gros
   const t = winFx.t;
-  const base = Math.min(dw, dh) * 0.36; // 2× plus gros
+  const base = Math.min(dw, dh) * 0.36;
   const s = 0.9 + 0.08*Math.sin(t*4);
   const rot = 0.08*Math.sin(t*3.2);
 
