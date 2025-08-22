@@ -8,20 +8,35 @@ export const APP_VERSION = "v2025-08-20-g";
 export const APP_Q = `?v=${APP_VERSION}`;
 export const asset = (p) => `${p}${APP_Q}`;
 
-// --- Assets (⚠️ renomme vraiment les fichiers côté /assets/ pour éviter les espaces) ---
+// --- Assets (⚠️ renomme VRAIMENT les fichiers côté /assets/ pour enlever les espaces) ---
 export const ASSETS = {
   MAP_URL:       asset("assets/salento-map.PNG"),
   BIRD_URL:      asset("assets/aracne .PNG"),      // <-- pas d’espace dans le nom du fichier
   TARANTULA_URL: asset("assets/tarantula .PNG"),
   CROW_URL:      asset("assets/crow.PNG"),
-  JELLY_URL:     asset("assets/jelly.PNG"),       // ou "jellyfish.PNG" si c’est ton nom réel
+  JELLY_URL:     asset("assets/jelly.PNG"),       // ou "jellyfish.PNG" selon ton fichier réel
 };
+
+// Alias pratiques si ton code importe encore ces noms unitaires
+export const MAP_URL       = ASSETS.MAP_URL;
+export const BIRD_URL      = ASSETS.BIRD_URL;
+export const TARANTULA_URL = ASSETS.TARANTULA_URL;
+export const CROW_URL      = ASSETS.CROW_URL;
+export const JELLY_URL     = ASSETS.JELLY_URL;
 
 // --- UI layout ---
 export const UI = {
   TOP: 120,
   BOTTOM: 160,
   MAP_ZOOM: 1.30,
+};
+
+// --- Joueur (valeurs de base si utilisées ailleurs) ---
+export const playerBase = {
+  x: 0.55,
+  y: 0.25,
+  speed: 0.0048,
+  size: 0.11,
 };
 
 // --- POIs (positions normalisées) ---
@@ -40,6 +55,63 @@ export const POIS = [
   { key:"nardo",         x:0.38,                                y:0.50 },
   { key:"lecce",         x:0.53,                                y:0.28 },
 ];
+
+// --- Énergie / dégâts (⚠️ demandé par game.js) ---
+export const ENERGY = {
+  MAX: 100,
+  START: 100,
+  HIT_DAMAGE: 20,          // dégâts par collision
+  INVULN_AFTER_HIT_S: 1.0, // invulnérabilité courte après coup
+};
+
+// --- Ennemis / bonus (facultatif mais utile si importés ailleurs) ---
+export const ENEMY = { JELLY: "jelly", CROW: "crow" };
+
+export const ENEMY_CONFIG = {
+  MAX_ON_SCREEN: 4,
+  LIFETIME_S: 14,
+  BASE_SPAWN_MS: 4200,
+  SPAWN_JITTER_MS: 2600,
+  COLLIDE_RADIUS_PX: 36,
+  SPEED: { jelly: 0.06, crow: 0.10 },
+  FLEE: { SPEED: 0.38, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
+  SPRITE_PX: { jelly: 42, crow: 42 },
+};
+
+export const BONUS_CONFIG = {
+  LIFETIME_S: 4,
+  BASE_SPAWN_MS: 4200,
+  SPAWN_JITTER_MS: 3000,
+  PICK_RADIUS_PX: 36,
+  HEAL_AMOUNT: 25,
+};
+
+// --- Effets visuels “shake” ---
+export const SHAKE = {
+  MAX_S: 2.4,
+  DECAY_PER_S: 1.0,
+  HIT_ADD: 0.6,
+  BONUS_ADD: 0.2,
+};
+
+// --- Audio/musique ---
+export const AUDIO = {
+  MASTER_GAIN: 0.58,
+  LOOP_PHRASE_MS: 2800,
+  ENABLED_BY_DEFAULT: false,
+};
+
+// --- Finale / feu d’artifice ---
+export const FINALE = {
+  FW_REPEAT_MS: 4500,
+  ZOOM_MAX: 1.35,
+  ZOOM_SPEED: 0.12,
+};
+
+// --- Feedback ---
+export const FEEDBACK = {
+  FAIL_COOLDOWN_MS: 900,
+};
 
 // --- Outils écran (DPR) ---
 export function pickDevicePixelRatio() {
