@@ -140,19 +140,22 @@ export function boot() {
   jellyImg.src  = ASSETS.JELLY_URL;
 
   // Canvas sizing
-  let W = 0, H = 0, dpr = 1;
   function resize() {
-    dpr = pickDPR();
-    const parent = canvas.parentElement || document.body;
-    W = canvas.clientWidth  = parent.clientWidth;
-    H = canvas.clientHeight = parent.clientHeight;
-    canvas.width  = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  resize();
-  window.addEventListener('resize', resize);
+  dpr = pickDPR();
+  const parent = canvas.parentElement || document.body;
 
+  // on LIT seulement, on n’écrit pas sur clientWidth/clientHeight :
+  W = parent.clientWidth;
+  H = parent.clientHeight;
+
+  // on règle les dimensions du canvas (attributs) + (optionnel) les styles CSS
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
   // ------- Game state -------
   let running = false;
   let lastTS = 0;
