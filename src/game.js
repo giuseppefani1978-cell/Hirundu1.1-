@@ -54,9 +54,9 @@ const spiderImg = new Image();
 const crowImg   = new Image();
 const jellyImg  = new Image();
 
-mapImg.src    = MAP_URL;
-birdImg.src   = BIRD_URL;
-spiderImg.src = TARANTULA_URL;
+mapImg.src    = MAP_URL; || 'assets/salento-map.PNG';
+birdImg.src   = BIRD_URL; || 'assets/aracne .PNG';
+spiderImg.src = TARANTULA_URL; || 'assets/tarantula .PNG';
 crowImg.src   = CROW_URL || 'assets/crow.png';
 jellyImg.src  = JELLY_URL || 'assets/jelly.png';
 
