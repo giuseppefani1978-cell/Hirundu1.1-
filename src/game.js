@@ -448,9 +448,6 @@ export function boot() {
 
     if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
   }
-  // ← juste avant la fin de boot()
-  window.startGame = startGame;
-  window.resetGame = resetGame
 }
 
 // ------------------------
