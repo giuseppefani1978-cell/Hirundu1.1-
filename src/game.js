@@ -3,6 +3,19 @@
 // Boucle principale, rendu carte/POI, progression, énergie
 // ---------------------------------------------------------
 // ... imports en haut
+function loadImageWithFallback(paths, onload, onerror) {
+  const img = new Image();
+  let i = 0;
+  const tryNext = () => {
+    if (i >= paths.length) { onerror?.(img); return; }
+    img.src = paths[i++];
+  };
+  img.onload = () => onload?.(img);
+  img.onerror = tryNext;
+  tryNext();
+  return img;
+}
+
 import { ASSETS } from "./config.js";
 import { setupUI, setHeroImages } from "./ui.js"; // si tu as ce helper
 // ...
@@ -26,8 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error(e);
   }
 });
-
-
 
 import {
   MAP_URL, BIRD_URL, TARANTULA_URL,
