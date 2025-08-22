@@ -5,21 +5,67 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
 
-  <!-- ✅ ta feuille de styles externe -->
-  <link rel="stylesheet" href="style.css">
+  <style>
+    /* === Styles essentiels (identiques à ta version) === */
+    html,body{height:100%;margin:0;background:#a9d6f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    *{-webkit-tap-highlight-color:transparent}
+    .wrap{display:flex;flex-direction:column;height:100%}
+    .game{position:relative;flex:1;overflow:hidden}
+    canvas{width:100%;height:100%;display:block;background:#bfe2f8;touch-action:none}
+
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(169,214,245,.84);backdrop-filter:blur(3px);z-index:50}
+    .card{width:min(560px,92vw);border:2px solid #c8b37a;border-radius:14px;background:#fffdf5;box-shadow:0 10px 26px rgba(0,0,0,.18);padding:18px;text-align:center}
+    .card h1{margin:0 0 6px 0;font-size:24px}
+    .card p{margin:6px 0 14px 0;opacity:.82}
+    .card button{border:1px solid #c8b37a;background:#ffe8a6;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+
+    .heroes{display:flex;justify-content:center;gap:16px;margin:10px 0 8px 0;position:relative}
+    .heroes img{width:72px;height:72px;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;animation:floatY 2.4s ease-in-out infinite, pulse 3.2s ease-in-out infinite;filter: drop-shadow(0 3px 6px rgba(0,0,0,.25));}
+    .heroes img#heroAr{animation-delay:.0s,.0s}
+    .heroes img#heroTa{animation-delay:.6s,.3s}
+    @keyframes floatY{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+    .inspiration{font-size:.92em;font-style:italic;color:#555;margin:2px 0 16px}
+
+    .hud{position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(255,248,220,.96);border:2px solid #c8b37a;border-radius:10px;padding:8px 6px;font-size:14px;z-index:22;width:42px;display:flex;flex-direction:column;align-items:center;gap:6px}
+    .hud h3{margin:0;font-size:14px;line-height:1;text-align:center}
+    .hud .score{margin:0;font-weight:800;font-size:13px;line-height:1.1}
+    .stars{display:flex;flex-direction:column;gap:4px;margin-top:2px;align-items:center}
+    .star{width:15px;height:15px;opacity:.95}
+
+    .tarTop{position:absolute;display:none;align-items:flex-start;gap:8px;z-index:40;max-width:calc(100vw - 16px);left:8px; top:8px;}
+    .tarTop.show{display:flex}
+    .tarTop img{width:56px;height:56px;object-fit:contain;background:transparent;border:none;border-radius:0;box-shadow:none;image-rendering:pixelated}
+    .bdBubble{max-width:min(860px,92vw);background:#fff;border:1px solid #bbb;border-radius:12px;padding:8px 10px;box-shadow:0 4px 10px rgba(0,0,0,.12);font-size:14px;line-height:1.35}
+    .bdTitle{font-weight:700;margin:0 0 4px 0}
+    .bdBubble p{margin:0}
+
+    .touch{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:none;gap:12px;align-items:center;z-index:30}
+    .touch.show{display:flex}
+    .dpad{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px 56px;gap:10px}
+    .btn{width:56px;height:56px;border-radius:12px;border:2px solid #c8b37a;background:#fff7de;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none;font-weight:800;font-size:20px;box-shadow:0 3px 0 #c8b37a}
+    .btn:active{transform:translateY(1px)}
+
+    #musicBtn{position:absolute;right:10px;bottom:10px;z-index:45;background:#ffe8a6;border:2px solid #c8b37a;border-radius:10px;padding:8px 12px;font-weight:700;display:none;cursor:pointer}
+    #replayFloat{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:46;display:none;border:2px solid #7ac37a;background:#eaffea;font-weight:800;border-radius:10px;padding:8px 12px;box-shadow:0 6px 14px rgba(0,0,0,.15);cursor:pointer}
+
+    .err{position:absolute;right:10px;top:10px;background:#ffefef;border:2px solid #d66;border-radius:10px;padding:8px 10px;font-size:12px;color:#900;z-index:60;max-width:min(320px,60vw)}
+    .err b{display:block;margin-bottom:4px}
+
+    #debugBox{position:fixed;left:10px;bottom:10px;z-index:9999;background:#ffefef;border:2px solid #d66;padding:8px 10px;border-radius:8px;font:12px/1.3 system-ui;max-width:80vw;display:none}
+
+    /* badge version */
+    #__ver__{position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;font:12px system-ui;padding:4px 6px;border-radius:6px;pointer-events:none}
+  </style>
 </head>
 <body>
-  <!-- Badge version (rempli côté JS) -->
-  <div id="__ver__"
-       style="position:fixed;right:8px;bottom:8px;z-index:9999;
-              background:rgba(0,0,0,.55);color:#fff;font:12px system-ui;
-              padding:4px 6px;border-radius:6px;pointer-events:none">
-    <span id="__verTxt__">…</span> • host=<span id="__host__"></span>
-  </div>
+  <!-- Badge version -->
+  <div id="__ver__">v2025-08-20-e • host=<span id="__host__"></span></div>
 
   <div class="wrap">
     <div class="game">
-      <!-- Overlay de démarrage -->
+      <!-- Overlay Start -->
       <div class="overlay" id="overlay">
         <div class="card" id="overlayCard">
           <div class="heroes">
@@ -33,32 +79,29 @@
         </div>
       </div>
 
-      <!-- UI flottante -->
+      <!-- UI -->
       <button id="musicBtn" type="button">🎵 Musique</button>
       <button id="replayFloat" type="button">⟲ Rejouer</button>
       <div class="err" id="err" style="display:none"><b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div></div>
-
-      <!-- Canvas principal -->
       <canvas id="c"></canvas>
 
-      <!-- HUD (gauche) -->
+      <!-- HUD -->
       <div class="hud" id="hud">
         <h3 id="hudLabel">Étoiles</h3>
         <div class="score" id="score">0/10</div>
         <div class="stars" id="stars"></div>
-        <!-- (tu ajouteras plus tard la barre d’énergie ici si besoin) -->
       </div>
 
-      <!-- Bulle Tarantula (haut-gauche) -->
+      <!-- Bulle Tarantula -->
       <div class="tarTop" id="tarTop">
         <img id="tarAvatar" alt="Tarantula">
         <div class="bdBubble">
-          <div class="bdTitle" id="bdTitle">Tarantula</div>
-          <p id="bdText"></p>
+           <div class="bdTitle" id="bdTitle">Tarantula</div>
+           <p id="bdText"></p>
         </div>
       </div>
 
-      <!-- D-pad tactile -->
+      <!-- D-pad -->
       <div class="touch" id="touch">
         <div class="dpad">
           <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
@@ -71,30 +114,48 @@
 
   <div id="debugBox"></div>
 
-  <!-- Bouton Force Refresh (optionnel) -->
-  <button id="__force__"
-          type="button"
-          style="position:fixed;left:8px;bottom:8px;z-index:9999;
-                 background:#ffd;text-transform:uppercase;border:1px solid #cc3;
-                 border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
+  <!-- Force Refresh -->
+  <button id="__force__" type="button"
+          style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
     Force Refresh
   </button>
 
-  <!-- ✅ script principal en module (importe le reste) -->
-  <script type="module" src="src/game.js"></script>
-
-  <!-- Petit helper: host + force refresh (facultatif) -->
+  <!-- Purge éventuels anciens Service Workers/caches -->
   <script>
     (function(){
-      var h = document.getElementById('__host__');
-      if (h) h.textContent = location.hostname || 'local';
+      var s=document.getElementById("__host__"); if(s) s.textContent = location.hostname;
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(list=>{
+          list.forEach(r=>r.unregister());
+          if (window.caches && caches.keys) {
+            caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
+          }
+        }).catch(()=>{});
+      }
+      // Force refresh button
       var btn = document.getElementById('__force__');
       if (btn) btn.addEventListener('click', function(){
         var url = new URL(location.href);
         url.searchParams.set('t', Date.now());
         location.replace(url.toString());
       });
+      // Secours: si game.js n’a pas encore exposé startGame, on déclenche quand même
+      window.addEventListener('DOMContentLoaded', function(){
+        var start = document.getElementById('startBtn');
+        if (start) start.addEventListener('click', function(){
+          if (typeof window.startGame === 'function') window.startGame();
+        });
+      });
     })();
+  </script>
+
+  <!-- Bootstrap des modules -->
+  <script type="module">
+    import { boot } from './src/game.js';       // game.js importe config/i18n/audio/ui/enemies
+    // Démarre proprement une fois le DOM prêt (les éléments existent)
+    window.addEventListener('DOMContentLoaded', () => {
+      try { boot(); } catch(e){ console.error('boot error', e); }
+    });
   </script>
 </body>
 </html>
