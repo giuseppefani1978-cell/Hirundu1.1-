@@ -2,171 +2,110 @@
 // ---------------------------------------------------------
 // Boucle principale, rendu carte/POI, progression, énergie
 // ---------------------------------------------------------
-// ... imports en haut
-function loadImageWithFallback(paths, onload, onerror) {
-  const img = new Image();
-  let i = 0;
-  const tryNext = () => {
-    if (i >= paths.length) { onerror?.(img); return; }
-    img.src = paths[i++];
-  };
-  img.onload = () => onload?.(img);
-  img.onerror = tryNext;
-  tryNext();
-  return img;
-}
-
-import { ASSETS } from "./config.js";
-import { setupUI, setHeroImages } from "./ui.js"; // si tu as ce helper
-// ...
-
-// Assure que le bouton déclenche bien le jeu
-function wireStartButton() {
-  const btn = document.getElementById("startBtn");
-  if (btn) btn.addEventListener("click", startGame);
-  // Compat pour anciens onClick inline si jamais tu le gardes :
-  window.startGame = startGame;
-}
-
-// Au boot du module
-document.addEventListener("DOMContentLoaded", () => {
-  try {
-    wireStartButton();
-    // si tu initialises les images de l’écran de démarrage ici :
-    setHeroImages?.(ASSETS.BIRD_URL, ASSETS.TARANTULA_URL);
-    // le reste de ton init (resize, splash, etc.)
-  } catch (e) {
-    console.error(e);
-  }
-});
 
 import {
-  MAP_URL, BIRD_URL, TARANTULA_URL,
-  CROW_URL, JELLY_URL,
-  MAP_ZOOM, UI_TOP, UI_BOTTOM,
-  POIS, playerBase
+  ASSETS,
+  UI,
+  POIS,
+  STARS_TARGET,
+  ENERGY,
+  pickDevicePixelRatio,
+  computeMapViewport,
+  makeInitialPlayer,
 } from './config.js';
 
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, stopMusic, ping, starEmphasis } from './audio.js';
+
 import {
-  setSprites, resetEnemies, updateEnemies, drawEnemies,
-  getEnemyStats, getPlayerSpeedFactor, getShakeTimeLeft
+  startMusic,
+  stopMusic,
+  starEmphasis,
+  resetAudioForNewGame,
+} from './audio.js';
+
+import {
+  setSprites,
+  resetEnemies,
+  updateEnemies,
+  drawEnemies,
+  getPlayerSpeedFactor,
+  getShakeTimeLeft,
 } from './enemies.js';
+
 import * as ui from './ui.js';
 
-// —————————————————————————————
-// Canvas & contexte
-// —————————————————————————————
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d', { alpha: true });
+// ---------- État module ----------
+let canvas, ctx;
+let W = 0, H = 0, dpr = 1;
 
-// —————————————————————————————
-// State global jeu
-// —————————————————————————————
 let running = false;
 let lastTS = 0;
-let frameDT = 0;
 
-// Joueur
-const player = { x: playerBase.x, y: playerBase.y, speed: playerBase.speed, size: playerBase.size };
-
-// Progression
+let player = makeInitialPlayer();
 let collected = new Set();
 let QUEST = [];
 let currentIdx = 0;
-
-// Énergie (0..100)
-const ENERGY_MAX = 100;
-let energy = ENERGY_MAX;
-
-// Finale / feux (placeholder simple : on réutilise le feu d’artifice via enemies si besoin plus tard)
 let finale = false;
 
-// —————————————————————————————
-// Images (carte + personnages + sprites ennemis)
-// —————————————————————————————
-const mapImg    = new Image();
-const birdImg   = new Image();
-const spiderImg = new Image();
-const crowImg   = new Image();
-const jellyImg  = new Image();
+let mapImg, birdImg, spiderImg, crowImg, jellyImg;
 
-mapImg.src    = MAP_URL; || 'assets/salento-map.PNG';
-birdImg.src   = BIRD_URL; || 'assets/aracne .PNG';
-spiderImg.src = TARANTULA_URL; || 'assets/tarantula .PNG';
-crowImg.src   = CROW_URL || 'assets/crow.png';
-jellyImg.src  = JELLY_URL || 'assets/jellyfish.png';
+// ---------- Utils ----------
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-// Propagation sprites ennemis au module enemies
-setSprites({ crowImg, jellyImg });
+function loadImage(url){
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = url;
+  return im;
+}
 
-// —————————————————————————————
-// Resize / DPR
-// —————————————————————————————
-let W = 0, H = 0, dpr = 1;
-function resize() {
-  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+// ---------- Dimensions canvas ----------
+function resize(){
+  if (!canvas || !ctx) return;
+  dpr = pickDevicePixelRatio();
   W = canvas.clientWidth  = canvas.parentElement.clientWidth;
   H = canvas.clientHeight = canvas.parentElement.clientHeight;
-  canvas.width  = Math.round(W * dpr);
-  canvas.height = Math.round(H * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-resize();
-addEventListener('resize', resize);
-
-// —————————————————————————————
-// Aides rendu / placement carte
-// —————————————————————————————
-function computeMapBounds() {
-  const mw = mapImg.naturalWidth || 1920;
-  const mh = mapImg.naturalHeight || 1080;
-  const availW = W;
-  const availH = Math.max(200, H - UI_BOTTOM - UI_TOP);
-  const baseScale = Math.min(availW / mw, availH / mh);
-  const scale = baseScale * (MAP_ZOOM || 1);
-  const dw = mw * scale;
-  const dh = mh * scale;
-  const ox = (W - dw) / 2;
-  const oy = UI_TOP + (availH - dh) / 2;
-  return { mw, mh, dw, dh, ox, oy, scale };
+  canvas.width  = Math.round(W*dpr);
+  canvas.height = Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 
-function drawMapOrPlaceholder(bounds) {
+// ---------- Energie ----------
+function setEnergy(next){
+  player.energy = Math.max(0, Math.min(player.energyMax, next|0));
+  const pct = (player.energy / player.energyMax) * 100;
+  ui.updateEnergy(pct);
+}
+
+// ---------- Questions / bulle ----------
+function askQuestionFor(p){
+  if(!p) return;
+  ui.showAsk( t.ask( poiInfo(p.key) ) );
+}
+function showTarantulaSuccess(name){
+  ui.showSuccess( t.success(name) );
+}
+
+// ---------- Rendu éléments “fixes” ----------
+function drawMap(bounds){
   const { ox, oy, dw, dh } = bounds;
-  if (mapImg.complete && mapImg.naturalWidth) {
+  if (mapImg.complete && mapImg.naturalWidth){
     ctx.drawImage(mapImg, ox, oy, dw, dh);
   } else {
     ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw, dh);
     ctx.fillStyle = '#0e2b4a'; ctx.font = '16px system-ui';
-    ctx.fillText(t.mapNotLoaded?.(MAP_URL) || `Map not loaded: ${MAP_URL}`, ox + 14, oy + 24);
+    ctx.fillText(t.mapNotLoaded(ASSETS.MAP_URL), ox+14, oy+24);
   }
 }
 
-// —————————————————————————————
-// POI & étoiles
-// —————————————————————————————
-function drawPOIs(bounds) {
-  const { ox, oy, dw, dh } = bounds;
-  for (const p of POIS) {
-    const x = ox + p.x * dw;
-    const y = oy + p.y * dh;
-    if (collected.has(p.key)) {
-      drawStarfish(x, y - 20, Math.max(14, Math.min(22, Math.min(W, H) * 0.028)));
-    } else {
-      ctx.save();
-      ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6);
-      ctx.moveTo(x - 6, y + 6); ctx.lineTo(x + 6, y - 6);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-}
-
-function drawStarfish(cx, cy, R) {
+function drawStarfish(cx,cy,R){
   ctx.save(); ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
   ctx.beginPath(); const pts=5,inner=R*0.45;
   for(let i=0;i<pts*2;i++){
@@ -178,259 +117,207 @@ function drawStarfish(cx, cy, R) {
   ctx.closePath(); ctx.fillStyle='#d26f45'; ctx.strokeStyle='#8c3f28'; ctx.lineWidth=3; ctx.fill(); ctx.stroke(); ctx.restore();
 }
 
-// —————————————————————————————
-// Energie helpers
-// —————————————————————————————
-function setEnergy(p) {
-  energy = Math.max(0, Math.min(ENERGY_MAX, p|0));
-  ui.updateEnergy((energy / ENERGY_MAX) * 100);
-}
-
-// —————————————————————————————
-// Texte Tarantula (questions/succès)
-// —————————————————————————————
-function askQuestionFor(p) {
-  if (!p) return;
-  ui.showAsk(t.ask?.(poiInfo(p.key)) || `Where is ${poiInfo(p.key)}?`);
-}
-function showTarantulaSuccess(name) {
-  ui.showSuccess(t.success?.(name) || `Great, that’s it: ${name}!`);
-}
-
-// —————————————————————————————
-// Boucle principale
-// —————————————————————————————
-function draw(ts) {
-  if (ts) {
-    if (!lastTS) lastTS = ts;
-    frameDT = Math.min(0.05, (ts - lastTS) / 1000);
-    lastTS = ts;
-  }
-
-  const bounds = computeMapBounds();
+function drawPOIs(bounds){
   const { ox, oy, dw, dh } = bounds;
-
-  // fond
-  ctx.clearRect(0, 0, W, H);
-  drawMapOrPlaceholder(bounds);
-
-  // POI
-  drawPOIs(bounds);
-
-  // Position joueur px
-  const bw = Math.min(160, Math.max(90, dw * player.size));
-  const bx = ox + player.x * dw;
-  const by = oy + player.y * dh;
-
-  // Ennemis + bonus (et collisions)
-  const { collided, bonusPicked } = updateEnemies(frameDT, { ox, oy, dw, dh }, { bx, by });
-
-  // Énergie (perte/gain)
-  if (collided) {
-    setEnergy(energy - 18); // perte
-  }
-  if (bonusPicked) {
-    setEnergy(energy + 14); // regain
-  }
-
-  // Si énergie 0 => on “gèle” le joueur (simplement, on arrête de bouger)
-  const dead = (energy <= 0);
-
-  // Ajuste la vitesse effective par le slow temporaire (enemies)
-  const speedFactor = getPlayerSpeedFactor(1);
-  const effSpeed = playerBase.speed * speedFactor;
-
-  // Contrôles (D-pad) — mouvement continu si touche enfoncée (mobile)
-  // (Les listeners sont installés dans setupControls; ici on borne juste)
-  if (!finale && !dead) {
-    // borne déjà assurée par handlers
-  }
-
-  // Shake visuel du joueur (issu de enemies)
-  let shakeX = 0, shakeY = 0;
-  const shakeT = getShakeTimeLeft();
-  if (shakeT > 0) {
-    const a = Math.min(1, shakeT / 2.4);
-    const mag = 6 * a;
-    shakeX = (Math.random()*2 - 1) * mag;
-    shakeY = (Math.random()*2 - 1) * mag;
-  }
-
-  // Dessine bonus/ennemis sous le joueur
-  drawEnemies(ctx, { ox, oy, dw, dh });
-
-  // Dessine le joueur
-  if (!finale) {
-    if (birdImg.complete && birdImg.naturalWidth) {
-      ctx.drawImage(birdImg, bx - bw/2 + shakeX, by - bw/2 + shakeY, bw, bw);
-    } else {
-      ctx.fillStyle = '#333';
-      ctx.beginPath(); ctx.arc(bx + shakeX, by + shakeY, bw * 0.35, 0, Math.PI * 2); ctx.fill();
+  for(const p of POIS){
+    const x=ox+p.x*dw, y=oy+p.y*dh;
+    if(collected.has(p.key)){
+      drawStarfish(x, y-20, Math.max(14,Math.min(22,Math.min(W,H)*0.028)));
+    }else{
+      ctx.save(); ctx.strokeStyle='#b04123'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
+      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.stroke();
+      ctx.restore();
     }
   }
+}
 
-  // Progression (proche du bon POI ?)
-  if (!finale && currentIdx < QUEST.length) {
-    const p = QUEST[currentIdx];
-    const px = ox + p.x * dw, py = oy + p.y * dh;
-    const onTarget = Math.hypot(bx - px, by - py) < 44;
+// ---------- Boucle principale ----------
+function frame(ts){
+  if(!running) return;
 
-    if (onTarget) {
-      collected.add(p.key);
-      ui.updateScore(collected.size, POIS.length);
-      ui.renderStars(collected.size, POIS.length);
-      starEmphasis();
+  if (ts){
+    if(!lastTS) lastTS = ts;
+    const dt = Math.min(0.05, (ts - lastTS)/1000);
+    lastTS = ts;
 
-      const nameShort = poiName(p.key);
-      showTarantulaSuccess(nameShort);
+    // timers internes ennemis (slow/shake) + spawns/update
+    // Calcul viewport
+    const bounds = computeMapViewport(W, H, mapImg.naturalWidth||1920, mapImg.naturalHeight||1080);
 
-      currentIdx++;
-      if (currentIdx === QUEST.length) {
-        // Finale (simplifiée ici)
-        ui.showReplay(true);
-        finale = true;
-      } else {
-        setTimeout(() => askQuestionFor(QUEST[currentIdx]), 900);
+    // fond
+    ctx.clearRect(0,0,W,H);
+    drawMap(bounds);
+    drawPOIs(bounds);
+
+    // position joueur
+    const bw = Math.min(160, Math.max(90, bounds.dw*player.size));
+    const bx = bounds.ox + player.x*bounds.dw;
+    const by = bounds.oy + player.y*bounds.dh;
+
+    // ennemis/bonus + collisions
+    const { collided, bonusPicked } = updateEnemies(dt, bounds, { bx, by });
+
+    // énergie
+    if(collided && player.invulnTimer<=0){
+      setEnergy(player.energy - ENERGY.HIT_DAMAGE);
+      player.invulnTimer = ENERGY.INVULN_AFTER_HIT_S;
+    }
+    if (bonusPicked){
+      setEnergy(player.energy + 14); // petit heal “bonus”
+    }
+    if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+
+    // shake visuel (issu d'enemies)
+    let shakeX=0, shakeY=0;
+    const shakeT = getShakeTimeLeft();
+    if (shakeT > 0){
+      const a = Math.min(1, shakeT/2.4);
+      const mag = 6*a;
+      shakeX = (Math.random()*2-1)*mag;
+      shakeY = (Math.random()*2-1)*mag;
+    }
+
+    // dessine bonus/ennemis (sous le joueur)
+    drawEnemies(ctx, bounds);
+
+    // joueur
+    if (birdImg.complete && birdImg.naturalWidth){
+      ctx.drawImage(birdImg, bx - bw/2 + shakeX, by - bw/2 + shakeY, bw, bw);
+    } else {
+      ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(bx+shakeX,by+shakeY,bw*0.35,0,Math.PI*2); ctx.fill();
+    }
+
+    // progression POI
+    if(!finale && currentIdx < QUEST.length){
+      const p = QUEST[currentIdx];
+      const px = bounds.ox + p.x*bounds.dw, py = bounds.oy + p.y*bounds.dh;
+      const onTarget = Math.hypot(bx - px, by - py) < 44;
+
+      if (onTarget){
+        collected.add(p.key);
+        ui.updateScore(collected.size, POIS.length);
+        ui.renderStars(collected.size, POIS.length);
+        starEmphasis();
+
+        const nameShort = poiName(p.key);
+        showTarantulaSuccess(nameShort);
+
+        currentIdx++;
+        if (currentIdx === QUEST.length){
+          // fin simplifiée
+          ui.showReplay(true);
+          finale = true;
+        } else {
+          setTimeout(()=> askQuestionFor(QUEST[currentIdx]), 900);
+        }
       }
     }
   }
 
-  requestAnimationFrame(draw);
+  requestAnimationFrame(frame);
 }
 
-// —————————————————————————————
-// Contrôles tactiles (D-pad)
-// —————————————————————————————
-function setupControls() {
-  document.querySelectorAll('.btn').forEach((el) => {
+// ---------- Contrôles tactiles (D-pad) ----------
+function setupControls(){
+  document.querySelectorAll('.btn').forEach((el)=>{
     const dx = parseFloat(el.dataset.dx);
     const dy = parseFloat(el.dataset.dy);
-    let press = false;
-    let rafId = null;
+    let press=false, rafId=null;
 
-    const step = () => {
-      if (!press || finale || energy <= 0) return;
-      const bounds = computeMapBounds();
-      const speed = playerBase.speed * getPlayerSpeedFactor(1);
+    const step = ()=>{
+      if(!press || finale || player.energy<=0) return;
+      const speed = player.speed * getPlayerSpeedFactor(1);
       player.x = Math.max(0, Math.min(1, player.x + dx * speed));
       player.y = Math.max(0, Math.min(1, player.y + dy * speed));
       rafId = requestAnimationFrame(step);
     };
 
-    el.addEventListener('touchstart', (e) => {
-      press = true; step();
-      e.preventDefault();
-    }, { passive: false });
-
-    el.addEventListener('touchend', () => {
-      press = false; cancelAnimationFrame(rafId);
-    });
+    el.addEventListener('touchstart', (e)=>{ press=true; step(); e.preventDefault(); }, {passive:false});
+    el.addEventListener('touchend',   ()=>{ press=false; cancelAnimationFrame(rafId); });
   });
 }
 
-// —————————————————————————————
-function refreshHUD() {
-  ui.updateScore(collected.size, POIS.length);
-  ui.renderStars(collected.size, POIS.length);
-  ui.updateEnergy(100);
-}
-
-// —————————————————————————————
-// Boot/reset publics
-// —————————————————————————————
-export function resetGame() {
+// ---------- Public : reset / start / stop ----------
+export function resetGame(){
   collected = new Set();
-  QUEST = shuffle(POIS);
+  QUEST = shuffle(POIS).slice(0, STARS_TARGET);
   currentIdx = 0;
   finale = false;
-  setEnergy(ENERGY_MAX);
 
-  player.x = playerBase.x;
-  player.y = playerBase.y;
+  // réinit joueur
+  player = makeInitialPlayer();
+  setEnergy(ENERGY.START);
 
+  // ennemis & audio
   resetEnemies();
+  resetAudioForNewGame();
 
-  refreshHUD();
-  askQuestionFor(QUEST[currentIdx]);
+  // HUD
+  ui.updateScore(0, POIS.length);
+  ui.renderStars(0, POIS.length);
+  askQuestionFor(QUEST[0]);
 }
 
-export function startGame() {
-  try {
-    ui.hideOverlay();
-    ui.showTouch(true);
-    ui.setMusicLabel(true);
-    startMusic();
+export function startGame(){
+  ui.hideOverlay();
+  ui.showTouch(true);
+  ui.setMusicLabel(true);
+  startMusic();
 
-    if (!running) {
-      running = true;
-      requestAnimationFrame(draw);
-    }
-    resetGame();
-  } catch (e) {
-    alert('Start error: ' + (e?.message || e));
+  if (!running){
+    running = true;
+    lastTS = 0;
+    requestAnimationFrame(frame);
   }
+  resetGame();
 }
 
-export function stopGame() {
-  stopMusic();
+export function stopGame(){
   running = false;
+  stopMusic();
 }
 
-// —————————————————————————————
-// Helpers
-// —————————————————————————————
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+// ---------- Boot (appelé depuis index.html) ----------
+export function boot(){
+  // Canvas/ctx
+  canvas = document.getElementById('c');
+  ctx     = canvas.getContext('2d', { alpha:true });
 
-// —————————————————————————————
-// Wiring initial
-// —————————————————————————————
-(function boot() {
   ui.initUI();
-  refreshHUD();
 
-  // Musique
-  ui.onClickMusic(() => {
-    // Simple toggle basé sur l’état AudioContext — on s’appuie sur les labels
-    // (si vous avez un isOn accessible dans audio.js, remplacez par un vrai toggle)
-    startMusic();
-    ui.setMusicLabel(true);
-  });
+  // Images
+  mapImg    = loadImage(ASSETS.MAP_URL);
+  birdImg   = loadImage(ASSETS.BIRD_URL);
+  spiderImg = loadImage(ASSETS.TARANTULA_URL);
+  crowImg   = loadImage(ASSETS.CROW_URL);
+  jellyImg  = loadImage(ASSETS.JELLY_URL);
 
-  // Replay
-  ui.onClickReplay(() => {
-    resetGame();
-  });
+  // Sprites ennemis
+  setSprites({ crowImg, jellyImg });
 
-  // “Force refresh” (debug facultatif)
-  const rb = document.getElementById('__force__');
-  rb?.addEventListener('click', () => {
-    const url = new URL(location.href);
-    url.searchParams.set('t', Date.now());
-    location.replace(url.toString());
-  });
-
-  // Avatars écran de démarrage
+  // Avatars (écran de démarrage)
   const heroAr = document.getElementById('heroAr');
   const heroTa = document.getElementById('heroTa');
-  if (heroAr) heroAr.src = BIRD_URL;
-  if (heroTa) heroTa.src = TARANTULA_URL;
+  if (heroAr) heroAr.src = ASSETS.BIRD_URL;
+  if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
+  const tarAvatar = document.getElementById('tarAvatar');
+  if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  // Bouton “Démarrer”
+  // Start button
   const startBtn = document.getElementById('startBtn');
-  startBtn?.addEventListener('click', () => startGame());
+  startBtn?.addEventListener('click', startGame);
+  // Compat éventuelle :
+  window.startGame = startGame;
 
-  // D-pad
-  setupControls();
+  // Resize
+  resize(); addEventListener('resize', resize);
 
-  // Bulle placeholder tant que l’overlay est visible
-  if (POIS?.length) {
-    ui.showAsk(t.ask?.(poiInfo(POIS[0].key)) || `Where is ${poiInfo(POIS[0].key)}?`);
-  }
-})();
+  // HUD initial
+  ui.updateScore(0, POIS.length);
+  ui.renderStars(0, POIS.length);
+  ui.updateEnergy(100);
+
+  // Bulle placeholder
+  if (POIS.length) askQuestionFor(POIS[0]);
+}
