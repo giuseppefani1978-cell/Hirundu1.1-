@@ -6,16 +6,8 @@ import { t, poiName, poiInfo } from './i18n.js';
 import { startMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame } from './audio.js';
 import * as ui from './ui.js';
 
-const DEBUG = true;
-function dbg(msg){
-  if(!DEBUG) return;
-  const box = document.getElementById('debugBox');
-  if (box){
-    box.style.display = 'block';
-    box.innerHTML += (box.innerHTML ? '<br>' : '') + String(msg);
-  }
-  console.log('[GAME]', msg);
-}
+const DEBUG = false;
+function dbg(msg){ if(DEBUG){ console.log('[GAME]', msg); const b=document.getElementById('debugBox'); if(b){ b.style.display='block'; b.innerHTML+=(b.innerHTML?'<br>':'')+msg; } } }
 
 // ------------------------
 // Config (fusionnée ici)
@@ -24,10 +16,10 @@ const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
 
-// ⚠️ les noms doivent correspondre exactement aux fichiers dans /assets
+// ⚠️ ces noms doivent correspondre EXACTEMENT aux fichiers présents dans /assets
 const ASSETS = {
   MAP_URL:       asset('assets/salento-map.PNG'),
-  BIRD_URL:      asset('assets/aracne .PNG'),     // (avec espace si le fichier l'a vraiment)
+  BIRD_URL:      asset('assets/aracne .PNG'),
   TARANTULA_URL: asset('assets/tarantula .PNG'),
   CROW_URL:      asset('assets/crow.PNG'),
   JELLY_URL:     asset('assets/jellyfish.PNG'),
@@ -107,19 +99,12 @@ export function boot(){
   const crowImg  = new Image();
   const jellyImg = new Image();
 
-  mapImg.onload    = () => { dbg('map load OK → ' + mapImg.src); resize(); };
-  birdImg.onload   = () => dbg('bird load OK → ' + birdImg.src);
-  spiderImg.onload = () => dbg('spider load OK → ' + spiderImg.src);
-  crowImg.onload   = () => dbg('crow load OK → ' + crowImg.src);
-  jellyImg.onload  = () => dbg('jelly load OK → ' + jellyImg.src);
+  mapImg.onerror    = () => ui.assetFail('Map', ASSETS.MAP_URL);
+  birdImg.onerror   = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
+  spiderImg.onerror = () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
+  crowImg.onerror   = () => ui.assetFail('Crow', ASSETS.CROW_URL);
+  jellyImg.onerror  = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
 
-  mapImg.onerror    = () => { ui.assetFail('Map', ASSETS.MAP_URL); dbg('map ERROR → ' + mapImg.src); };
-  birdImg.onerror   = () => { ui.assetFail('Aracne', ASSETS.BIRD_URL); };
-  spiderImg.onerror = () => { ui.assetFail('Tarantula', ASSETS.TARANTULA_URL); };
-  crowImg.onerror   = () => { ui.assetFail('Crow', ASSETS.CROW_URL); };
-  jellyImg.onerror  = () => { ui.assetFail('Jellyfish', ASSETS.JELLY_URL); };
-
-  // Splash avatars
   const heroAr = document.getElementById('heroAr');
   const heroTa = document.getElementById('heroTa');
   const tarAvatar = document.getElementById('tarAvatar');
@@ -127,7 +112,6 @@ export function boot(){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  // Charge assets (avec ?v=...)
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
   spiderImg.src = ASSETS.TARANTULA_URL;
@@ -135,21 +119,17 @@ export function boot(){
   jellyImg.src  = ASSETS.JELLY_URL;
 
   // ===== Canvas sizing =====
-  let W = 0, H = 0, dpr = 1;
+  let W=0, H=0, dpr=1;
   function resize(){
     dpr = pickDPR();
     const parent = canvas.parentElement || document.body;
     W = parent.clientWidth  || window.innerWidth  || 360;
     H = parent.clientHeight || window.innerHeight || 640;
-
-    // IMPORTANT: bitmap + style CSS (évite le bug iOS “readonly property”)
-    canvas.width  = Math.max(1, Math.round(W * dpr));
-    canvas.height = Math.max(1, Math.round(H * dpr));
+    canvas.width  = Math.max(1, Math.round(W*dpr));
+    canvas.height = Math.max(1, Math.round(H*dpr));
     canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    dbg(`resize W=${W} H=${H} dpr=${dpr}`);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
   }
   resize();
   window.addEventListener('resize', resize, { passive:true });
@@ -172,7 +152,14 @@ export function boot(){
   let playerSlowTimer = 0;
   let hitShake = 0;
 
-  // D-pad (tactile + souris pour test)
+  // ===== Finale & Game Over =====
+  let finale = false;               // quand 10/10 atteint
+  let fireworks = [];               // particules
+  let finaleTimer = 0;              // pour zoom progressif
+  let dancePhase = 0;
+  const dancers = { bird:{x:0,y:0,scale:1,angle:0}, spider:{x:0,y:0,scale:1,angle:0} };
+
+  // D-pad
   setupDpad(player, () => getSpeed());
 
   const startBtn = document.getElementById('startBtn');
@@ -180,192 +167,61 @@ export function boot(){
 
   if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || `Où est ${poiInfo(QUEST[0].key)} ?`);
 
-  function setEnergy(p){
-    energy = Math.max(0, Math.min(ENERGY.MAX, p|0));
-    ui.updateEnergy((energy / ENERGY.MAX) * 100);
-  }
-  function getSpeed(){
-    const slowFactor = (playerSlowTimer > 0) ? 0.45 : 1.0;
-    return PLAYER_BASE.speed * slowFactor;
-  }
-  function spawnEnemy(now){
-    if (enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) return;
-    const type = (Math.random() < 0.5) ? ENEMY.JELLY : ENEMY.CROW;
-    const x = Math.random()*0.9 + 0.05;
-    const y = Math.random()*0.9 + 0.05;
-    const dir = Math.random() * Math.PI * 2;
-    const speed = ENEMY_CONFIG.SPEED[type];
-    enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
-  }
-  function spawnBonus(){
-    bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
-  }
+  function setEnergy(p){ energy = Math.max(0, Math.min(ENERGY.MAX, p|0)); ui.updateEnergy((energy/ENERGY.MAX)*100); }
+  function getSpeed(){ const slow = (playerSlowTimer>0)?0.45:1.0; return PLAYER_BASE.speed * slow; }
 
-  function draw(ts){
-    if(!running) return;
-
-    if(ts){
-      if(!lastTS) lastTS = ts;
-      const dt = Math.min(0.05, (ts - lastTS)/1000);
-      lastTS = ts;
-      tickEnemies(dt);
-      if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-      if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-    }
-
-    const mw = mapImg.naturalWidth || 1920;
-    const mh = mapImg.naturalHeight || 1080;
-    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
-
-    // fond
-    ctx.clearRect(0,0,W,H);
-    if (mapImg.complete && mapImg.naturalWidth){
-      ctx.drawImage(mapImg, ox, oy, dw, dh);
-    } else {
-      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
-      ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
-      ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
-    }
-
-    // POIs
-    for(const p of POIS){
-      const x = ox + p.x*dw, y = oy + p.y*dh;
-      if(collected.has(p.key)){
-        drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
-      } else {
-        ctx.save();
-        ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
-        ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    // joueur (px)
-    const bw = Math.min(160, Math.max(90, dw * player.size || 90));
-    const bx = ox + player.x*dw;
-    const by = oy + player.y*dh;
-
-    const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
-    if (collided) setEnergy(energy - 18);
-    if (picked)   setEnergy(energy + 14);
-    const dead = energy <= 0;
-
-    // sous-joueur
-    drawBonuses(ctx, bonuses, { ox, oy, dw, dh });
-    drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
-
-    // shake
-    let sx=0, sy=0;
-    if (hitShake > 0){
-      const a = Math.min(1, hitShake / SHAKE.MAX_S);
-      const mag = 6 * a;
-      sx = (Math.random()*2-1)*mag;
-      sy = (Math.random()*2-1)*mag;
-    }
-
-    // joueur
-    if(!dead){
-      if (birdImg.complete && birdImg.naturalWidth){
-        ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      }else{
-        // cercle de fallback → tu DOIS le voir même sans sprite
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
-      }
-    }
-
-    // progression
-    if(!dead && currentIdx < QUEST.length){
-      const p = QUEST[currentIdx];
-      const px = ox + p.x*dw, py = oy + p.y*dh;
-      const onTarget = Math.hypot(bx - px, by - py) < 44;
-      if(onTarget){
-        collected.add(p.key);
-        ui.updateScore(collected.size, STARS_TARGET);
-        ui.renderStars(collected.size, STARS_TARGET);
-        starEmphasis();
-        const nameShort = poiName(p.key);
-        ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
-        currentIdx++;
-        if (currentIdx === QUEST.length){
-          ui.showReplay(true);
-        } else {
-          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 900);
-        }
-      }
-    }
-
-    requestAnimationFrame(draw);
-  }
-
-  function tickEnemies(dt){
-    const now = performance.now();
-    if (now > enemySpawnAt){
-      if (enemies.length < ENEMY_CONFIG.MAX_ON_SCREEN) spawnEnemy(now);
-      enemySpawnAt = now + ENEMY_CONFIG.BASE_SPAWN_MS + Math.random()*ENEMY_CONFIG.SPAWN_JITTER_MS;
-    }
-    if (now > bonusSpawnAt){
-      spawnBonus();
-      bonusSpawnAt = now + BONUS_CONFIG.BASE_SPAWN_MS + Math.random()*BONUS_CONFIG.SPAWN_JITTER_MS;
-    }
-    enemies = enemies.filter(e => (now - (e.bornAt || now)) < ENEMY_CONFIG.LIFETIME_S*1000);
-    const PAD = 0.02;
-    for (const e of enemies){
-      e.t += dt;
-      if (e.state === 'flee'){
-        if (now >= e.fleeUntil) e._remove = true;
-        else { e.vx*=0.995; e.vy*=0.995; }
-      } else if (e.type === ENEMY.JELLY){
-        e.vx += Math.sin(e.t*1.7)*0.0008;
-        e.vy += Math.cos(e.t*1.3)*0.0008;
-      }
-      e.x += e.vx*dt; e.y += e.vy*dt;
-      if (e.x < PAD || e.x > 1-PAD){ e.vx*=-1; e.x = Math.max(PAD, Math.min(1-PAD, e.x)); }
-      if (e.y < PAD || e.y > 1-PAD){ e.vy*=-1; e.y = Math.max(PAD, Math.min(1-PAD, e.y)); }
-    }
-    enemies = enemies.filter(e => !e._remove);
-
-    // bonus vieillissement
-    for (let i=bonuses.length-1;i>=0;i--){
-      const b = bonuses[i];
-      b.age += dt; b.pulse += dt;
-      if (b.age > b.life) bonuses.splice(i,1);
+  // ---------- Fireworks helpers ----------
+  function launchFireworksBurst(cx, cy, parts=40){
+    for(let i=0;i<parts;i++){
+      const ang=(i/parts)*Math.PI*2, speed=140+Math.random()*180;
+      fireworks.push({
+        x:cx, y:cy, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
+        age:0, life:1.3+Math.random()*0.8
+      });
     }
   }
+  function updateFireworks(dt){
+    const g = 140;
+    fireworks = fireworks.filter(p=>{
+      p.age += dt;
+      p.x   += p.vx*dt;
+      p.y   += p.vy*dt;
+      p.vy  += g*dt*0.5;
+      return p.age < p.life;
+    });
+  }
+  function drawFireworks(){
+    for(const p of fireworks){
+      const a = 1 - (p.age/p.life);
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2 + 2*(1-a), 0, Math.PI*2); ctx.fillStyle = '#ffd24a'; ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  function drawDancer(img, cx, cy, size, angle){
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(angle);
+    if(img.complete && img.naturalWidth) ctx.drawImage(img, -size/2, -size/2, size, size);
+    else { ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(0,0,size*0.35,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+  function beginFinale(bx, by, lastPoiX, lastPoiY){
+    finale = true;
+    ui.showReplay(true);
+    // position de départ des danseurs
+    dancers.bird.x = bx;      dancers.bird.y = by;
+    dancers.spider.x = lastPoiX; dancers.spider.y = lastPoiY;
+    dancers.bird.scale = 1;   dancers.spider.scale = 1;
+    dancePhase = 0; finaleTimer = 0;
 
-  function handleCollisions({ bx, by, ox, oy, dw, dh }){
-    let collided=false, picked=false;
-    const now = performance.now();
-    for (const e of enemies){
-      if (e.state === 'flee') continue;
-      const ex = ox + e.x*dw, ey = oy + e.y*dh;
-      if (Math.hypot(bx-ex, by-ey) < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
-        collided = true;
-        failSfx();
-        playerSlowTimer = Math.max(playerSlowTimer, 1.25);
-        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
-        const away = Math.atan2((ey - by), (ex - bx));
-        e.vx = Math.cos(away) * ENEMY_CONFIG.FLEE.SPEED;
-        e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
-        e.state='flee';
-        e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
-      }
-    }
-    for (let i=bonuses.length-1;i>=0;i--){
-      const b = bonuses[i];
-      const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
-      if (Math.hypot(bx-bpx, by-bpy) < BONUS_CONFIG.PICK_RADIUS_PX){
-        picked = true;
-        ping(880, 0.35);
-        playerSlowTimer = 0;
-        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
-        bonuses.splice(i,1);
-      }
-    }
-    return { collided, picked };
+    // premier burst + boucles simples
+    const midX = W/2, midY = UI_CONST.TOP + (H-UI_CONST.TOP-UI_CONST.BOTTOM)/2;
+    launchFireworksBurst(midX, midY, 44);
+    const id = setInterval(()=> launchFireworksBurst(midX + (Math.random()*0.6-0.3)*W*0.4,
+                                                     midY + (Math.random()*0.6-0.3)*(H-UI_CONST.TOP-UI_CONST.BOTTOM)*0.6, 36), 900);
+    // on arrête automatiquement après ~10s
+    setTimeout(()=> clearInterval(id), 10000);
   }
 
   function startGame(){
@@ -394,11 +250,236 @@ export function boot(){
     bonusSpawnAt = performance.now() + 1400;
     playerSlowTimer = 0; hitShake = 0;
 
+    finale = false; fireworks.length = 0; finaleTimer = 0; dancePhase = 0;
+
     ui.updateScore(0, STARS_TARGET);
     ui.renderStars(0, STARS_TARGET);
     resetAudioForNewGame();
 
     if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
+  }
+
+  // ---------- Game loop ----------
+  function draw(ts){
+    if(!running) return;
+
+    // time
+    if(ts){
+      if(!lastTS) lastTS = ts;
+      const dt = Math.min(0.05, (ts - lastTS) / 1000);
+      lastTS = ts;
+
+      // MAJ gameplay (pas de spawn pendant finale)
+      if (!finale){
+        tickEnemies(dt);
+      }
+      if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+      if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+
+      // Finale animation
+      if (finale){
+        updateFireworks(dt);
+        finaleTimer += dt;
+        dancePhase  += dt*2.4;
+
+        const cx = W/2, cy = UI_CONST.TOP + (H-UI_CONST.TOP-UI_CONST.BOTTOM)/2;
+        // easing vers centre + zoom doux
+        dancers.bird.x   += (cx-90 - dancers.bird.x)   * 0.06;
+        dancers.bird.y   += (cy      - dancers.bird.y) * 0.06;
+        dancers.spider.x += (cx+90 - dancers.spider.x) * 0.06;
+        dancers.spider.y += (cy      - dancers.spider.y)*0.06;
+        dancers.bird.scale   += (1.65 - dancers.bird.scale)   * 0.05;
+        dancers.spider.scale += (1.55 - dancers.spider.scale) * 0.05;
+        dancers.bird.angle   =  Math.sin(dancePhase)*0.25;
+        dancers.spider.angle =  Math.sin(dancePhase+Math.PI/2)*0.20;
+      }
+    }
+
+    // viewport carte
+    const mw = mapImg.naturalWidth || 1920;
+    const mh = mapImg.naturalHeight || 1080;
+    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
+
+    // fond
+    ctx.clearRect(0,0,W,H);
+    if (mapImg.complete && mapImg.naturalWidth){
+      ctx.drawImage(mapImg, ox, oy, dw, dh);
+    } else {
+      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H-UI_CONST.TOP-UI_CONST.BOTTOM));
+      ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
+      ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+    }
+
+    if (finale){
+      // petit assombrissement de la zone de jeu
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(0, UI_CONST.TOP, W, H-UI_CONST.TOP-UI_CONST.BOTTOM);
+    }
+
+    // POIs
+    for (const p of POIS){
+      const x = ox + p.x*dw, y = oy + p.y*dh;
+      if (collected.has(p.key)){
+        drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+      } else {
+        ctx.save();
+        ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
+        ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
+        ctx.stroke(); ctx.restore();
+      }
+    }
+
+    // joueur (px)
+    const bw = Math.min(160, Math.max(90, dw * player.size || 90));
+    const bx = ox + player.x*dw;
+    const by = oy + player.y*dh;
+
+    // collisions + bonus (désactivés si finale)
+    if (!finale){
+      const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
+      if (collided) setEnergy(energy - 18);
+      if (picked)   setEnergy(energy + 14);
+    }
+
+    // mort => HARD STOP + replay
+    if (!finale && energy <= 0){
+      ui.showSuccess('Game Over');
+      ui.showReplay(true);
+      running = false;
+      return;
+    }
+
+    // sous-joueur
+    if (!finale){
+      drawBonuses(ctx, bonuses, { ox, oy, dw, dh });
+      drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
+    } else {
+      drawFireworks();
+    }
+
+    // shake
+    let sx=0, sy=0;
+    if (!finale && hitShake > 0){
+      const a = Math.min(1, hitShake / SHAKE.MAX_S);
+      const mag = 6 * a;
+      sx = (Math.random()*2-1)*mag;
+      sy = (Math.random()*2-1)*mag;
+    }
+
+    // joueur (ou danse)
+    if (!finale){
+      if (birdImg.complete && birdImg.naturalWidth){
+        ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
+      } else {
+        ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
+      }
+    } else {
+      // danse centrale
+      drawDancer(birdImg,   dancers.bird.x,   dancers.bird.y,   bw*dancers.bird.scale,     dancers.bird.angle);
+      drawDancer(spiderImg, dancers.spider.x, dancers.spider.y, bw*dancers.spider.scale*0.9, dancers.spider.angle);
+    }
+
+    // progression → passage à la finale
+    if (!finale && currentIdx < QUEST.length){
+      const p = QUEST[currentIdx];
+      const px = ox + p.x*dw, py = oy + p.y*dh;
+      const onTarget = Math.hypot(bx - px, by - py) < 44;
+      if (onTarget){
+        collected.add(p.key);
+        ui.updateScore(collected.size, STARS_TARGET);
+        ui.renderStars(collected.size, STARS_TARGET);
+        starEmphasis();
+
+        const nameShort = poiName(p.key);
+        ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
+
+        currentIdx++;
+        if (currentIdx === QUEST.length){
+          // on fige la progression et on lance la finale
+          const last = POIS[POIS.length-1];
+          beginFinale(bx, by, ox + last.x*dw, oy + last.y*dh);
+        } else {
+          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 900);
+        }
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  function tickEnemies(dt){
+    const now = performance.now();
+    if (now > enemySpawnAt){
+      if (enemies.length < ENEMY_CONFIG.MAX_ON_SCREEN) spawnEnemy(now);
+      enemySpawnAt = now + ENEMY_CONFIG.BASE_SPAWN_MS + Math.random()*ENEMY_CONFIG.SPAWN_JITTER_MS;
+    }
+    if (now > bonusSpawnAt){
+      bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
+      bonusSpawnAt = now + BONUS_CONFIG.BASE_SPAWN_MS + Math.random()*BONUS_CONFIG.SPAWN_JITTER_MS;
+    }
+
+    enemies = enemies.filter(e => (now - (e.bornAt || now)) < ENEMY_CONFIG.LIFETIME_S*1000);
+
+    const PAD = 0.02;
+    for (const e of enemies){
+      e.t += dt;
+      if (e.state === 'flee'){
+        if (now >= e.fleeUntil) { e._remove = true; }
+        else { e.vx*=0.995; e.vy*=0.995; }
+      } else if (e.type === ENEMY.JELLY){
+        e.vx += Math.sin(e.t*1.7)*0.0008;
+        e.vy += Math.cos(e.t*1.3)*0.0008;
+      }
+      e.x += e.vx*dt; e.y += e.vy*dt;
+      if (e.x < PAD || e.x > 1-PAD){ e.vx*=-1; e.x = Math.max(PAD, Math.min(1-PAD, e.x)); }
+      if (e.y < PAD || e.y > 1-PAD){ e.vy*=-1; e.y = Math.max(PAD, Math.min(1-PAD, e.y)); }
+    }
+    enemies = enemies.filter(e => !e._remove);
+
+    // bonus vieillissement
+    for (let i=bonuses.length-1;i>=0;i--){
+      const b = bonuses[i];
+      b.age += dt; b.pulse += dt;
+      if (b.age > b.life) bonuses.splice(i,1);
+    }
+  }
+
+  function handleCollisions({ bx, by, ox, oy, dw, dh }){
+    let collided=false, picked=false;
+    const now = performance.now();
+
+    for (const e of enemies){
+      if (e.state === 'flee') continue;
+      const ex = ox + e.x*dw, ey = oy + e.y*dh;
+      const d  = Math.hypot(bx-ex, by-ey);
+      if (d < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
+        collided = true;
+        failSfx();
+        playerSlowTimer = Math.max(playerSlowTimer, 1.25);
+        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
+        const away = Math.atan2((ey - by), (ex - bx));
+        e.vx = Math.cos(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.state='flee';
+        e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
+      }
+    }
+
+    for (let i=bonuses.length-1;i>=0;i--){
+      const b = bonuses[i];
+      const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
+      if (Math.hypot(bx-bpx, by-bpy) < BONUS_CONFIG.PICK_RADIUS_PX){
+        picked = true;
+        ping(880, 0.35);
+        playerSlowTimer = 0;
+        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
+        bonuses.splice(i,1);
+      }
+    }
+    return { collided, picked };
   }
 }
 
@@ -459,14 +540,16 @@ function drawEnemies(ctx, enemies, bounds, sprites){
 }
 function drawBonuses(ctx, bonuses, bounds){
   const { ox, oy, dw, dh } = bounds;
-  for (const b of bonuses){
+  for(const b of bonuses){
     const x = ox + b.x*dw, y = oy + b.y*dh;
     const r = 10 + Math.sin(b.pulse*6)*2;
     ctx.save();
     ctx.globalAlpha = 0.9 * (1 - b.age / b.life);
-    ctx.fillStyle = '#ffe06b'; ctx.strokeStyle = '#8c6a1a'; ctx.lineWidth = 2;
+    ctx.fillStyle = '#ffe06b';
+    ctx.strokeStyle = '#8c6a1a';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let i=0;i<5;i++){
+    for(let i=0;i<5;i++){
       const a = i*2*Math.PI/5 - Math.PI/2;
       const xi=x+Math.cos(a)*r, yi=y+Math.sin(a)*r;
       if(i===0) ctx.moveTo(xi,yi); else ctx.lineTo(xi,yi);
@@ -481,7 +564,7 @@ function drawBonuses(ctx, bonuses, bounds){
 // ------------------------
 function shuffle(arr){
   const a = arr.slice();
-  for(let i=a.length-1;i>0;i--){
+  for(let i=a.length-1;i>0;i++){
     const j = Math.floor(Math.random()*(i+1));
     [a[i],a[j]]=[a[j],a[i]];
   }
@@ -499,11 +582,10 @@ function setupDpad(player, getSpeed){
       player.y = Math.max(0, Math.min(1, player.y + dy * s));
       rafId = requestAnimationFrame(step);
     };
-    // tactile
     el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
     el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    // souris (debug desktop)
+    // souris (facilite les tests desktop)
     el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
+    window.addEventListener('mouseup',() => { if(press){ press=false; cancelAnimationFrame(rafId); }});
   });
 }
