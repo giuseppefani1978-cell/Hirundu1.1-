@@ -83,16 +83,12 @@ const SCORE = {
   WIN: 200,      // bonus de victoire
   GAMEOVER: 0,   // bonus de fin en cas de mort
 };
+
+// ----- HALL OF FAME -----
 const HOF_KEY = 'salento_hof_v1';
 const HOF_SIZE = 10;
-
-function loadHof(){
-  try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; }
-  catch { return []; }
-}
-function saveHof(list){
-  try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {}
-}
+function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
+function saveHof(list){ try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {} }
 function addToHof(entry){
   const hof = loadHof();
   hof.push(entry);
@@ -106,20 +102,93 @@ function fmtTime(ms){
   const m = Math.floor(s/60), r = s%60;
   return `${m}m${String(r).padStart(2,'0')}s`;
 }
-function getPlayerName(){
-  let n = localStorage.getItem('player_name');
-  if (!n) {
-    n = prompt("Ton nom/pseudo pour le Hall of Fame ?") || "Joueur";
-    try { localStorage.setItem('player_name', n); } catch {}
+function getCountry(){
+  try{
+    const lang = navigator.language || (Intl.DateTimeFormat().resolvedOptions().locale);
+    const region = (lang && lang.includes('-')) ? lang.split('-')[1] : null;
+    if (!region) return { code:'??', flag:'🏳️', label:'??' };
+    const dn = new Intl.DisplayNames([lang], { type:'region' });
+    const label = dn.of(region);
+    // petit mapping flag Unicode
+    const flag = region.replace(/./g, c => String.fromCodePoint(127397 + c.toUpperCase().charCodeAt()));
+    return { code:region, flag, label };
+  }catch{
+    return { code:'??', flag:'🏳️', label:'??' };
   }
-  return n;
 }
 function leaderboardText(hof){
   return hof.map((e,i)=>{
     const stats = `${e.stars}★, ${e.bonuses} bonus, ${e.hits} coups, ${fmtTime(e.time)}`;
-    return `#${i+1} ${e.score} — ${e.name} (${stats})`;
+    const country = e.country?.flag ? `${e.country.flag} ` : '';
+    return `#${i+1} ${e.score} — ${country}${e.name} (${stats})`;
   }).join('\n');
 }
+
+// ------- UI HOF PANEL -------
+function ensureHofPanel(){
+  let panel = document.getElementById('__hof__');
+  if (panel) return panel;
+  panel = document.createElement('div');
+  panel.id = '__hof__';
+  panel.style.cssText = `
+    position:fixed; inset:0; z-index:10002; display:none;
+    background:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.75));
+    color:#fff; font:14px system-ui; overflow:auto; padding:24px;
+  `;
+  panel.innerHTML = `
+    <div style="max-width:720px;margin:0 auto;">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;">
+        <h2 style="margin:0;font:600 22px system-ui;">🏆 Hall of Fame</h2>
+        <button id="__hof_close" type="button"
+          style="background:#fff;color:#000;border:0;border-radius:8px;padding:8px 12px;cursor:pointer">Fermer</button>
+      </div>
+      <div id="__hof_table" style="margin-top:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:10px;overflow:hidden"></div>
+      <div style="margin-top:18px;opacity:.75">Les scores sont stockés localement sur cet appareil. Pour un classement mondial, on peut brancher un petit serveur (API) — dis-moi et je te prépare ça.</div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  panel.querySelector('#__hof_close').addEventListener('click', ()=> { panel.style.display='none'; history.replaceState(null, '', location.pathname); });
+  return panel;
+}
+function renderHofTable(list){
+  const host = ensureHofPanel();
+  const box = host.querySelector('#__hof_table');
+  const rows = list.map((e,i)=>`
+    <tr>
+      <td style="padding:10px 12px">${i+1}</td>
+      <td style="padding:10px 12px">${e.country?.flag||'🏳️'}</td>
+      <td style="padding:10px 12px">${escapeHtml(e.name)}</td>
+      <td style="padding:10px 12px;font-weight:600">${e.score}</td>
+      <td style="padding:10px 12px">${e.stars}★</td>
+      <td style="padding:10px 12px">${e.bonuses}</td>
+      <td style="padding:10px 12px">${e.hits}</td>
+      <td style="padding:10px 12px">${fmtTime(e.time)}</td>
+      <td style="padding:10px 12px">${new Date(e.date).toLocaleString()}</td>
+    </tr>`).join('');
+  box.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead style="background:rgba(255,255,255,.08)">
+        <tr>
+          <th style="text-align:left;padding:10px 12px">#</th>
+          <th style="text-align:left;padding:10px 12px">Pays</th>
+          <th style="text-align:left;padding:10px 12px">Joueur</th>
+          <th style="text-align:left;padding:10px 12px">Score</th>
+          <th style="text-align:left;padding:10px 12px">Étoiles</th>
+          <th style="text-align:left;padding:10px 12px">Bonus</th>
+          <th style="text-align:left;padding:10px 12px">Coups</th>
+          <th style="text-align:left;padding:10px 12px">Temps</th>
+          <th style="text-align:left;padding:10px 12px">Date</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="9" style="padding:14px 12px;opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
+    </table>
+  `;
+  host.style.display = 'block';
+}
+function openHofPanel(){ renderHofTable(loadHof()); }
+
+// petite évasion HTML ultra simple
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 // ------------------------
 // BOOT
@@ -138,7 +207,7 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Repositionne le bouton Rejouer en haut-droite (au-dessus du D-pad)
+  // Bouton Rejouer en haut-droite
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
@@ -148,6 +217,18 @@ export function boot(){
     replayBtn.style.bottom = 'auto';
     replayBtn.style.zIndex = '10001';
   }
+
+  // Bouton Hall of Fame en haut-gauche
+  let hofBtn = document.getElementById('__hof_btn');
+  if (!hofBtn){
+    hofBtn = document.createElement('button');
+    hofBtn.id='__hof_btn';
+    hofBtn.type='button';
+    hofBtn.textContent = '🏆 Hall of Fame';
+    hofBtn.style.cssText = 'position:fixed;top:8px;left:8px;z-index:10001;background:#fff;border:0;border-radius:8px;padding:6px 10px;font:12px system-ui;cursor:pointer';
+    document.body.appendChild(hofBtn);
+  }
+  hofBtn.onclick = openHofPanel;
 
   // Images
   const mapImg   = new Image();
@@ -223,6 +304,8 @@ export function boot(){
   let starsPicked = 0;
   let gameStartAt = 0;
   let finalized = false;
+  let playerName = null;
+  let country = getCountry();
 
   function scoreReset(){
     score = 0; hits = 0; bonusesPicked = 0; starsPicked = 0;
@@ -231,18 +314,10 @@ export function boot(){
   }
 
   // Win animation state
-  const winFx = {
-    t: 0,
-    fw: [],                // particles
-    fwTimer: 0,
-  };
+  const winFx = { t:0, fw:[], fwTimer:0 };
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(
-    player,
-    () => getSpeed(),
-    () => mode === 'play'
-  );
+  setupDpad(player, () => getSpeed(), () => mode === 'play');
 
   // Start button
   const startBtn = document.getElementById('startBtn');
@@ -278,8 +353,10 @@ export function boot(){
     finalized = true;
 
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
+
     const entry = {
-      name: getPlayerName(),
+      name: playerName || 'Joueur',
+      country,
       score: total,
       stars: starsPicked,
       bonuses: bonusesPicked,
@@ -290,18 +367,24 @@ export function boot(){
     };
     const hof = addToHof(entry);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟")
-                      : (t.gameover?.() || "Game Over");
+    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
     const lines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}, ${won?`Win: +${SCORE.WIN}`:`Fin: +${SCORE.GAMEOVER}`})`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
       `Hall of Fame :`,
-      leaderboardText(hof)
+      leaderboardText(hof),
+      ``,
+      `👉 <a href="#hof" id="__open_hof__" style="color:#ffe06b">Voir le Hall of Fame</a>`
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
+
+    // activer le lien
+    setTimeout(()=>{
+      document.getElementById('__open_hof__')?.addEventListener('click', (e)=>{ e.preventDefault(); openHofPanel(); });
+    }, 0);
   }
 
   // ---------- Game loop ----------
@@ -336,7 +419,7 @@ export function boot(){
       ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
     }
 
-    // POIs (affichés tout le temps)
+    // POIs
     for(const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
       if(collected.has(p.key)){
@@ -358,7 +441,6 @@ export function boot(){
     const by = oy + player.y*dh;
 
     if (mode === 'play') {
-      // collisions + bonus
       const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
       if (collided) setEnergy(energy - 18);
       if (picked)   setEnergy(energy + 14);
@@ -366,13 +448,11 @@ export function boot(){
       if (dead) { return triggerGameOver(); }
     }
 
-    // sous-joueur
     if (mode === 'play') {
       drawBonuses(ctx, bonuses, { ox, oy, dw, dh });
       drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
 
-    // shake visuel
     let sx=0, sy=0;
     if (mode === 'play' && hitShake > 0){
       const a = Math.min(1, hitShake / SHAKE.MAX_S);
@@ -381,7 +461,6 @@ export function boot(){
       sy = (Math.random()*2-1)*mag;
     }
 
-    // joueur
     if (mode === 'play') {
       if (birdImg.complete && birdImg.naturalWidth){
         ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
@@ -404,7 +483,6 @@ export function boot(){
         const nameShort = poiName(p.key);
         ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
-        // score étoiles
         score += SCORE.STAR;
         starsPicked++;
 
@@ -417,7 +495,6 @@ export function boot(){
       }
     }
 
-    // scène win (dessin par-dessus)
     if (mode === 'win') {
       renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
     }
@@ -453,7 +530,6 @@ export function boot(){
     }
     enemies = enemies.filter(e => !e._remove);
 
-    // bonus vieillissement
     for (let i=bonuses.length-1;i>=0;i--){
       const b = bonuses[i];
       b.age += dt; b.pulse += dt;
@@ -468,10 +544,9 @@ export function boot(){
       spawnFirework(winFx.fw);
       winFx.fwTimer = 0.7 + Math.random()*0.7;
     }
-    // avancer particules
     for (let i=winFx.fw.length-1;i>=0;i--){
       const p = winFx.fw[i];
-      p.vx *= 0.98; p.vy = p.vy*0.98 + 18*dt; // légère gravité
+      p.vx *= 0.98; p.vy = p.vy*0.98 + 18*dt;
       p.x += p.vx*dt; p.y += p.vy*dt;
       p.life -= dt;
       if (p.life <= 0) winFx.fw.splice(i,1);
@@ -496,7 +571,6 @@ export function boot(){
         e.state='flee';
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
 
-        // score coup reçu
         score += SCORE.HIT;
         hits++;
       }
@@ -511,7 +585,6 @@ export function boot(){
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
         bonuses.splice(i,1);
 
-        // score bonus
         score += SCORE.BONUS;
         bonusesPicked++;
       }
@@ -522,26 +595,29 @@ export function boot(){
   // ---------- modes ----------
   function triggerWin(){
     mode = 'win';
-    finalizeRun({won:true});   // calcule + sauvegarde + affiche HoF
-    // reset FX
+    finalizeRun({won:true});
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
   }
 
   function triggerGameOver(){
     mode = 'dead';
-    running = false;           // arrêt net de la boucle
-    finalizeRun({won:false});  // calcule + sauvegarde + affiche HoF
+    running = false;
+    finalizeRun({won:false});
   }
 
   // ---------- controls ----------
   function startGame(){
     try{
+      // demander le nom à CHAQUE session
+      playerName = prompt("Ton nom/pseudo ?") || "Joueur";
+      country = getCountry();
+
       ui.hideOverlay();
       ui.showTouch(true);
       if (!isMusicOn()) startMusic();
       ui.setMusicLabel(isMusicOn());
       resetGame();
-      gameStartAt = performance.now();  // chrono du run
+      gameStartAt = performance.now();
       mode = 'play';
       if (!running){ running = true; requestAnimationFrame(draw); }
     }catch(e){
@@ -570,6 +646,12 @@ export function boot(){
 
     if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
   }
+
+  // route hash #hof -> ouvrir directement le panel
+  window.addEventListener('hashchange', ()=>{
+    if (location.hash === '#hof') openHofPanel();
+  });
+  if (location.hash === '#hof') openHofPanel();
 }
 
 // ------------------------
@@ -655,7 +737,7 @@ function renderWin(ctx, view, sprites, winFx){
 
   // Duo au centre (zoom + légère rotation "danse")
   const t = winFx.t;
-  const base = Math.min(dw, dh) * 0.36; // **2× plus gros qu'avant (0.18 → 0.36)**
+  const base = Math.min(dw, dh) * 0.36; // 2× plus gros
   const s = 0.9 + 0.08*Math.sin(t*4);
   const rot = 0.08*Math.sin(t*3.2);
 
@@ -676,7 +758,7 @@ function renderWin(ctx, view, sprites, winFx){
   }
   ctx.restore();
 
-  // Feux d’artifice (particules)
+  // Feux d’artifice
   for (const p of winFx.fw){
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.life / p.life0);
@@ -738,10 +820,8 @@ function setupDpad(player, getSpeed, canMove){
       rafId = requestAnimationFrame(step);
     };
 
-    // tactile
     el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
     el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    // souris (debug desktop)
     el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
     window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
   });
