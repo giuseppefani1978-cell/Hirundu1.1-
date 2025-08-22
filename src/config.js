@@ -22,7 +22,7 @@ export const ASSETS = {
   BIRD_URL:      asset("assets/aracne .PNG"),        // <-- renomme le fichier si besoin
   TARANTULA_URL: asset("assets/tarantula .PNG"),
   CROW_URL:      asset("assets/crow.PNG"),
-  JELLY_URL:     asset("assets/jelly.PNG")
+  JELLY_URL:     asset("assets/jellyfish.PNG")
 };
 
 
