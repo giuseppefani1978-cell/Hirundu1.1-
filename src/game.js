@@ -85,7 +85,7 @@ mapImg.src    = MAP_URL; || 'assets/salento-map.PNG';
 birdImg.src   = BIRD_URL; || 'assets/aracne .PNG';
 spiderImg.src = TARANTULA_URL; || 'assets/tarantula .PNG';
 crowImg.src   = CROW_URL || 'assets/crow.png';
-jellyImg.src  = JELLY_URL || 'assets/jelly.png';
+jellyImg.src  = JELLY_URL || 'assets/jellyfish.png';
 
 // Propagation sprites ennemis au module enemies
 setSprites({ crowImg, jellyImg });
