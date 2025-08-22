@@ -7,11 +7,11 @@ export const asset = (p) => `${p}${APP_Q}`;
 
 // Noms de fichiers SANS espaces (doivent exister dans /assets/)
 export const ASSETS = {
-  MAP_URL:       asset("assets/salento-map.png"),
-  BIRD_URL:      asset("assets/aracne.png"),
-  TARANTULA_URL: asset("assets/tarantula.png"),
-  CROW_URL:      asset("assets/crow.png"),
-  JELLY_URL:     asset("assets/jellyfish.png"),
+  MAP_URL:       asset("assets/salento-map.PNG"),
+  BIRD_URL:      asset("assets/aracne .PNG"),
+  TARANTULA_URL: asset("assets/tarantula .PNG"),
+  CROW_URL:      asset("assets/crow.PNG"),
+  JELLY_URL:     asset("assets/jellyfish.PNG"),
 };
 
 // UI
