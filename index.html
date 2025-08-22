@@ -2,15 +2,24 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport"
-        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Le Vol d’Aracne — Salento</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+
+  <!-- ✅ ta feuille de styles externe -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Badge version (rempli côté JS) -->
+  <div id="__ver__"
+       style="position:fixed;right:8px;bottom:8px;z-index:9999;
+              background:rgba(0,0,0,.55);color:#fff;font:12px system-ui;
+              padding:4px 6px;border-radius:6px;pointer-events:none">
+    <span id="__verTxt__">…</span> • host=<span id="__host__"></span>
+  </div>
+
   <div class="wrap">
     <div class="game">
-      <!-- ===== Overlay Start ===== -->
+      <!-- Overlay de démarrage -->
       <div class="overlay" id="overlay">
         <div class="card" id="overlayCard">
           <div class="heroes">
@@ -24,24 +33,23 @@
         </div>
       </div>
 
-      <!-- ===== UI ===== -->
+      <!-- UI flottante -->
       <button id="musicBtn" type="button">🎵 Musique</button>
       <button id="replayFloat" type="button">⟲ Rejouer</button>
-      <div class="err" id="err" style="display:none">
-        <b id="errTitle">⚠️ Problème d’assets</b>
-        <div id="errText"></div>
-      </div>
+      <div class="err" id="err" style="display:none"><b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div></div>
+
+      <!-- Canvas principal -->
       <canvas id="c"></canvas>
 
-      <!-- HUD colonne gauche -->
+      <!-- HUD (gauche) -->
       <div class="hud" id="hud">
         <h3 id="hudLabel">Étoiles</h3>
         <div class="score" id="score">0/10</div>
         <div class="stars" id="stars"></div>
-        <!-- ⚡️ la barre NRJ sera injectée par ui.js -->
+        <!-- (tu ajouteras plus tard la barre d’énergie ici si besoin) -->
       </div>
 
-      <!-- Bulle Tarantula -->
+      <!-- Bulle Tarantula (haut-gauche) -->
       <div class="tarTop" id="tarTop">
         <img id="tarAvatar" alt="Tarantula">
         <div class="bdBubble">
@@ -54,27 +62,39 @@
       <div class="touch" id="touch">
         <div class="dpad">
           <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
-          <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div>
-          <div class="btn" data-dx="1" data-dy="0">→</div>
+          <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div> <div class="btn" data-dx="1" data-dy="0">→</div>
           <div></div> <div class="btn" data-dx="0" data-dy="1">↓</div> <div></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Force Refresh debug -->
-  <button id="__force__" type="button"
+  <div id="debugBox"></div>
+
+  <!-- Bouton Force Refresh (optionnel) -->
+  <button id="__force__"
+          type="button"
           style="position:fixed;left:8px;bottom:8px;z-index:9999;
-                 background:#ffd;border:1px solid #cc3;
+                 background:#ffd;text-transform:uppercase;border:1px solid #cc3;
                  border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
     Force Refresh
   </button>
 
-  <!-- ⚡️ Nouveau : import du jeu via modules -->
-  <script type="module">
-    import { startGame } from './src/game.js';
-    // On expose sur window si besoin externe
-    window.startGame = startGame;
+  <!-- ✅ script principal en module (importe le reste) -->
+  <script type="module" src="src/game.js"></script>
+
+  <!-- Petit helper: host + force refresh (facultatif) -->
+  <script>
+    (function(){
+      var h = document.getElementById('__host__');
+      if (h) h.textContent = location.hostname || 'local';
+      var btn = document.getElementById('__force__');
+      if (btn) btn.addEventListener('click', function(){
+        var url = new URL(location.href);
+        url.searchParams.set('t', Date.now());
+        location.replace(url.toString());
+      });
+    })();
   </script>
 </body>
 </html>
