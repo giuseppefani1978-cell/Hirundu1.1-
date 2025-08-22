@@ -2,6 +2,33 @@
 // ---------------------------------------------------------
 // Boucle principale, rendu carte/POI, progression, énergie
 // ---------------------------------------------------------
+// ... imports en haut
+import { ASSETS } from "./config.js";
+import { setupUI, setHeroImages } from "./ui.js"; // si tu as ce helper
+// ...
+
+// Assure que le bouton déclenche bien le jeu
+function wireStartButton() {
+  const btn = document.getElementById("startBtn");
+  if (btn) btn.addEventListener("click", startGame);
+  // Compat pour anciens onClick inline si jamais tu le gardes :
+  window.startGame = startGame;
+}
+
+// Au boot du module
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    wireStartButton();
+    // si tu initialises les images de l’écran de démarrage ici :
+    setHeroImages?.(ASSETS.BIRD_URL, ASSETS.TARANTULA_URL);
+    // le reste de ton init (resize, splash, etc.)
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+
+
 import {
   MAP_URL, BIRD_URL, TARANTULA_URL,
   CROW_URL, JELLY_URL,
