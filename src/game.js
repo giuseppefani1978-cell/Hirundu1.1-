@@ -3,7 +3,7 @@
 // CONFIG + GAMEPLAY (imports: i18n, ui, audio uniquement)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame } from './audio.js';
+import { startMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame } from './audio.js';
 import * as ui from './ui.js';
 
 // ------------------------
@@ -16,7 +16,7 @@ const asset = (p) => `${p}${APP_Q}`;
 // ⚠️ les noms ci-dessous doivent correspondre EXACTEMENT aux fichiers présents dans /assets
 const ASSETS = {
   MAP_URL:       asset('assets/salento-map.PNG'),
-  BIRD_URL:      asset('assets/aracne .PNG'),       // (avec espace avant .PNG si ton fichier a bien cet espace)
+  BIRD_URL:      asset('assets/aracne .PNG'),   // oui, avec l'espace si le fichier a cet espace
   TARANTULA_URL: asset('assets/tarantula .PNG'),
   CROW_URL:      asset('assets/crow.PNG'),
   JELLY_URL:     asset('assets/jellyfish.PNG'),
@@ -90,12 +90,9 @@ const SHAKE = { MAX_S: 2.4, DECAY_PER_S: 1.0, HIT_ADD: 0.6, BONUS_ADD: 0.2 };
 // État runtime (créé dans boot())
 // ----------------------------------
 export function boot() {
-  // DOM refs (récupérées AU MOMENT du boot → évite les erreurs DOM pas prêt)
+  // DOM refs
   const canvas = document.getElementById('c');
-  if (!canvas) {
-    alert("Chargement du jeu impossible : canvas introuvable (#c).");
-    return;
-  }
+  if (!canvas) { alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha: true });
 
   // Héros du splash
@@ -106,32 +103,29 @@ export function boot() {
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  // Initialisation UI
+  // UI
   ui.initUI();
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
-
-  // Musique
-  ui.onClickMusic(() => {
-    toggleMusic();
-    ui.setMusicLabel(isMusicOn());
-  });
+  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
   ui.onClickReplay(() => { resetGame(); });
 
-  // Images (chargées après boot)
+  // Images
   const mapImg   = new Image();
   const birdImg  = new Image();
   const spiderImg= new Image();
   const crowImg  = new Image();
   const jellyImg = new Image();
 
-  mapImg.onerror   = () => ui.assetFail('Map', ASSETS.MAP_URL);
-  birdImg.onerror  = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
-  spiderImg.onerror= () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
-  crowImg.onerror  = () => ui.assetFail('Crow', ASSETS.CROW_URL);
-  jellyImg.onerror = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
+  mapImg.onerror    = () => ui.assetFail('Map', ASSETS.MAP_URL);
+  birdImg.onerror   = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
+  spiderImg.onerror = () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
+  crowImg.onerror   = () => ui.assetFail('Crow', ASSETS.CROW_URL);
+  jellyImg.onerror  = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
+
+  mapImg.onload = () => resize();  // recalcul après chargement de la carte
 
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
@@ -139,23 +133,29 @@ export function boot() {
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-  // Canvas sizing
+  // ===== Canvas sizing (déclarer AVANT resize) =====
+  let W = 0, H = 0, dpr = 1;
+
   function resize() {
-  dpr = pickDPR();
-  const parent = canvas.parentElement || document.body;
+    dpr = pickDPR();
+    const parent = canvas.parentElement || document.body;
 
-  // on LIT seulement, on n’écrit pas sur clientWidth/clientHeight :
-  W = parent.clientWidth;
-  H = parent.clientHeight;
+    // on LIT la taille du parent, on n’écrit pas sur clientWidth/Height
+    W = parent.clientWidth || window.innerWidth || 360;
+    H = parent.clientHeight || window.innerHeight || 640;
 
-  // on règle les dimensions du canvas (attributs) + (optionnel) les styles CSS
-  canvas.width  = Math.round(W * dpr);
-  canvas.height = Math.round(H * dpr);
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
+    // bitmap + styles (OK sur Safari iOS)
+    canvas.width  = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
 
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  // appel initial + écouteur
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
   // ------- Game state -------
   let running = false;
   let lastTS = 0;
@@ -166,7 +166,7 @@ export function boot() {
   const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
   let energy = ENERGY.START;
 
-  // Ennemis/bonus état
+  // Ennemis/bonus
   let enemies = [];     // {type,x,y,vx,vy,t,bornAt,state,fleeUntil}
   let bonuses = [];     // {x,y,life,age,pulse}
   let enemySpawnAt = performance.now() + 800;
@@ -180,9 +180,7 @@ export function boot() {
 
   // ---- Start button ----
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) {
-    startBtn.addEventListener('click', startGame);
-  }
+  if (startBtn) startBtn.addEventListener('click', startGame);
 
   // Première question (overlay visible)
   if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || `Où est ${poiInfo(QUEST[0].key)} ?`);
@@ -232,9 +230,9 @@ export function boot() {
       const dt = Math.min(0.05, (ts - lastTS) / 1000);
       lastTS = ts;
 
-      // mise à jour ennemis/bonus
+      // update ennemis/bonus
       tickEnemies(dt);
-      // shake decay
+      // timers / shake
       if (hitShake > 0) hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
       if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
     }
@@ -279,12 +277,8 @@ export function boot() {
     // collisions + bonus
     const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
 
-    if (collided) {
-      setEnergy(energy - 18);
-    }
-    if (picked) {
-      setEnergy(energy + 14);
-    }
+    if (collided) setEnergy(energy - 18);
+    if (picked)   setEnergy(energy + 14);
     const dead = energy <= 0;
 
     // dessine bonus/ennemis sous joueur
@@ -326,7 +320,6 @@ export function boot() {
 
         currentIdx++;
         if (currentIdx === QUEST.length) {
-          // fin de partie simple : proposer rejouer
           ui.showReplay(true);
         } else {
           setTimeout(() => ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 900);
@@ -494,7 +487,7 @@ function drawEnemies(ctx, enemies, bounds, sprites) {
           ctx.strokeStyle = 'rgba(80,150,220,0.9)'; ctx.lineWidth = 2; ctx.stroke();
         }
       }
-    } else {
+    } else { // CROW
       const ang = Math.atan2(e.vy, e.vx);
       ctx.translate(x, y); ctx.rotate(ang);
       if (crowImg.complete && crowImg.naturalWidth) {
