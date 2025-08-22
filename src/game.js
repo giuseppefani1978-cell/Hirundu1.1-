@@ -75,6 +75,52 @@ const ENEMY_CONFIG = {
 const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
+// ----- SCORE CONFIG -----
+const SCORE = {
+  STAR: 100,     // par étoile
+  BONUS: 20,     // par bonus
+  HIT: -30,      // par coup
+  WIN: 200,      // bonus de victoire
+  GAMEOVER: 0,   // bonus de fin en cas de mort
+};
+const HOF_KEY = 'salento_hof_v1';
+const HOF_SIZE = 10;
+
+function loadHof(){
+  try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; }
+  catch { return []; }
+}
+function saveHof(list){
+  try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {}
+}
+function addToHof(entry){
+  const hof = loadHof();
+  hof.push(entry);
+  hof.sort((a,b)=> b.score - a.score);
+  const trimmed = hof.slice(0, HOF_SIZE);
+  saveHof(trimmed);
+  return trimmed;
+}
+function fmtTime(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(s/60), r = s%60;
+  return `${m}m${String(r).padStart(2,'0')}s`;
+}
+function getPlayerName(){
+  let n = localStorage.getItem('player_name');
+  if (!n) {
+    n = prompt("Ton nom/pseudo pour le Hall of Fame ?") || "Joueur";
+    try { localStorage.setItem('player_name', n); } catch {}
+  }
+  return n;
+}
+function leaderboardText(hof){
+  return hof.map((e,i)=>{
+    const stats = `${e.stars}★, ${e.bonuses} bonus, ${e.hits} coups, ${fmtTime(e.time)}`;
+    return `#${i+1} ${e.score} — ${e.name} (${stats})`;
+  }).join('\n');
+}
+
 // ------------------------
 // BOOT
 // ------------------------
@@ -91,6 +137,17 @@ export function boot(){
   ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
+
+  // Repositionne le bouton Rejouer en haut-droite (au-dessus du D-pad)
+  const replayBtn = document.getElementById('replayFloat');
+  if (replayBtn){
+    replayBtn.style.position = 'fixed';
+    replayBtn.style.top = '8px';
+    replayBtn.style.right = '8px';
+    replayBtn.style.left = 'auto';
+    replayBtn.style.bottom = 'auto';
+    replayBtn.style.zIndex = '10001';
+  }
 
   // Images
   const mapImg   = new Image();
@@ -159,6 +216,20 @@ export function boot(){
   let playerSlowTimer = 0;
   let hitShake = 0;
 
+  // ------ SCORE RUNTIME ------
+  let score = 0;
+  let hits = 0;
+  let bonusesPicked = 0;
+  let starsPicked = 0;
+  let gameStartAt = 0;
+  let finalized = false;
+
+  function scoreReset(){
+    score = 0; hits = 0; bonusesPicked = 0; starsPicked = 0;
+    gameStartAt = performance.now();
+    finalized = false;
+  }
+
   // Win animation state
   const winFx = {
     t: 0,
@@ -200,6 +271,37 @@ export function boot(){
   }
   function spawnBonus(){
     bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
+  }
+
+  function finalizeRun({won}) {
+    if (finalized) return;
+    finalized = true;
+
+    const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
+    const entry = {
+      name: getPlayerName(),
+      score: total,
+      stars: starsPicked,
+      bonuses: bonusesPicked,
+      hits,
+      time: performance.now() - gameStartAt,
+      date: new Date().toISOString(),
+      won: !!won,
+    };
+    const hof = addToHof(entry);
+
+    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟")
+                      : (t.gameover?.() || "Game Over");
+    const lines = [
+      `${title}`,
+      `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}, ${won?`Win: +${SCORE.WIN}`:`Fin: +${SCORE.GAMEOVER}`})`,
+      `Temps: ${fmtTime(entry.time)}`,
+      ``,
+      `Hall of Fame :`,
+      leaderboardText(hof)
+    ];
+    ui.showSuccess(lines.join('\n'));
+    ui.showReplay(true);
   }
 
   // ---------- Game loop ----------
@@ -301,6 +403,11 @@ export function boot(){
         starEmphasis();
         const nameShort = poiName(p.key);
         ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
+
+        // score étoiles
+        score += SCORE.STAR;
+        starsPicked++;
+
         currentIdx++;
         if (currentIdx === QUEST.length){
           triggerWin();
@@ -388,6 +495,10 @@ export function boot(){
         e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
         e.state='flee';
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
+
+        // score coup reçu
+        score += SCORE.HIT;
+        hits++;
       }
     }
     for (let i=bonuses.length-1;i>=0;i--){
@@ -399,6 +510,10 @@ export function boot(){
         playerSlowTimer = 0;
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
         bonuses.splice(i,1);
+
+        // score bonus
+        score += SCORE.BONUS;
+        bonusesPicked++;
       }
     }
     return { collided, picked };
@@ -407,17 +522,15 @@ export function boot(){
   // ---------- modes ----------
   function triggerWin(){
     mode = 'win';
-    ui.showReplay(true);
-    ui.showSuccess(t.win?.() || "Bravo ! Tu as trouvé les 10 étoiles 🌟");
+    finalizeRun({won:true});   // calcule + sauvegarde + affiche HoF
     // reset FX
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
   }
 
   function triggerGameOver(){
     mode = 'dead';
-    running = false;                  // arrêt net de la boucle
-    ui.showReplay(true);
-    ui.showSuccess(t.gameover?.() || "Game Over — appuie sur Rejouer.");
+    running = false;           // arrêt net de la boucle
+    finalizeRun({won:false});  // calcule + sauvegarde + affiche HoF
   }
 
   // ---------- controls ----------
@@ -428,6 +541,7 @@ export function boot(){
       if (!isMusicOn()) startMusic();
       ui.setMusicLabel(isMusicOn());
       resetGame();
+      gameStartAt = performance.now();  // chrono du run
       mode = 'play';
       if (!running){ running = true; requestAnimationFrame(draw); }
     }catch(e){
@@ -439,6 +553,8 @@ export function boot(){
     collected = new Set();
     QUEST = shuffle(POIS);
     currentIdx = 0;
+
+    scoreReset();
 
     player.x = PLAYER_BASE.x; player.y = PLAYER_BASE.y;
     setEnergy(ENERGY.START);
@@ -539,7 +655,7 @@ function renderWin(ctx, view, sprites, winFx){
 
   // Duo au centre (zoom + légère rotation "danse")
   const t = winFx.t;
-  const base = Math.min(dw, dh) * 0.18;
+  const base = Math.min(dw, dh) * 0.36; // **2× plus gros qu'avant (0.18 → 0.36)**
   const s = 0.9 + 0.08*Math.sin(t*4);
   const rot = 0.08*Math.sin(t*3.2);
 
@@ -549,12 +665,12 @@ function renderWin(ctx, view, sprites, winFx){
 
   const w = base*s;
   if (birdImg.complete && birdImg.naturalWidth) {
-    ctx.drawImage(birdImg, -w-10, -w, w, w);
+    ctx.drawImage(birdImg, -w-14, -w, w, w);
   } else {
     ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(-w*0.5-10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
   }
   if (spiderImg.complete && spiderImg.naturalWidth) {
-    ctx.drawImage(spiderImg, 10, -w, w, w);
+    ctx.drawImage(spiderImg, 14, -w, w, w);
   } else {
     ctx.fillStyle='#b04123'; ctx.beginPath(); ctx.arc(w*0.5+10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
   }
