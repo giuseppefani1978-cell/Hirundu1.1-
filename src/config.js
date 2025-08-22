@@ -26,6 +26,11 @@ export const ASSETS = {
   // MUSIC_URL:   asset("assets/music.ogg"),
   // SFX_HIT_URL: asset("assets/hit.wav"),
 };
+for (const [k, url] of Object.entries(ASSETS)) {
+  const img = new Image();
+  img.onerror = () => console.warn("[ASSET 404?]", k, url);
+  img.src = url;
+}
 
 // --- UI layout (marges réservées en haut/bas pour HUD) ---
 export const UI = {
