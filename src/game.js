@@ -1,82 +1,96 @@
 // src/game.js
-// Boucle principale, wiring et rendu de base (version stable)
+// ---------------------------------------------------------
+// Boucle de rendu, carte/POI, énergie, ennemis, wiring Start
+// ---------------------------------------------------------
 
-import { ASSETS, UI, POIS, STARS_TARGET, makeInitialPlayer } from './config.js';
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, stopMusic, starEmphasis } from './audio.js';
+import {
+  ASSETS, UI, computeMapViewport, pickDevicePixelRatio, POIS,
+  ENERGY as ENERGY_CFG
+} from './config.js';
+import {
+  startMusic, stopMusic, starEmphasis
+} from './audio.js';
 import {
   setSprites, resetEnemies, updateEnemies, drawEnemies,
   getPlayerSpeedFactor, getShakeTimeLeft
 } from './enemies.js';
 import * as ui from './ui.js';
 
-// ------- état global -------
+// ---------- Debug helper (affiche en bas à gauche si présent) ----------
+function dbg(msg){
+  const box = document.getElementById('debugBox');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML += (box.innerHTML ? '<br>' : '') + msg;
+}
+
+// ---------- Canvas & contexte ----------
+let canvas, ctx;
+let W = 0, H = 0, dpr = 1;
+
+// ---------- State global ----------
 let running = false;
-let lastTS = 0, frameDT = 0;
-let finale = false;
+let lastTS = 0;
+let frameDT = 0;
 
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d', { alpha: true });
+const player = { x: 0.55, y: 0.25, speed: 0.0048, size: 0.11 };
 
-// joueur
-const playerBase = makeInitialPlayer();
-const player = makeInitialPlayer();
-
-// progression
+// Progression POI
 let collected = new Set();
 let QUEST = [];
 let currentIdx = 0;
 
-// énergie (0..100)
-let energy = 100;
-const ENERGY_MAX = 100;
+// Énergie (0..100)
+const ENERGY_MAX = ENERGY_CFG?.MAX ?? 100;
+let energy = ENERGY_MAX;
 
-// images
+// Finale (simplifiée)
+let finale = false;
+
+// ---------- Images ----------
 const mapImg    = new Image();
 const birdImg   = new Image();
 const spiderImg = new Image();
 const crowImg   = new Image();
 const jellyImg  = new Image();
 
-mapImg.src    = ASSETS.MAP_URL;
-birdImg.src   = ASSETS.BIRD_URL;
-spiderImg.src = ASSETS.TARANTULA_URL;
-crowImg.src   = ASSETS.CROW_URL;
-jellyImg.src  = ASSETS.JELLY_URL;
+// Pour éviter cache agressif sur GH Pages pendant les essais
+const CB = (s)=> s + (s.includes('?') ? '&' : '?') + 't=' + Date.now();
 
+// Charge images (map peut être lente → on dessine un placeholder d’abord)
+mapImg.onload    = ()=>dbg('Map OK: '+(mapImg.naturalWidth||0)+'x'+(mapImg.naturalHeight||0));
+mapImg.onerror   = ()=>dbg('Map ERROR: '+ASSETS.MAP_URL);
+birdImg.onerror  = ()=>dbg('Bird ERROR: '+ASSETS.BIRD_URL);
+spiderImg.onerror= ()=>dbg('Spider ERROR: '+ASSETS.TARANTULA_URL);
+crowImg.onerror  = ()=>dbg('Crow ERROR: '+ASSETS.CROW_URL);
+jellyImg.onerror = ()=>dbg('Jelly ERROR: '+ASSETS.JELLY_URL);
+
+mapImg.src    = CB(ASSETS.MAP_URL);
+birdImg.src   = CB(ASSETS.BIRD_URL);
+spiderImg.src = CB(ASSETS.TARANTULA_URL);
+crowImg.src   = CB(ASSETS.CROW_URL);
+jellyImg.src  = CB(ASSETS.JELLY_URL);
+
+// Pousse les sprites au module ennemis (il gère fallback si non chargés)
 setSprites({ crowImg, jellyImg });
 
-// ------- resize / dpr -------
-let W=0,H=0,dpr=1;
+// ---------- Resize / DPR ----------
 function resize(){
-  dpr = Math.max(1, Math.min(2, window.devicePixelRatio||1));
-  W = canvas.clientWidth  = canvas.parentElement.clientWidth;
-  H = canvas.clientHeight = canvas.parentElement.clientHeight;
-  canvas.width  = Math.round(W*dpr);
-  canvas.height = Math.round(H*dpr);
+  if (!canvas) return;
+  dpr = pickDevicePixelRatio ? pickDevicePixelRatio() : Math.max(1, Math.min(2, window.devicePixelRatio||1));
+  // IMPORTANT: on force le canvas à remplir .game avec un transform propre
+  const parent = canvas.parentElement;
+  W = canvas.clientWidth  = parent.clientWidth;
+  H = canvas.clientHeight = parent.clientHeight;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
 }
+function safeResize(){ try{ resize(); }catch(e){} }
 
-// ------- util -------
-function computeMapBounds(){
-  const mw = mapImg.naturalWidth || 1920;
-  const mh = mapImg.naturalHeight || 1080;
-  const availW = W;
-  const availH = Math.max(200, H - UI.BOTTOM - UI.TOP);
-  const baseScale = Math.min(availW/mw, availH/mh);
-  const scale = baseScale * UI.MAP_ZOOM;
-  const dw = mw*scale, dh = mh*scale;
-  const ox = (W - dw)/2, oy = UI.TOP + (availH - dh)/2;
-  return { mw,mh, dw,dh, ox,oy, scale };
-}
-
-function drawMap(bounds){
-  const {ox,oy,dw,dh} = bounds;
-  if (mapImg.complete && mapImg.naturalWidth) ctx.drawImage(mapImg, ox,oy,dw,dh);
-  else { ctx.fillStyle='#bfe2f8'; ctx.fillRect(ox,oy,dw,dh); }
-}
-
-function drawStarfish(cx,cy,R){
+// ---------- Helpers POI ----------
+function drawStarfish(cx, cy, R){
   ctx.save(); ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
   ctx.beginPath(); const pts=5,inner=R*0.45;
   for(let i=0;i<pts*2;i++){
@@ -89,7 +103,7 @@ function drawStarfish(cx,cy,R){
 }
 
 function drawPOIs(bounds){
-  const {ox,oy,dw,dh} = bounds;
+  const { ox, oy, dw, dh } = bounds;
   for(const p of POIS){
     const x=ox+p.x*dw, y=oy+p.y*dh;
     if(collected.has(p.key)){
@@ -97,81 +111,116 @@ function drawPOIs(bounds){
     }else{
       ctx.save(); ctx.strokeStyle='#b04123'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
-      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.stroke(); ctx.restore();
+      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6); ctx.stroke();
+      ctx.restore();
     }
   }
 }
 
-function setEnergy(p){
-  energy = Math.max(0, Math.min(ENERGY_MAX, p|0));
-  ui.updateEnergy( (energy/ENERGY_MAX)*100 );
-}
-
-// ------- questions / succès -------
+// ---------- Texte Tarantula ----------
 function askQuestionFor(p){
   if(!p) return;
-  ui.showAsk( t.ask?.(poiInfo(p.key)) || `Where is ${poiInfo(p.key)}?` );
+  ui.showAsk( t.ask?.( poiInfo(p.key) ) || `Where is ${poiInfo(p.key)}?` );
 }
 function showTarantulaSuccess(name){
   ui.showSuccess( t.success?.(name) || `Great, that’s it: ${name}!` );
 }
 
-// ------- frame -------
+// ---------- Énergie / HUD ----------
+function setEnergy(pct){
+  energy = Math.max(0, Math.min(ENERGY_MAX, pct|0));
+  ui.updateEnergy( (energy/ENERGY_MAX)*100 );
+}
+
+// ---------- Boucle de rendu ----------
 function draw(ts){
+  if(!running) return;
+
   if(ts){
     if(!lastTS) lastTS=ts;
-    frameDT=Math.min(0.05,(ts-lastTS)/1000);
-    lastTS=ts;
+    frameDT = Math.min(0.05, (ts - lastTS)/1000);
+    lastTS = ts;
   }
 
-  const b = computeMapBounds();
-  const { ox,oy,dw,dh } = b;
+  // Sécu si resize pas encore passé
+  if(!W || !H) safeResize();
+
+  // Viewport carte
+  const mw = mapImg.naturalWidth || 1920;
+  const mh = mapImg.naturalHeight || 1080;
+  const vp = computeMapViewport ? computeMapViewport(W, H, mw, mh) : (()=> {
+    const availW=W, availH=Math.max(200,H-UI.BOTTOM-UI.TOP);
+    const base=Math.min(availW/mw, availH/mh);
+    const scale=base*(UI.MAP_ZOOM||1.3);
+    const dw=mw*scale, dh=mh*scale;
+    const ox=(W-dw)/2, oy=UI.TOP+(availH-dh)/2;
+    return { ox, oy, dw, dh };
+  })();
 
   ctx.clearRect(0,0,W,H);
-  drawMap(b);
-  drawPOIs(b);
 
-  // joueur
-  const bw = Math.min(160, Math.max(90, dw*player.size));
-  const bx = ox + player.x*dw;
-  const by = oy + player.y*dh;
-
-  const { collided, bonusPicked } =
-    updateEnemies(frameDT, {ox,oy,dw,dh}, {bx,by});
-
-  if (collided)   setEnergy(energy - 18);
-  if (bonusPicked) setEnergy(energy + 14);
-
-  // shake
-  let shakeX=0,shakeY=0;
-  const sh = getShakeTimeLeft();
-  if (sh > 0){
-    const a = Math.min(1, sh/2.4), mag=6*a;
-    shakeX=(Math.random()*2-1)*mag; shakeY=(Math.random()*2-1)*mag;
+  // Carte ou placeholder
+  if (mapImg.complete && mapImg.naturalWidth){
+    ctx.drawImage(mapImg, vp.ox, vp.oy, vp.dw, vp.dh);
+  } else {
+    ctx.fillStyle="#bfe2f8"; ctx.fillRect(vp.ox, vp.oy, vp.dw, vp.dh);
+    ctx.fillStyle="#0e2b4a"; ctx.font="16px system-ui";
+    ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, vp.ox+14, vp.oy+24);
   }
 
-  drawEnemies(ctx, {ox,oy,dw,dh});
+  // POI
+  drawPOIs(vp);
 
-  if (birdImg.complete && birdImg.naturalWidth)
+  // Joueur
+  const bw = Math.min(160, Math.max(90, vp.dw*player.size));
+  const bx = vp.ox + player.x*vp.dw;
+  const by = vp.oy + player.y*vp.dh;
+
+  // Ennemis/bonus + collisions
+  const { collided, bonusPicked } = updateEnemies(frameDT, { ox:vp.ox, oy:vp.oy, dw:vp.dw, dh:vp.dh }, { bx, by });
+
+  if (collided)   setEnergy(energy - (ENERGY_CFG?.HIT_DAMAGE ?? 18));
+  if (bonusPicked) setEnergy(energy + (ENERGY_CFG?.HEAL_AMOUNT ?? 14));
+
+  // Shake
+  let shakeX=0, shakeY=0;
+  const shakeT = getShakeTimeLeft();
+  if (shakeT > 0){
+    const a = Math.min(1, shakeT / 2.4);
+    const mag = 6*a;
+    shakeX = (Math.random()*2-1)*mag;
+    shakeY = (Math.random()*2-1)*mag;
+  }
+
+  // Dessine bonus/ennemis sous le joueur
+  drawEnemies(ctx, { ox:vp.ox, oy:vp.oy, dw:vp.dw, dh:vp.dh });
+
+  // Joueur (sprite oiseau)
+  if (birdImg.complete && birdImg.naturalWidth){
     ctx.drawImage(birdImg, bx-bw/2+shakeX, by-bw/2+shakeY, bw, bw);
-  else { ctx.fillStyle="#333"; ctx.beginPath(); ctx.arc(bx,by,bw*0.35,0,Math.PI*2); ctx.fill(); }
+  } else {
+    ctx.fillStyle="#333";
+    ctx.beginPath(); ctx.arc(bx+shakeX, by+shakeY, bw*0.35, 0, Math.PI*2); ctx.fill();
+  }
 
-  // progression POI
-  if(!finale && currentIdx < QUEST.length){
+  // Progression
+  if (!finale && currentIdx < QUEST.length){
     const p = QUEST[currentIdx];
-    const px = ox + p.x*dw, py = oy + p.y*dh;
-    const onTarget = Math.hypot(bx-px, by-py) < 44;
-    if (onTarget){
+    const px = vp.ox + p.x*vp.dw, py = vp.oy + p.y*vp.dh;
+    if (Math.hypot(bx - px, by - py) < 44){
       collected.add(p.key);
       ui.updateScore(collected.size, POIS.length);
       ui.renderStars(collected.size, POIS.length);
       starEmphasis();
-      showTarantulaSuccess(poiName(p.key));
+
+      const nameShort = poiName(p.key);
+      showTarantulaSuccess(nameShort);
+
       currentIdx++;
-      if(currentIdx === QUEST.length){
-        ui.showReplay(true);
+      if (currentIdx === QUEST.length){
         finale = true;
-      }else{
+        ui.showReplay(true);
+      } else {
         setTimeout(()=> askQuestionFor(QUEST[currentIdx]), 900);
       }
     }
@@ -180,75 +229,112 @@ function draw(ts){
   requestAnimationFrame(draw);
 }
 
-// ------- contrôles tactiles -------
+// ---------- Contrôles (D-pad) ----------
 function setupControls(){
-  document.querySelectorAll('.btn').forEach(el=>{
-    const dx=parseFloat(el.dataset.dx), dy=parseFloat(el.dataset.dy);
-    let press=false, id=null;
+  document.querySelectorAll('.btn').forEach((el)=>{
+    const dx = parseFloat(el.dataset.dx)||0;
+    const dy = parseFloat(el.dataset.dy)||0;
+    let press=false, rafId=null;
+
     const step=()=>{
       if(!press || finale || energy<=0) return;
-      const speed = playerBase.speed * getPlayerSpeedFactor(1);
+      const speed = player.speed * getPlayerSpeedFactor(1);
       player.x = Math.max(0, Math.min(1, player.x + dx*speed));
       player.y = Math.max(0, Math.min(1, player.y + dy*speed));
-      id=requestAnimationFrame(step);
+      rafId = requestAnimationFrame(step);
     };
-    el.addEventListener('touchstart', (e)=>{ press=true; step(); e.preventDefault(); }, {passive:false});
-    el.addEventListener('touchend',   ()=>{ press=false; cancelAnimationFrame(id); });
+
+    el.addEventListener('touchstart',(e)=>{ press=true; step(); e.preventDefault(); }, { passive:false });
+    el.addEventListener('touchend',()=>{ press=false; cancelAnimationFrame(rafId); });
   });
 }
 
-// ------- helpers -------
-function shuffle(arr){
-  const a=arr.slice();
-  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
-  return a;
+// ---------- Reset / Start / Boot ----------
+function refreshHUD(){
+  ui.updateScore(collected.size, POIS.length);
+  ui.renderStars(collected.size, POIS.length);
+  ui.updateEnergy(100);
 }
 
-// ------- API publique -------
 export function resetGame(){
   collected = new Set();
   QUEST = shuffle(POIS);
   currentIdx = 0;
   finale = false;
   setEnergy(ENERGY_MAX);
+  player.x = 0.55; player.y = 0.25;
 
-  Object.assign(player, makeInitialPlayer());
   resetEnemies();
-
-  ui.updateScore(0, POIS.length);
-  ui.renderStars(0, POIS.length);
-  askQuestionFor(QUEST[0]);
+  refreshHUD();
+  askQuestionFor(QUEST[currentIdx]);
 }
 
 export function startGame(){
-  ui.hideOverlay();
-  ui.showTouch(true);
-  ui.setMusicLabel(true);
-  startMusic();
-  if(!running){ running=true; requestAnimationFrame(draw); }
-  resetGame();
+  try{
+    ui.hideOverlay();
+    ui.showTouch(true);
+    ui.setMusicLabel(true);
+    startMusic();
+
+    if (!running){
+      running = true;
+      requestAnimationFrame(draw);
+      dbg('Loop OK (started)');
+    }
+    resetGame();
+  }catch(e){
+    alert('Start error: '+(e?.message||e));
+  }
+}
+
+export function stopGame(){
+  stopMusic();
+  running = false;
 }
 
 export function boot(){
-  // base UI
+  // DOM refs canvas
+  canvas = document.getElementById('c');
+  if (!canvas){
+    console.error('Canvas #c introuvable');
+    return;
+  }
+  ctx = canvas.getContext('2d', { alpha:true });
+  if (!ctx){
+    console.error('ctx 2D introuvable');
+    return;
+  }
+
   ui.initUI();
-  ui.updateScore(0, STARS_TARGET);
-  ui.renderStars(0, STARS_TARGET);
-  ui.updateEnergy(100);
+  refreshHUD();
 
-  // avatars écran de démarrage
-  document.getElementById('heroAr').src = ASSETS.BIRD_URL;
-  document.getElementById('heroTa').src = ASSETS.TARANTULA_URL;
-  document.getElementById('tarAvatar').src = ASSETS.TARANTULA_URL;
+  // Avatars écran démarrage
+  const heroAr = document.getElementById('heroAr');
+  const heroTa = document.getElementById('heroTa');
+  if (heroAr) heroAr.src = ASSETS.BIRD_URL;
+  if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
 
-  // boutons
-  document.getElementById('startBtn')?.addEventListener('click', startGame);
-  ui.onClickMusic(()=>{ startMusic(); ui.setMusicLabel(true); });
+  // Boutons
+  const startBtn = document.getElementById('startBtn');
+  startBtn?.addEventListener('click', ()=> startGame());
+  ui.onClickMusic(()=> { /* toggle simple */ startMusic(); ui.setMusicLabel(true); });
   ui.onClickReplay(()=> resetGame());
 
-  // resize
-  resize(); addEventListener('resize', resize);
+  // Resize
+  safeResize();
+  addEventListener('resize', safeResize);
 
-  // question placeholder
-  if (POIS.length) ui.showAsk( t.ask?.(poiInfo(POIS[0].key)) || '' );
+  // Placeholder carte au boot (même si la map n’est pas encore chargée)
+  ctx.fillStyle='#bfe2f8'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  dbg('Boot OK');
+}
+
+// ---------- Utilitaires ----------
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
 }
