@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title> 
-<link rel="stylesheet" href="style.css">  
+  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Badge version -->
-  <div id="__ver__">v2025-08-20-e • host=<span id="__host__"></span></div>
+  <div id="__ver__">v2025-08-20-g • host=<span id="__host__"></span></div>
 
   <div class="wrap">
     <div class="game">
@@ -26,29 +25,25 @@
         </div>
       </div>
 
-      <!-- UI -->
       <button id="musicBtn" type="button">🎵 Musique</button>
       <button id="replayFloat" type="button">⟲ Rejouer</button>
       <div class="err" id="err" style="display:none"><b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div></div>
       <canvas id="c"></canvas>
 
-      <!-- HUD -->
       <div class="hud" id="hud">
         <h3 id="hudLabel">Étoiles</h3>
         <div class="score" id="score">0/10</div>
         <div class="stars" id="stars"></div>
       </div>
 
-      <!-- Bulle Tarantula -->
       <div class="tarTop" id="tarTop">
         <img id="tarAvatar" alt="Tarantula">
         <div class="bdBubble">
-           <div class="bdTitle" id="bdTitle">Tarantula</div>
-           <p id="bdText"></p>
+          <div class="bdTitle" id="bdTitle">Tarantula</div>
+          <p id="bdText"></p>
         </div>
       </div>
 
-      <!-- D-pad -->
       <div class="touch" id="touch">
         <div class="dpad">
           <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
@@ -61,14 +56,13 @@
 
   <div id="debugBox"></div>
 
-  <!-- Force Refresh -->
   <button id="__force__" type="button"
           style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
     Force Refresh
   </button>
 
-  <!-- Purge éventuels anciens Service Workers/caches -->
   <script>
+    // Nettoyage SW + affichage host + bouton refresh
     (function(){
       var s=document.getElementById("__host__"); if(s) s.textContent = location.hostname;
       if ('serviceWorker' in navigator) {
@@ -79,25 +73,18 @@
           }
         }).catch(()=>{});
       }
-      // Force refresh button
-      var btn = document.getElementById('__force__');
-      if (btn) btn.addEventListener('click', function(){
+      document.getElementById('__force__')?.addEventListener('click', function(){
         var url = new URL(location.href);
         url.searchParams.set('t', Date.now());
         location.replace(url.toString());
       });
-      // Secours: si game.js n’a pas encore exposé startGame, on déclenche quand même
-      window.addEventListener('DOMContentLoaded', function(){
-        var start = document.getElementById('startBtn');
-        if (start) start.addEventListener('click', function(){
-          if (typeof window.startGame === 'function') window.startGame();
-        });
-      });
     })();
   </script>
 
-<!-- ... juste avant </body> -->
-<script type="module" src="./src/game.js?v=2025-08-20-f"></script>
-
+  <!-- CHARGEMENT UNIQUE du jeu -->
+  <script type="module">
+    import { boot } from './src/game.js';
+    window.addEventListener('DOMContentLoaded', () => { boot(); });
+  </script>
 </body>
 </html>
