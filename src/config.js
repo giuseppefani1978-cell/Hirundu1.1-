@@ -15,8 +15,8 @@ export const asset = (path) => `${path}${APP_Q}`;
 export const ASSETS = {
   // Carte & personnages
   MAP_URL:        asset("assets/salento-map.PNG"),
-  BIRD_URL:       asset("assets/aracne .PNG"),        // ex: "aracne.PNG" (SANS espace)
-  TARANTULA_URL:  asset("assets/tarantula .PNG"),
+  BIRD_URL:       asset("assets/aracne.PNG"),        // ex: "aracne.PNG" (SANS espace)
+  TARANTULA_URL:  asset("assets/tarantula.PNG"),
 
   // Ennemis (sprites PNG avec fond transparent)
   CROW_URL:       asset("assets/crow.PNG"),
