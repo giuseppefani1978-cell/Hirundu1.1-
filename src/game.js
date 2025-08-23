@@ -448,6 +448,8 @@ export function boot(){
         ui.updateScore(collected.size, STARS_TARGET);
         ui.renderStars(collected.size, STARS_TARGET);
         starEmphasis();
+        // Petit label éphémère au-dessus du POI
+ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: '#d26f45', durationMs: 950, dy: -30 });
 
         // scoring étoile
         score += SCORE.STAR; starsPicked++; updateScoreLive();
