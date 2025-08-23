@@ -73,6 +73,28 @@ const ENEMY_CONFIG = {
   SPRITE_PX: { [ENEMY.JELLY]: 42, [ENEMY.CROW]: 42 },
 };
 const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
+// ----- BONUS (3 types) -----
+const BONUS = {
+  PASTICCIOTTO: 'pasticciotto',
+  RUSTICO: 'rustico',
+  CAFFE: 'caffe'
+};
+
+/**
+ * Définition des bonus :
+ * - weight : probabilité relative d'apparition (plus grand = plus fréquent)
+ * - score  : points ajoutés
+ * - heal   : énergie rendue
+ * - lifeS  : durée de vie (secondes)
+ * - pingHz : feedback sonore (différencié)
+ */
+const BONUS_TYPES = {
+  [BONUS.PASTICCIOTTO]: { label:'Pasticciotto', weight: 6, score: 20, heal: 20, lifeS: 5, pingHz: 740 },
+  [BONUS.RUSTICO]:      { label:'Rustico',      weight: 3, score: 40, heal: 26, lifeS: 5, pingHz: 880 },
+  [BONUS.CAFFE]:        { label:'Caffè Leccese',weight: 1, score: 80, heal: 34, lifeS: 6, pingHz: 1040 },
+};
+
+// rayon/pick inchangé → on réutilise BONUS_CONFIG.PICK_RADIUS_PX
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
 // ----- SCORE CONFIG -----
@@ -270,21 +292,22 @@ export function boot(){
   let hitShake = 0;
 
   // ------ SCORE RUNTIME ------
-  let score = 0;
-  let hits = 0;
-  let bonusesPicked = 0;
-  let starsPicked = 0;
-  let gameStartAt = 0;
-  let finalized = false;
-  let playerName = null;
-  let country = getCountry();
+let score = 0;
+let hits = 0;
+let bonusesPicked = 0;
+let bonusScore = 0;     // <- NOUVEAU : somme des points issus des bonus
+let starsPicked = 0;
+let gameStartAt = 0;
+let finalized = false;
+let playerName = null;
+let country = getCountry();
 
-  function scoreReset(){
-    score = 0; hits = 0; bonusesPicked = 0; starsPicked = 0;
-    gameStartAt = performance.now();
-    finalized = false;
-    updateScoreLive();
-  }
+function scoreReset(){
+  score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; starsPicked = 0;
+  gameStartAt = performance.now();
+  finalized = false;
+  updateScoreLive();
+}
 
   // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
@@ -318,8 +341,26 @@ export function boot(){
     enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
   }
   function spawnBonus(){
-    bonuses.push({ x:Math.random()*0.9+0.05, y:Math.random()*0.9+0.05, life:BONUS_CONFIG.LIFETIME_S, age:0, pulse:0 });
+  // tirage pondéré selon BONUS_TYPES.weight
+  const entries = Object.entries(BONUS_TYPES); // [key, cfg]
+  const totalW = entries.reduce((s,[,cfg]) => s + (cfg.weight||0), 0);
+  let r = Math.random() * totalW;
+  let pickedType = BONUS.PASTICCIOTTO;
+  for (const [k, cfg] of entries){
+    r -= (cfg.weight || 0);
+    if (r <= 0){ pickedType = k; break; }
   }
+  const cfg = BONUS_TYPES[pickedType];
+
+  bonuses.push({
+    type: pickedType,
+    x: Math.random()*0.9 + 0.05,
+    y: Math.random()*0.9 + 0.05,
+    life: cfg.lifeS,   // durée de vie (s)
+    age: 0,
+    pulse: 0
+  });
+}
 
   function finalizeRun({won}) {
     if (finalized) return;
@@ -558,8 +599,20 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
         bonuses.splice(i,1);
 
-        // scoring bonus
-        score += SCORE.BONUS; bonusesPicked++; updateScoreLive();
+        // scoring bonus différencié
+const type = b.type || BONUS.PASTICCIOTTO;
+const cfg = BONUS_TYPES[type] || BONUS_TYPES[BONUS.PASTICCIOTTO];
+
+score += cfg.score;
+bonusScore += cfg.score;
+bonusesPicked++;
+updateScoreLive();
+
+// soin différencié
+setEnergy(energy + (cfg.heal || 0));
+
+// son différencié
+ping(cfg.pingHz || 880, 0.35);
       }
     }
     return { collided, picked };
@@ -739,18 +792,66 @@ function drawBonuses(ctx, bonuses, bounds){
   const { ox, oy, dw, dh } = bounds;
   for (const b of bonuses){
     const x = ox + b.x*dw, y = oy + b.y*dh;
-    const r = 10 + Math.sin(b.pulse*6)*2;
+    b.pulse += 0.016;
+    const a = Math.max(0, 1 - b.age / (b.life || 4));
+    const glow = 1 + Math.sin(b.pulse*6)*0.06;
+
     ctx.save();
-    ctx.globalAlpha = 0.9 * (1 - b.age / b.life);
-    ctx.fillStyle = '#ffe06b'; ctx.strokeStyle = '#8c6a1a'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i=0;i<5;i++){
-      const a = i*2*Math.PI/5 - Math.PI/2;
-      const xi=x+Math.cos(a)*r, yi=y+Math.sin(a)*r;
-      if(i===0) ctx.moveTo(xi,yi); else ctx.lineTo(xi,yi);
+    ctx.globalAlpha = 0.9 * a;
+
+    // Placeholder distinct par type (en attendant sprites)
+    const type = b.type || BONUS.PASTICCIOTTO;
+
+    if (type === BONUS.PASTICCIOTTO){
+      // petit rond doré (tarte)
+      const r = 12 * glow;
+      ctx.fillStyle = '#f7d27a';
+      ctx.strokeStyle = '#8c6a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    else if (type === BONUS.RUSTICO){
+      // losange orange (chausson)
+      const r = 13 * glow;
+      ctx.fillStyle = '#f4a261';
+      ctx.strokeStyle = '#8c4f18';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - r, y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    else { // BONUS.CAFFE
+      // tasse stylisée marron
+      const w = 24 * glow, h = 14 * glow;
+      ctx.fillStyle = '#8b5a2b';
+      ctx.strokeStyle = '#5e3e1d';
+      ctx.lineWidth = 2;
+      // tasse
+      ctx.beginPath();
+      ctx.rect(x - w/2, y - h/2, w, h);
+      ctx.fill(); ctx.stroke();
+      // anse
+      ctx.beginPath();
+      ctx.arc(x + w/2 + 4, y, 6, -Math.PI/2, Math.PI/2);
+      ctx.stroke();
+      // vapeur
+      ctx.globalAlpha = 0.75 * a;
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y - h/2);
+      ctx.quadraticCurveTo(x - 8, y - h - 8 - Math.sin(b.pulse*3)*4, x - 4, y - h - 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
     ctx.restore();
+
+    // vie
+    b.age += 0.016;
   }
 }
 
