@@ -23,6 +23,9 @@ const ASSETS = {
   TARANTULA_URL: asset('assets/tarantula .PNG'),
   CROW_URL:      asset('assets/crow.PNG'),
   JELLY_URL:     asset('assets/jellyfish.PNG'),
+  BONUS_PASTICCIOTTO: asset('assets/bonus-pasticciotto.PNG'),
+  BONUS_RUSTICO: asset('assets/rustico.PNG'),
+  BONUS_CAFFE:   asset('assets/caffeleccese .PNG'), // ← avec espace à la fin
 };
 
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
@@ -89,11 +92,10 @@ const BONUS = {
  * - pingHz : feedback sonore (différencié)
  */
 const BONUS_TYPES = {
-  [BONUS.PASTICCIOTTO]: { label:'Pasticciotto', weight: 6, score: 20, heal: 20, lifeS: 5, pingHz: 740 },
-  [BONUS.RUSTICO]:      { label:'Rustico',      weight: 3, score: 40, heal: 26, lifeS: 5, pingHz: 880 },
-  [BONUS.CAFFE]:        { label:'Caffè Leccese',weight: 1, score: 80, heal: 34, lifeS: 6, pingHz: 1040 },
+  PASTICCIOTTO: { key:'pasticciotto', score: 20, heal: 15, prob: 0.5 },
+  RUSTICO:      { key:'rustico',      score: 40, heal: 25, prob: 0.35 },
+  CAFFE:        { key:'caffe',        score: 70, heal: 40, prob: 0.15 }
 };
-
 // rayon/pick inchangé → on réutilise BONUS_CONFIG.PICK_RADIUS_PX
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
@@ -233,6 +235,13 @@ export function boot(){
   const spiderImg= new Image();
   const crowImg  = new Image();
   const jellyImg = new Image();
+  const imgPasticciotto = new Image();
+  const imgRustico      = new Image();
+  const imgCaffe        = new Image();
+
+imgPasticciotto.src = ASSETS.BONUS_PASTICCIOTTO;
+imgRustico.src      = ASSETS.BONUS_RUSTICO;
+imgCaffe.src        = ASSETS.BONUS_CAFFE;
 
   mapImg.onload    = () => { dbg('map load OK'); resize(); };
   mapImg.onerror   = () => ui.assetFail('Map', ASSETS.MAP_URL);
@@ -341,22 +350,20 @@ function scoreReset(){
     enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
   }
   function spawnBonus(){
-  // tirage pondéré selon BONUS_TYPES.weight
-  const entries = Object.entries(BONUS_TYPES); // [key, cfg]
-  const totalW = entries.reduce((s,[,cfg]) => s + (cfg.weight||0), 0);
-  let r = Math.random() * totalW;
-  let pickedType = BONUS.PASTICCIOTTO;
-  for (const [k, cfg] of entries){
-    r -= (cfg.weight || 0);
-    if (r <= 0){ pickedType = k; break; }
-  }
-  const cfg = BONUS_TYPES[pickedType];
+  // tirage pondéré selon probabilité
+  const r = Math.random();
+  let type = BONUS_TYPES.PASTICCIOTTO;
+  if (r < BONUS_TYPES.PASTICCIOTTO.prob) type = BONUS_TYPES.PASTICCIOTTO;
+  else if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) type = BONUS_TYPES.RUSTICO;
+  else type = BONUS_TYPES.CAFFE;
 
   bonuses.push({
-    type: pickedType,
-    x: Math.random()*0.9 + 0.05,
-    y: Math.random()*0.9 + 0.05,
-    life: cfg.lifeS,   // durée de vie (s)
+    type: type.key,
+    score: type.score,
+    heal: type.heal,
+    x: Math.random()*0.9+0.05,
+    y: Math.random()*0.9+0.05,
+    life: BONUS_CONFIG.LIFETIME_S,
     age: 0,
     pulse: 0
   });
@@ -590,23 +597,22 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
       }
     }
     for (let i=bonuses.length-1;i>=0;i--){
-      const b = bonuses[i];
-      const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
-      if (Math.hypot(bx-bpx, by-bpy) < BONUS_CONFIG.PICK_RADIUS_PX){
-        picked = true;
-        ping(880, 0.35);
-        playerSlowTimer = 0;
-        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
-        bonuses.splice(i,1);
+  const b = bonuses[i];
+  const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
+  if (Math.hypot(bx-bpx, by-bpy) < BONUS_CONFIG.PICK_RADIUS_PX){
+    picked = true;
+    ping(880, 0.35);
+    playerSlowTimer = 0;
+    hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
+    bonuses.splice(i,1);
 
-        // scoring bonus différencié
-const type = b.type || BONUS.PASTICCIOTTO;
-const cfg = BONUS_TYPES[type] || BONUS_TYPES[BONUS.PASTICCIOTTO];
-
-score += cfg.score;
-bonusScore += cfg.score;
-bonusesPicked++;
-updateScoreLive();
+    // scoring selon le type
+    score += b.score;
+    bonusesPicked++;
+    setEnergy(energy + b.heal);
+    updateScoreLive();
+  }
+}
 
 // soin différencié
 setEnergy(energy + (cfg.heal || 0));
@@ -792,66 +798,23 @@ function drawBonuses(ctx, bonuses, bounds){
   const { ox, oy, dw, dh } = bounds;
   for (const b of bonuses){
     const x = ox + b.x*dw, y = oy + b.y*dh;
-    b.pulse += 0.016;
-    const a = Math.max(0, 1 - b.age / (b.life || 4));
-    const glow = 1 + Math.sin(b.pulse*6)*0.06;
-
     ctx.save();
-    ctx.globalAlpha = 0.9 * a;
+    ctx.globalAlpha = 0.9 * (1 - b.age / b.life);
 
-    // Placeholder distinct par type (en attendant sprites)
-    const type = b.type || BONUS.PASTICCIOTTO;
+    let img = null;
+    if (b.type === 'pasticciotto') img = imgPasticciotto;
+    if (b.type === 'rustico')      img = imgRustico;
+    if (b.type === 'caffe')        img = imgCaffe;
 
-    if (type === BONUS.PASTICCIOTTO){
-      // petit rond doré (tarte)
-      const r = 12 * glow;
-      ctx.fillStyle = '#f7d27a';
-      ctx.strokeStyle = '#8c6a1a';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    if (img && img.complete){
+      const size = 42;
+      ctx.drawImage(img, x - size/2, y - size/2, size, size);
+    } else {
+      // fallback si l’image n’est pas encore chargée
+      ctx.fillStyle = '#ffe06b';
+      ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2); ctx.fill();
     }
-    else if (type === BONUS.RUSTICO){
-      // losange orange (chausson)
-      const r = 13 * glow;
-      ctx.fillStyle = '#f4a261';
-      ctx.strokeStyle = '#8c4f18';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, y - r);
-      ctx.lineTo(x + r, y);
-      ctx.lineTo(x, y + r);
-      ctx.lineTo(x - r, y);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-    }
-    else { // BONUS.CAFFE
-      // tasse stylisée marron
-      const w = 24 * glow, h = 14 * glow;
-      ctx.fillStyle = '#8b5a2b';
-      ctx.strokeStyle = '#5e3e1d';
-      ctx.lineWidth = 2;
-      // tasse
-      ctx.beginPath();
-      ctx.rect(x - w/2, y - h/2, w, h);
-      ctx.fill(); ctx.stroke();
-      // anse
-      ctx.beginPath();
-      ctx.arc(x + w/2 + 4, y, 6, -Math.PI/2, Math.PI/2);
-      ctx.stroke();
-      // vapeur
-      ctx.globalAlpha = 0.75 * a;
-      ctx.beginPath();
-      ctx.moveTo(x - 6, y - h/2);
-      ctx.quadraticCurveTo(x - 8, y - h - 8 - Math.sin(b.pulse*3)*4, x - 4, y - h - 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
     ctx.restore();
-
-    // vie
-    b.age += 0.016;
   }
 }
 
