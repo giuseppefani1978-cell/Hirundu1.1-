@@ -674,7 +674,7 @@ if (musicBtn) {
     musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
   });
 }
-
+}
 // ------------------------
 // Rendu utilitaires
 // ------------------------
