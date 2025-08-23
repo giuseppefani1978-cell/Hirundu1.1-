@@ -462,7 +462,12 @@ function scoreReset(){
     }
 
     if (mode === 'play') {
-      drawBonuses(ctx, bonuses, { ox, oy, dw, dh });
+      drawBonuses(
+  ctx,
+  bonuses,
+  { ox, oy, dw, dh },
+  { imgPasticciotto, imgRustico, imgCaffe }
+);
       drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
 
@@ -596,33 +601,33 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
         score += SCORE.HIT; hits++; updateScoreLive();
       }
     }
-    for (let i=bonuses.length-1;i>=0;i--){
+  for (let i = bonuses.length - 1; i >= 0; i--) {
   const b = bonuses[i];
-  const bpx = ox + b.x*dw, bpy = oy + b.y*dh;
-  if (Math.hypot(bx-bpx, by-bpy) < BONUS_CONFIG.PICK_RADIUS_PX){
+  const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
+
+  if (Math.hypot(bx - bpx, by - bpy) < BONUS_CONFIG.PICK_RADIUS_PX) {
     picked = true;
-    ping(880, 0.35);
     playerSlowTimer = 0;
     hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
-    bonuses.splice(i,1);
 
-    // scoring selon le type
+    // scoring & effets selon le type
     score += b.score;
+    bonusScore += b.score;
     bonusesPicked++;
     setEnergy(energy + b.heal);
+
+    // petit son différent selon le type
+    const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
+    ping(hz, 0.35);
+
+    // on retire le bonus
+    bonuses.splice(i, 1);
+
     updateScoreLive();
   }
 }
 
-// soin différencié
-setEnergy(energy + (cfg.heal || 0));
-
-// son différencié
-ping(cfg.pingHz || 880, 0.35);
-      }
-    }
-    return { collided, picked };
-  }
+return { collided, picked };
 
   // ---------- modes ----------
   function triggerWin(){
@@ -794,8 +799,10 @@ function drawEnemies(ctx, enemies, bounds, sprites){
     ctx.restore();
   }
 }
-function drawBonuses(ctx, bonuses, bounds){
+function drawBonuses(ctx, bonuses, bounds, images){
   const { ox, oy, dw, dh } = bounds;
+  const { imgPasticciotto, imgRustico, imgCaffe } = images;
+
   for (const b of bonuses){
     const x = ox + b.x*dw, y = oy + b.y*dh;
     ctx.save();
@@ -803,20 +810,21 @@ function drawBonuses(ctx, bonuses, bounds){
 
     let img = null;
     if (b.type === 'pasticciotto') img = imgPasticciotto;
-    if (b.type === 'rustico')      img = imgRustico;
-    if (b.type === 'caffe')        img = imgCaffe;
+    else if (b.type === 'rustico')  img = imgRustico;
+    else if (b.type === 'caffe')    img = imgCaffe;
 
-    if (img && img.complete){
+    if (img && img.complete && img.naturalWidth){
       const size = 42;
       ctx.drawImage(img, x - size/2, y - size/2, size, size);
     } else {
-      // fallback si l’image n’est pas encore chargée
+      // fallback simple
       ctx.fillStyle = '#ffe06b';
       ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
 }
+
 
 // --------- Win scene rendering + FX ----------
 function renderWin(ctx, view, sprites, winFx){
