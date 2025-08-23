@@ -77,11 +77,7 @@ const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
 // ----- SCORE CONFIG -----
 const SCORE = {
-  STAR: 100,     // par étoile
-  BONUS: 20,     // par bonus
-  HIT: -30,      // par coup
-  WIN: 200,      // bonus de victoire
-  GAMEOVER: 0,   // bonus de fin en cas de mort
+  STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0,
 };
 
 // ----- HALL OF FAME (local) -----
@@ -90,12 +86,8 @@ const HOF_SIZE = 10;
 function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
 function saveHof(list){ try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {} }
 function addToHof(entry){
-  const hof = loadHof();
-  hof.push(entry);
-  hof.sort((a,b)=> b.score - a.score);
-  const trimmed = hof.slice(0, HOF_SIZE);
-  saveHof(trimmed);
-  return trimmed;
+  const hof = loadHof(); hof.push(entry); hof.sort((a,b)=> b.score - a.score);
+  const trimmed = hof.slice(0, HOF_SIZE); saveHof(trimmed); return trimmed;
 }
 function fmtTime(ms){ const s = Math.max(0, Math.round(ms/1000)); const m = Math.floor(s/60), r = s%60; return `${m}m${String(r).padStart(2,'0')}s`; }
 function getCountry(){
@@ -118,17 +110,21 @@ function ensureHofPanel(){
   panel.style.cssText = `
     position:fixed; inset:0; z-index:10002; display:none;
     background:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.75));
-    color:#fff; font:14px system-ui; overflow:auto; padding:24px;
+    color:#fff; font:14px system-ui; overflow:hidden; /* on gère le scroll dans le contenu */
   `;
   panel.innerHTML = `
-    <div style="max-width:720px;margin:0 auto;">
-      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;">
-        <h2 style="margin:0;font:600 22px system-ui;">🏆 Hall of Fame</h2>
+    <div style="height:100%;max-width:900px;margin:0 auto;display:flex;flex-direction:column;padding:16px">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+        <h2 style="margin:0;font:600 22px system-ui">🏆 Hall of Fame</h2>
         <button id="__hof_close" type="button"
-          style="background:#fff;color:#000;border:0;border-radius:8px;padding:8px 12px;cursor:pointer">Fermer</button>
+          style="background:#fff;color:#000;border:0;border-radius:10px;padding:10px 14px;cursor:pointer">Fermer</button>
       </div>
-      <div id="__hof_table" style="margin-top:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:10px;overflow:hidden"></div>
-      <div style="margin-top:18px;opacity:.75">Les scores sont stockés localement sur cet appareil.</div>
+      <div id="__hof_table_wrap"
+           style="margin-top:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);
+                  border-radius:12px;overflow:auto;flex:1;min-height:0">
+        <div id="__hof_table"></div>
+      </div>
+      <div style="margin-top:10px;opacity:.8;font-size:12px">Les scores sont stockés localement sur cet appareil.</div>
     </div>
   `;
   document.body.appendChild(panel);
@@ -140,32 +136,35 @@ function renderHofTable(list){
   const box = host.querySelector('#__hof_table');
   const rows = list.map((e,i)=>`
     <tr>
-      <td style="padding:10px 12px">${i+1}</td>
-      <td style="padding:10px 12px">${e.country?.flag||'🏳️'}</td>
-      <td style="padding:10px 12px">${escapeHtml(e.name)}</td>
-      <td style="padding:10px 12px;font-weight:600">${e.score}</td>
-      <td style="padding:10px 12px">${e.stars}★</td>
-      <td style="padding:10px 12px">${e.bonuses}</td>
-      <td style="padding:10px 12px">${e.hits}</td>
-      <td style="padding:10px 12px">${fmtTime(e.time)}</td>
-      <td style="padding:10px 12px">${new Date(e.date).toLocaleString()}</td>
+      <td>${i+1}</td>
+      <td>${e.country?.flag||'🏳️'}</td>
+      <td>${escapeHtml(e.name)}</td>
+      <td class="score">${e.score}</td>
+      <td>${e.stars}★</td>
+      <td>${e.bonuses}</td>
+      <td>${e.hits}</td>
+      <td>${fmtTime(e.time)}</td>
+      <td>${new Date(e.date).toLocaleString()}</td>
     </tr>`).join('');
   box.innerHTML = `
-    <table style="width:100%;border-collapse:collapse">
-      <thead style="background:rgba(255,255,255,.08)">
+    <style>
+      #__hof__ table{width:100%;border-collapse:collapse;font-size:13px}
+      #__hof__ thead th{position:sticky;top:0;background:rgba(0,0,0,.5);backdrop-filter:saturate(120%) blur(2px)}
+      #__hof__ th, #__hof__ td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+      #__hof__ td.score{font-weight:700}
+      @media (max-width:480px){
+        #__hof__ table{font-size:12px}
+        #__hof__ th, #__hof__ td{padding:6px 8px}
+      }
+    </style>
+    <table>
+      <thead>
         <tr>
-          <th style="text-align:left;padding:10px 12px">#</th>
-          <th style="text-align:left;padding:10px 12px">Pays</th>
-          <th style="text-align:left;padding:10px 12px">Joueur</th>
-          <th style="text-align:left;padding:10px 12px">Score</th>
-          <th style="text-align:left;padding:10px 12px">Étoiles</th>
-          <th style="text-align:left;padding:10px 12px">Bonus</th>
-          <th style="text-align:left;padding:10px 12px">Coups</th>
-          <th style="text-align:left;padding:10px 12px">Temps</th>
-          <th style="text-align:left;padding:10px 12px">Date</th>
+          <th>#</th><th>Pays</th><th>Joueur</th><th>Score</th><th>Étoiles</th>
+          <th>Bonus</th><th>Coups</th><th>Temps</th><th>Date</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="9" style="padding:14px 12px;opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="9" style="opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
     </table>
   `;
   host.style.display = 'block';
@@ -189,22 +188,25 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Déplacer le bouton Rejouer un peu sous le coin haut-droite
+  // Bouton musique flottant (en bas à droite)
+  ensureMusicButton();
+
+  // Déplacer le bouton Rejouer sous le score live
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
-    replayBtn.style.top = '48px';   // ↓ sous le score live
+    replayBtn.style.top = '52px';
     replayBtn.style.right = '8px';
     replayBtn.style.left = 'auto';
     replayBtn.style.bottom = 'auto';
     replayBtn.style.zIndex = '10001';
   }
 
-  // Lien Hall of Fame DANS le HUD (tout en bas)
+  // Lien Hall of Fame dans le HUD (en bas)
   ensureHofLinkInHud();
 
-  // Score live (top-right, “arcade”)
-  const scoreLive = ensureScoreLive();
+  // Score live (top-right, arcade rouge/jaune)
+  ensureScoreLive();
 
   // Images
   const mapImg   = new Image();
@@ -347,7 +349,7 @@ export function boot(){
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
-      `👉 Le Hall of Fame est disponible en bas du HUD.`
+      `👉 Retrouve le Hall of Fame en bas du HUD.`
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
@@ -447,7 +449,7 @@ export function boot(){
         ui.renderStars(collected.size, STARS_TARGET);
         starEmphasis();
 
-        // scoring +1 étoile
+        // scoring étoile
         score += SCORE.STAR; starsPicked++; updateScoreLive();
 
         const nameShort = poiName(p.key);
@@ -458,7 +460,7 @@ export function boot(){
         if (currentIdx === QUEST.length){
           triggerWin();
         } else {
-          // ⏱️ attendre 1 seconde avant la prochaine question
+          // ⏱️ attendre 1 seconde AVANT la nouvelle question
           setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1000);
         }
       }
@@ -578,7 +580,8 @@ export function boot(){
   function startGame(){
     try{
       // demander le nom à CHAQUE session
-      playerName = prompt("Ton nom/pseudo ?") || "Joueur";
+      const name = prompt("Ton nom/pseudo ?") || "Joueur";
+      playerName = name.trim() || "Joueur";
       country = getCountry();
 
       ui.hideOverlay();
@@ -628,9 +631,10 @@ export function boot(){
       el.id='__score_live';
       el.style.cssText = `
         position:fixed; top:8px; right:8px; z-index:10002;
-        background:rgba(0,0,0,.65); color:#00ff88;
-        padding:6px 10px; border-radius:8px; font:700 18px/1.1 "Courier New", ui-monospace, monospace;
-        text-shadow:0 0 6px rgba(0,255,136,.55);
+        background:linear-gradient(180deg, rgba(255,240,200,.95), rgba(255,226,160,.95));
+        color:#8a2a0a; border:1px solid #b08a3c; box-shadow:0 4px 10px rgba(0,0,0,.15);
+        padding:6px 10px; border-radius:10px; font:700 18px/1.1 "Courier New", ui-monospace, monospace;
+        text-shadow:0 1px 0 #fff, 0 0 8px rgba(255,200,0,.6);
       `;
       el.textContent = '000000';
       document.body.appendChild(el);
@@ -658,6 +662,30 @@ export function boot(){
       hud.appendChild(link);
       link.addEventListener('click', openHofPanel);
     }
+  }
+  function ensureMusicButton(){
+    let btn = document.getElementById('__music_btn');
+    if (!btn){
+      btn = document.createElement('button');
+      btn.id = '__music_btn';
+      btn.type = 'button';
+      btn.title = 'Musique';
+      btn.style.cssText = `
+        position:fixed; right:8px; bottom:8px; z-index:10002;
+        background:#fff; color:#000; border:1px solid #c9b58a; border-radius:12px;
+        padding:10px 12px; font:600 14px system-ui; box-shadow:0 4px 10px rgba(0,0,0,.12);
+      `;
+      btn.textContent = '🎵 Musique';
+      document.body.appendChild(btn);
+      btn.addEventListener('click', () => {
+        toggleMusic();
+        ui.setMusicLabel(isMusicOn());
+        btn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
+      });
+      // état initial
+      btn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
+    }
+    return btn;
   }
 }
 
@@ -742,7 +770,7 @@ function renderWin(ctx, view, sprites, winFx){
   const cx = ox + dw/2;
   const cy = oy + dh/2;
 
-  // Duo au centre (zoom + légère rotation "danse") — 2× plus gros
+  // Duo au centre (2× plus gros)
   const t = winFx.t;
   const base = Math.min(dw, dh) * 0.36;
   const s = 0.9 + 0.08*Math.sin(t*4);
