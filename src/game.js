@@ -628,7 +628,7 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
 }
 
 return { collided, picked };
-
+  }
   // ---------- modes ----------
   function triggerWin(){
     mode = 'win';
