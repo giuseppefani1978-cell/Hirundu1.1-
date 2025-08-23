@@ -131,6 +131,22 @@ canvas { width:100%; height:100%; display:block; background:#bfe2f8; touch-actio
 }
 .btn:active { transform:translateY(1px); }
 
+/* Calque pour labels éphémères (déjà posé inline, ceci sert de garde-fou) */
+#labelLayer { pointer-events:none; z-index: 9998; }
+
+/* Classe des labels (au cas où le JS n’injecte pas tout inline) */
+.epi-label{
+  font: 700 14px system-ui;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid rgba(0,0,0,.25);
+  background: #b04123; /* rouge terre cuite (cohérent étoiles/accents) */
+  text-shadow: 0 1px 0 rgba(0,0,0,.2);
+  box-shadow: 0 6px 12px rgba(0,0,0,.25);
+  transform: translate(-50%, -50%);
+}
+
 /* ====== Boutons flottants ====== */
 #musicBtn {
   position: fixed;
