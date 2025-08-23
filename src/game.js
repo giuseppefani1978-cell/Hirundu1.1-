@@ -188,9 +188,6 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Bouton musique flottant (en bas à droite)
-  ensureMusicButton();
-
   // Déplacer le bouton Rejouer sous le score live
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
@@ -665,30 +662,17 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: '#d26f45', durationM
       link.addEventListener('click', openHofPanel);
     }
   }
-  function ensureMusicButton(){
-    let btn = document.getElementById('__music_btn');
-    if (!btn){
-      btn = document.createElement('button');
-      btn.id = '__music_btn';
-      btn.type = 'button';
-      btn.title = 'Musique';
-      btn.style.cssText = `
-        position:fixed; right:8px; bottom:8px; z-index:10002;
-        background:#fff; color:#000; border:1px solid #c9b58a; border-radius:12px;
-        padding:10px 12px; font:600 14px system-ui; box-shadow:0 4px 10px rgba(0,0,0,.12);
-      `;
-      btn.textContent = '🎵 Musique';
-      document.body.appendChild(btn);
-      btn.addEventListener('click', () => {
-        toggleMusic();
-        ui.setMusicLabel(isMusicOn());
-        btn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-      });
-      // état initial
-      btn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-    }
-    return btn;
-  }
+  const musicBtn = document.getElementById('musicBtn');
+if (musicBtn) {
+  // état initial
+  musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
+
+  // clic → toggle
+  musicBtn.addEventListener('click', () => {
+    toggleMusic();
+    ui.setMusicLabel(isMusicOn());
+    musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
+  });
 }
 
 // ------------------------
