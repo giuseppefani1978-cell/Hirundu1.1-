@@ -566,6 +566,8 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: '#d26f45', durationM
   function triggerWin(){
     mode = 'win';
     finalizeRun({won:true});
+    stopMusic();        // coupe la boucle de fond
+    playFinaleLong();   // fanfare / musique de victoire
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
   }
 
