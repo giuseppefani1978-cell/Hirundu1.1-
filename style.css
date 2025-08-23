@@ -202,7 +202,7 @@ canvas#c {
 }
 
 /* (optionnel si ce n’est pas déjà le cas) : les éléments d’UI passent AU-DESSUS du canvas */
-.hud, .tarTop, #musicBtn, #replayFloat, .touch, .err {
+.hud, .tarTop, #replayFloat, .touch, .err {
   position: absolute;   /* la plupart l’ont déjà */
   z-index: 22;          /* > 1 pour être au-dessus du canvas */
 }
