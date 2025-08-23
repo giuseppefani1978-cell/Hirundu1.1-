@@ -182,15 +182,17 @@ export function showReplay(show = true) {
 
 export function setMusicLabel(isOn) {
   if (!el.musicBtn) return;
-  el.musicBtn.textContent = isOn ? t.musicOn : t.musicOff;
+  const txt = isOn ? (t.musicOn || 'Musique ON') : (t.musicOff || 'Musique OFF');
+  const icon = isOn ? '🔊' : '🔈';
+  el.musicBtn.innerHTML = `<span aria-hidden="true">${icon}</span> ${txt}`;
+  el.musicBtn.setAttribute('aria-pressed', String(!!isOn));
+  el.musicBtn.classList.toggle('is-on', !!isOn);
 }
 
 export function onClickMusic(handler) {
   el.musicBtn?.addEventListener('click', handler);
 }
-export function onClickReplay(handler) {
-  el.replayBtn?.addEventListener('click', handler);
-}
+
 
 // —————————————————————————————
 // Erreurs assets
