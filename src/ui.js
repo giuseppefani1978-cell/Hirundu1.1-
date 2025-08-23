@@ -193,6 +193,10 @@ export function onClickMusic(handler) {
   el.musicBtn?.addEventListener('click', handler);
 }
 
+export function onClickReplay(handler) {
+  el.replayBtn?.addEventListener('click', handler);
+}
+
 // —————————————————————————————
 // Labels éphémères (petits toasts animés au-dessus d’un point)
 // —————————————————————————————
