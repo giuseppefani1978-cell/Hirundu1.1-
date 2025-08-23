@@ -192,10 +192,10 @@ export function boot(){
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
-    replayBtn.style.top = '52px';
+    replayBtn.style.top = 'auto';
     replayBtn.style.right = '8px';
     replayBtn.style.left = 'auto';
-    replayBtn.style.bottom = 'auto';
+    replayBtn.style.bottom = '16px';
     replayBtn.style.zIndex = '10001';
   }
 
