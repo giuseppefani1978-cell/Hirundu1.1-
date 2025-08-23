@@ -145,6 +145,31 @@ canvas { width:100%; height:100%; display:block; background:#bfe2f8; touch-actio
   box-shadow:0 6px 14px rgba(0,0,0,.15); cursor:pointer;
 }
 
+/* Bouton musique : fixe bas-droite, au-dessus du badge version */
+#musicBtn{
+  position: fixed;
+  right: 8px;
+  bottom: 48px;   /* badge est à bottom:8px → on se met juste au-dessus */
+  z-index: 10000;
+  font: 14px/1.1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #bfa86a;
+  background: #fff8dc;
+  box-shadow: 0 2px 0 rgba(0,0,0,.15);
+  cursor: pointer;
+}
+
+/* États visuels ON/OFF */
+#musicBtn.on  { background: #f6ffe5; border-color:#93c572; }
+#musicBtn.off { background: #ffecec; border-color:#d49090; }
+
+/* petit focus accessible */
+#musicBtn:focus-visible{
+  outline: 2px solid #3a86ff;
+  outline-offset: 2px;
+}
+
 /* ====== Erreurs / Debug ====== */
 .err {
   position:absolute; right:10px; top:10px;
