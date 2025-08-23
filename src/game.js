@@ -346,7 +346,7 @@ export function boot(){
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusesPicked*SCORE.BONUS}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
-      `👉 Retrouve le Hall of Fame en bas du HUD.`
+      `👉 check le Hall of Fame en bas du HUD.`
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
@@ -460,7 +460,7 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: '#d26f45', durationM
           triggerWin();
         } else {
           // ⏱️ attendre 1 seconde AVANT la nouvelle question
-          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1000);
+          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1600);
         }
       }
     }
