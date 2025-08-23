@@ -463,7 +463,7 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
           triggerWin();
         } else {
           // ⏱️ attendre 1 seconde AVANT la nouvelle question
-          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1600);
+          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
         }
       }
     }
