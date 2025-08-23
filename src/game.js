@@ -3,7 +3,7 @@
 // CONFIG + GAMEPLAY (imports: i18n, ui, audio uniquement)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame } from './audio.js';
+import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong, stopFinaleLoop } from './audio.js';
 import * as ui from './ui.js';
 
 const DEBUG = false;
