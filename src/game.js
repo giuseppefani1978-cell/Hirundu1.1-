@@ -456,7 +456,6 @@ function scoreReset(){
     if (mode === 'play') {
       const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
       if (collided) setEnergy(energy - 18);
-      if (picked)   setEnergy(energy + 14);
       const dead = energy <= 0;
       if (dead) { return triggerGameOver(); }
     }
