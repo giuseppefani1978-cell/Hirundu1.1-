@@ -193,6 +193,74 @@ export function onClickMusic(handler) {
   el.musicBtn?.addEventListener('click', handler);
 }
 
+// —————————————————————————————
+// Labels éphémères (petits toasts animés au-dessus d’un point)
+// —————————————————————————————
+let labelLayer;
+
+/**
+ * Affiche un label éphémère (en px écran) au-dessus d'un point.
+ * @param {number} x écran (px)
+ * @param {number} y écran (px)
+ * @param {string} text contenu du label
+ * @param {object} [opts] { color?:string, durationMs?:number, dy?:number }
+ */
+export function showEphemeralLabel(x, y, text, opts = {}) {
+  // lazy-create d’un calque DOM
+  if (!labelLayer) {
+    labelLayer = document.createElement('div');
+    labelLayer.id = 'labelLayer';
+    labelLayer.style.cssText = `
+      position:fixed; left:0; top:0; right:0; bottom:0;
+      pointer-events:none; z-index: 9998;
+    `;
+    document.body.appendChild(labelLayer);
+  }
+
+  const { color = '#b04123', durationMs = 950, dy = -24 } = opts;
+
+  const node = document.createElement('div');
+  node.className = 'epi-label';
+  node.textContent = text;
+
+  // position de départ (légèrement en dessous)
+  node.style.left = `${Math.round(x)}px`;
+  node.style.top  = `${Math.round(y)}px`;
+
+  // style inline (fallback si le CSS n’est pas chargé)
+  node.style.position   = 'absolute';
+  node.style.transform  = 'translate(-50%, -50%)';
+  node.style.font       = '700 14px system-ui';
+  node.style.color      = '#fff';
+  node.style.padding    = '6px 10px';
+  node.style.borderRadius = '10px';
+  node.style.border     = '2px solid rgba(0,0,0,.25)';
+  node.style.background = color; // couleur principale
+  node.style.textShadow = '0 1px 0 rgba(0,0,0,.2)';
+  node.style.boxShadow  = '0 6px 12px rgba(0,0,0,.25)';
+  node.style.opacity    = '0';
+  node.style.transition = 'transform 140ms ease, opacity 140ms ease';
+
+  labelLayer.appendChild(node);
+
+  // apparition
+  requestAnimationFrame(() => {
+    node.style.opacity = '1';
+    node.style.transform = `translate(-50%, -50%) translateY(-6px)`;
+  });
+
+  // attente puis légère montée + fade
+  setTimeout(() => {
+    node.style.transition = 'transform 260ms ease, opacity 260ms ease';
+    node.style.transform  = `translate(-50%, -50%) translateY(${dy}px)`;
+    node.style.opacity    = '0';
+  }, Math.max(1, durationMs - 260));
+
+  // cleanup
+  setTimeout(() => {
+    node.remove();
+  }, durationMs + 40);
+}
 
 // —————————————————————————————
 // Erreurs assets
