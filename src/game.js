@@ -549,12 +549,15 @@ setDuelCallbacks({
         currentIdx++;
 
         if (currentIdx === QUEST.length){
-          // passer en mode duel (niveau 1 : méduses)
+        // passer en mode duel (niveau 1 : méduses)
+
+        ui.showTouch(false); // masque le D-pad normal
+
         setDuelAmmoFromPicked(pickedCounts || { pasticciotto:0, rustico:0, caffe:0 });
         mode = enterDuel('jelly'); // ou 'crow' pour un autre niveau;
         } else {
-          setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
-        }
+        setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
+       }
       }
     }
 
