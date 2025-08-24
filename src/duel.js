@@ -336,3 +336,44 @@ function drawSpecialHud(ctx, x, y, w, h, ammo){
   ctx.fillText('A: Coup normal  /  B: Spécial', x+28, y-8);
   ctx.restore();
 }
+// duel.js
+
+let duelControls = null;
+let attackCb = null;
+
+export function setDuelAttackCallback(cb){
+  attackCb = cb; // cb(type) ex: "normal", "pasticciotto", "rustico", "caffe"
+}
+
+export function showDuelControls(show=true){
+  if (show) {
+    if (!duelControls){
+      duelControls = document.createElement('div');
+      duelControls.id = '__duel_controls';
+      duelControls.style.cssText = `
+        position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+        display:flex; gap:12px; z-index:10003;
+      `;
+      const mkBtn = (emoji, type) => {
+        const b = document.createElement('button');
+        b.textContent = emoji;
+        b.style.cssText = `
+          font-size:28px; padding:14px 18px;
+          border-radius:12px; border:2px solid #444;
+          background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.25);
+        `;
+        b.addEventListener('click', ()=> attackCb && attackCb(type));
+        return b;
+      };
+      duelControls.appendChild(mkBtn("👊", "normal"));
+      duelControls.appendChild(mkBtn("🍩", "pasticciotto"));
+      duelControls.appendChild(mkBtn("🥟", "rustico"));
+      duelControls.appendChild(mkBtn("☕", "caffe"));
+
+      document.body.appendChild(duelControls);
+    }
+    duelControls.style.display = 'flex';
+  } else {
+    if (duelControls) duelControls.style.display = 'none';
+  }
+}
