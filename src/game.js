@@ -454,6 +454,7 @@ setDuelCallbacks({
     // mise à jour du mode Duel
     tickDuel(dt, ctx);
   }
+}
 
     // viewport + fond
     const mw = mapImg.naturalWidth || 1920;
