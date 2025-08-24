@@ -1,6 +1,6 @@
 // src/duel.js
 // ---------------------------------------------------------
-// Mode "Duel" (battle screen style Street-Fighter)
+// Mode "Duel" (écran dédié, style Versus), plein écran + paysage
 // ---------------------------------------------------------
 import * as ui from './ui.js'; // uniquement pour showEphemeralLabel
 
@@ -24,12 +24,16 @@ const DUEL = {
   },
 
   PROJ_RADIUS: 7,
-  ARENA_PAD: 32
+  ARENA_PAD: 32,
+
+  ENTER_FADE_MS: 650
 };
 
 // ---- état interne ----
 let duel = {
   active:false,
+  phase:'idle', // 'enter' | 'fight' | 'exit' | 'idle'
+  enterAt:0,
   foeType:'jelly',
   player:{ x:0, y:0, hp:DUEL.PLAYER_HP },
   foe:{ x:0, y:0, hp:DUEL.FOE_HP, fireAt:0 },
@@ -40,27 +44,95 @@ let duel = {
   onLose: ()=>{},
   // boutons tactiles
   aBtn:null, bBtn:null,
+  // overlay rotation
+  rotateHint:null,
 };
 
-// utils audio minimalistes : le module duel n’importe pas audio.js
-// → on utilise des bips via WebAudio simple pour feedback (léger et optionnel)
+// --------------------
+// Utils simples
+// --------------------
+function randBetween(a,b){ return a + Math.random()*(b-a); }
+
+function now(){ return performance.now(); }
+
+// Beep léger (fallback audio sans dépendre de audio.js)
+let _audio; // réutilise un seul AudioContext si possible
 function beep(freq=700, dur=0.05){
   try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.value = freq; o.connect(g); g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+dur);
-    o.start(); o.stop(ctx.currentTime+dur+0.02);
+    _audio = _audio || new (window.AudioContext||window.webkitAudioContext)();
+    const o = _audio.createOscillator(), g = _audio.createGain();
+    o.frequency.value = freq; o.connect(g); g.connect(_audio.destination);
+    g.gain.setValueAtTime(0.0001, _audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2,  _audio.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,_audio.currentTime+dur);
+    o.start(); o.stop(_audio.currentTime+dur+0.02);
   }catch{}
 }
 
-function randBetween(a,b){ return a + Math.random()*(b-a); }
+function isLandscape(){
+  const { innerWidth:w=1, innerHeight:h=1 } = window;
+  return w >= h;
+}
 
-// ---------------------------------------------------------
+// ---------------
+// Fullscreen + Orientation helpers
+// ---------------
+async function enterFullscreen(){
+  const el = document.documentElement;
+  if (document.fullscreenElement) return;
+  if (el.requestFullscreen) await el.requestFullscreen({ navigationUI:'hide' }).catch(()=>{});
+}
+
+async function exitFullscreen(){
+  if (!document.fullscreenElement) return;
+  try{ await document.exitFullscreen(); }catch{}
+}
+
+async function tryLockLandscape(){
+  try{
+    if (screen.orientation && screen.orientation.lock){
+      await screen.orientation.lock('landscape');
+      return true;
+    }
+  }catch{}
+  return false;
+}
+
+async function unlockOrientation(){
+  try{
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  }catch{}
+}
+
+function ensureRotateHint(show){
+  if (!show){
+    duel.rotateHint?.remove(); duel.rotateHint=null;
+    return;
+  }
+  if (duel.rotateHint) return;
+  const d = document.createElement('div');
+  d.id='__rotate_hint__';
+  d.style.cssText = `
+    position:fixed; inset:0; z-index:10005; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55); color:#fff; text-align:center; padding:20px; font:600 16px system-ui;
+  `;
+  d.innerHTML = `
+    <div style="max-width:600px">
+      <div style="font-size:44px; line-height:1; margin-bottom:8px">📺</div>
+      <div>Pour le duel, tourne ton téléphone en mode <b>paysage</b>.</div>
+      <div style="opacity:.9; font-size:13px; margin-top:6px">(Si rien ne change, on ne peut pas verrouiller l'orientation sur ton navigateur. Pas grave&nbsp;: tourne l'appareil.)</div>
+      <button type="button" style="margin-top:12px;background:#ffd166;color:#000;border:0;border-radius:10px;padding:8px 12px;font:700 14px system-ui;cursor:pointer">
+        OK
+      </button>
+    </div>`;
+  d.querySelector('button')?.addEventListener('click', ()=> ensureRotateHint(false));
+  document.body.appendChild(d);
+  duel.rotateHint = d;
+}
+
+// -------------------------------
 // API (utilisée par game.js)
-// ---------------------------------------------------------
+// -------------------------------
 export function isDuelActive(){ return duel.active; }
 
 export function setDuelCallbacks({ onWin, onLose }){
@@ -76,22 +148,49 @@ export function setDuelAmmoFromPicked(pickedCounts){
 
 /**
  * Lance le duel et renvoie la string de mode ("duel") pour game.js
+ * - demande plein écran
+ * - tente de verrouiller l’orientation paysage
+ * - affiche un hint si l’orientation n’est pas paysage
  */
 export function enterDuel(foeType='jelly'){
   // reset état
   duel.active = true;
+  duel.phase  = 'enter';
+  duel.enterAt = now();
+
   duel.foeType = (DUEL.FOE[foeType] ? foeType : 'jelly');
   duel.player.hp = DUEL.PLAYER_HP;
   duel.foe.hp = DUEL.FOE_HP;
   duel.projectiles.length = 0;
 
   const cfg = DUEL.FOE[duel.foeType];
-  duel.foe.fireAt = performance.now() + randBetween(cfg.fireMs[0], cfg.fireMs[1]);
+  duel.foe.fireAt = now() + randBetween(cfg.fireMs[0], cfg.fireMs[1]);
 
   ensureDuelButtons(true);
+  orientationFlow(); // async mais on s’en fiche ici
+
   // petit "gong"
   beep(660, 0.1); setTimeout(()=>beep(440,0.08),120);
   return 'duel';
+}
+
+async function orientationFlow(){
+  await enterFullscreen();
+  const locked = await tryLockLandscape();
+  if (!isLandscape() || !locked){
+    ensureRotateHint(true);
+  } else {
+    ensureRotateHint(false);
+  }
+  // écoute les changements d’orientation pour masquer/afficher le hint
+  window.addEventListener('resize', onResizeOrientation, { passive:true });
+  screen.orientation?.addEventListener?.('change', onResizeOrientation);
+}
+
+function onResizeOrientation(){
+  if (!duel.active) return;
+  if (isLandscape()) ensureRotateHint(false);
+  else ensureRotateHint(true);
 }
 
 /**
@@ -101,21 +200,33 @@ export function enterDuel(foeType='jelly'){
 export function tickDuel(dt, ctx){
   if (!duel.active) return;
 
-  const mw = (ctx.canvas.width  / (window.devicePixelRatio||1));
-  const mh = (ctx.canvas.height / (window.devicePixelRatio||1));
+  // phase d’entrée → petit fade/intro
+  if (duel.phase === 'enter'){
+    if (now() - duel.enterAt >= DUEL.ENTER_FADE_MS){
+      duel.phase = 'fight';
+    }
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  const mw = ctx.canvas.width  / dpr;
+  const mh = ctx.canvas.height / dpr;
+
+  // positions (plein écran)
   const pad = DUEL.ARENA_PAD;
-  const leftX = pad + 80, rightX = mw - pad - 80;
-  const midY = Math.max(100, Math.min(mh-100, mh*0.55));
+  const leftX = pad + 100, rightX = mw - pad - 100;
+  const midY = Math.max(100, Math.min(mh-100, mh*0.56));
 
   duel.player.x = leftX;  duel.player.y = midY;
   duel.foe.x    = rightX; duel.foe.y    = midY;
 
+  if (duel.phase !== 'fight') return; // pas de tirs avant la fin du fade
+
   // IA tir ennemi
   const cfg = DUEL.FOE[duel.foeType];
-  const now = performance.now();
-  if (now >= duel.foe.fireAt){
+  const t = now();
+  if (t >= duel.foe.fireAt){
     fireFoeProjectile(cfg);
-    duel.foe.fireAt = now + randBetween(cfg.fireMs[0], cfg.fireMs[1]);
+    duel.foe.fireAt = t + randBetween(cfg.fireMs[0], cfg.fireMs[1]);
   }
 
   // projectiles
@@ -151,21 +262,30 @@ export function tickDuel(dt, ctx){
 }
 
 /**
- * Dessin du duel (overlay, barres, sprites, projectiles, HUD)
+ * Dessin du duel (plein écran)
  * sprites: { birdImg, crowImg, jellyImg, spiderImg? }
  */
-export function renderDuel(ctx, view, sprites){
-  const { ox, oy, dw, dh } = view;
-  // écran TV
+export function renderDuel(ctx, _view, sprites){
+  const dpr = window.devicePixelRatio || 1;
+  const mw = ctx.canvas.width  / dpr;
+  const mh = ctx.canvas.height / dpr;
+
+  // cadre "TV" plein écran avec marges
+  const pad = 14;
+  const ox = pad, oy = pad, dw = mw - pad*2, dh = mh - pad*2;
+
+  // fond
   ctx.save();
-  ctx.strokeStyle = '#222'; ctx.lineWidth = 10;
-  ctx.strokeRect(ox+14, oy+14, dw-28, dh-28);
   ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  ctx.fillRect(ox+14, oy+14, dw-28, dh-28);
+  ctx.fillRect(ox, oy, dw, dh);
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 10;
+  ctx.strokeRect(ox, oy, dw, dh);
   ctx.restore();
 
   // HP bars
-  drawHpBar(ctx, ox+34, oy+34, dw-68, 16, duel.player.hp/DUEL.PLAYER_HP, duel.foe.hp/DUEL.FOE_HP);
+  drawHpBar(ctx, ox+20, oy+20, dw-40, 16,
+            duel.player.hp/DUEL.PLAYER_HP,
+            duel.foe.hp/DUEL.FOE_HP);
 
   // sprites
   const size = Math.min(dw, dh) * 0.22;
@@ -185,12 +305,24 @@ export function renderDuel(ctx, view, sprites){
 
   // HUD munitions
   drawSpecialHud(ctx, ox, oy+dh-64, dw, 48, duel.ammo);
+
+  // fade-in d’entrée
+  if (duel.phase === 'enter'){
+    const k = Math.max(0, 1 - (now() - duel.enterAt)/DUEL.ENTER_FADE_MS);
+    if (k > 0){
+      ctx.save();
+      ctx.fillStyle = `rgba(0,0,0,${0.7*k})`;
+      ctx.fillRect(0,0,mw,mh);
+      ctx.restore();
+    }
+  }
 }
 
 // ---------------------------------------------------------
 // Entrées (clavier + boutons tactiles)
 // ---------------------------------------------------------
 export function setupDuelInputs(){
+  // clavier (utile sur desktop)
   window.addEventListener('keydown', (e)=>{
     if (!duel.active) return;
     if (e.repeat) return;
@@ -217,23 +349,26 @@ function ensureDuelButtons(show){
       const b = document.createElement('button');
       b.type='button';
       b.textContent = txt;
-      b.style.cssText = `min-width:84px; padding:10px 12px; border-radius:12px; border:0; font:700 14px system-ui; background:${bg}`;
+      b.style.cssText = `min-width:110px; padding:12px 14px; border-radius:12px; border:0; font:700 14px system-ui; background:${bg}`;
       return b;
     };
-    const a = mkBtn('A • Normal', '#ffd166');
+    const a = mkBtn('A • Normal',  '#ffd166');
     const b = mkBtn('B • Spécial', '#06d6a0');
     root.appendChild(a); root.appendChild(b);
     document.body.appendChild(root);
     duel.aBtn = a; duel.bBtn = b;
     a.addEventListener('click', firePlayerNormal);
     b.addEventListener('click', firePlayerSpecial);
+  } else {
+    root.style.display = 'flex';
   }
 }
 
 // ---------------------------------------------------------
-// Tir & rendu internes
+// Tir & logique internes
 // ---------------------------------------------------------
 function firePlayerNormal(){
+  if (!duel.active) return;
   duel.projectiles.push({
     x: duel.player.x + 24,
     y: duel.player.y - 10 + Math.random()*20,
@@ -246,7 +381,8 @@ function firePlayerNormal(){
 }
 
 function firePlayerSpecial(){
-  // priorité: caffe -> rustico -> pasticciotto (modifiable)
+  if (!duel.active) return;
+  // priorité: caffe -> rustico -> pasticciotto
   const order = ['caffe','rustico','pasticciotto'];
   const pick = order.find(k => (duel.ammo[k]|0) > 0);
   if (!pick) { firePlayerNormal(); return; }
@@ -265,7 +401,7 @@ function firePlayerSpecial(){
 
   if (spec.burst && spec.burst > 1){
     for(let i=0;i<spec.burst;i++){
-      setTimeout(()=>{ duel.projectiles.push(makeBullet()); beep(900,0.05); }, i*(spec.burstGapMs||120));
+      setTimeout(()=>{ if (duel.active) { duel.projectiles.push(makeBullet()); beep(900,0.05); } }, i*(spec.burstGapMs||120));
     }
   } else {
     duel.projectiles.push(makeBullet());
@@ -287,10 +423,22 @@ function fireFoeProjectile(cfg){
 }
 
 function exitDuel(victory){
+  duel.phase = 'exit';
   ensureDuelButtons(false);
-  duel.active = false;
-  if (victory) duel.onWin();
-  else duel.onLose();
+  ensureRotateHint(false);
+
+  // arrête l’écoute orientation
+  window.removeEventListener('resize', onResizeOrientation);
+  screen.orientation?.removeEventListener?.('change', onResizeOrientation);
+
+  // on laisse le rendu se finir cette frame, puis on nettoie
+  setTimeout(async ()=>{
+    duel.active = false;
+    await unlockOrientation();
+    await exitFullscreen();
+    if (victory) duel.onWin();
+    else duel.onLose();
+  }, 10);
 }
 
 // ---- helpers dessin ----
@@ -304,13 +452,13 @@ function drawHpBar(ctx, x, y, w, h, leftRatio, rightRatio){
   ctx.restore();
 }
 
-function drawFighter(ctx, cx, cy, size, img, flip){
+function drawFighter(ctx, cx, cy, size, img, faceRight=true){
   ctx.save();
-  if (!flip){ ctx.translate(cx, cy); ctx.scale(-1, 1); ctx.translate(-cx, -cy); }
+  if (!faceRight){ ctx.translate(cx, cy); ctx.scale(-1, 1); ctx.translate(-cx, -cy); }
   if (img && img.complete && img.naturalWidth){
     ctx.drawImage(img, cx - size/2, cy - size/2, size, size);
   } else {
-    ctx.fillStyle = flip ? '#333' : '#b04123';
+    ctx.fillStyle = faceRight ? '#333' : '#b04123';
     ctx.beginPath(); ctx.arc(cx, cy, size*0.35, 0, Math.PI*2); ctx.fill();
   }
   ctx.restore();
@@ -318,7 +466,7 @@ function drawFighter(ctx, cx, cy, size, img, flip){
 
 function drawSpecialHud(ctx, x, y, w, h, ammo){
   ctx.save();
-  ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fillRect(x+20, y, w-40, h);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillRect(x+20, y, w-40, h);
   ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.strokeRect(x+20.5, y+0.5, w-41, h-1);
   ctx.font='700 14px system-ui'; ctx.fillStyle='#000';
 
@@ -335,45 +483,4 @@ function drawSpecialHud(ctx, x, y, w, h, ammo){
 
   ctx.fillText('A: Coup normal  /  B: Spécial', x+28, y-8);
   ctx.restore();
-}
-// duel.js
-
-let duelControls = null;
-let attackCb = null;
-
-export function setDuelAttackCallback(cb){
-  attackCb = cb; // cb(type) ex: "normal", "pasticciotto", "rustico", "caffe"
-}
-
-export function showDuelControls(show=true){
-  if (show) {
-    if (!duelControls){
-      duelControls = document.createElement('div');
-      duelControls.id = '__duel_controls';
-      duelControls.style.cssText = `
-        position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
-        display:flex; gap:12px; z-index:10003;
-      `;
-      const mkBtn = (emoji, type) => {
-        const b = document.createElement('button');
-        b.textContent = emoji;
-        b.style.cssText = `
-          font-size:28px; padding:14px 18px;
-          border-radius:12px; border:2px solid #444;
-          background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.25);
-        `;
-        b.addEventListener('click', ()=> attackCb && attackCb(type));
-        return b;
-      };
-      duelControls.appendChild(mkBtn("👊", "normal"));
-      duelControls.appendChild(mkBtn("🍩", "pasticciotto"));
-      duelControls.appendChild(mkBtn("🥟", "rustico"));
-      duelControls.appendChild(mkBtn("☕", "caffe"));
-
-      document.body.appendChild(duelControls);
-    }
-    duelControls.style.display = 'flex';
-  } else {
-    if (duelControls) duelControls.style.display = 'none';
-  }
 }
