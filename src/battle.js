@@ -96,6 +96,11 @@ export function startBattle(foeType='jelly'){
   _ensureBattleUI(true);    // affiche les pads battle
   _maybeLockLandscape();    // tente FS + lock paysage
   _updateRotateOverlay();   // si en portrait, montrer overlay
+  _maybeLockLandscape();    // tente FS + lock paysage
+
+  // --- ajout stabilisation écran ---
+  setTimeout(()=>window.dispatchEvent(new Event('resize')), 100);
+  setTimeout(()=>window.dispatchEvent(new Event('resize')), 350);
 }
 
 export function isBattleActive(){ return state.active; }
