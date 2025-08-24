@@ -281,20 +281,57 @@ export function boot(){
 
   // ===== Canvas sizing =====
   let W = 0, H = 0, dpr = 1;
-  function resize(){
-    dpr = pickDPR();
-    const parent = canvas.parentElement || document.body;
-    W = parent.clientWidth  || window.innerWidth  || 360;
-    H = parent.clientHeight || window.innerHeight || 640;
-    canvas.width  = Math.max(1, Math.round(W * dpr));
-    canvas.height = Math.max(1, Math.round(H * dpr));
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  resize();
-  window.addEventListener('resize', resize, { passive:true });
+// ===== Canvas sizing (plus robuste mobile) =====
+let W = 0, H = 0, dpr = 1;
 
+function resizeCanvasHard() {
+  // forcer le scroll en haut pour éviter la zone "collée"
+  try { window.scrollTo(0,0); requestAnimationFrame(()=>window.scrollTo(0,0)); } catch {}
+}
+
+// ===== Canvas sizing (plus robuste mobile) =====
+let W = 0, H = 0, dpr = 1;
+
+function resizeCanvasHard() {
+  // forcer le scroll en haut pour éviter la zone "collée"
+  try {
+    window.scrollTo(0,0);
+    requestAnimationFrame(()=>window.scrollTo(0,0));
+  } catch {}
+}
+
+function resize(){
+  const vp = window.visualViewport;
+  W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
+  H = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  canvas.width  = Math.max(1, Math.floor(W * dpr));
+  canvas.height = Math.max(1, Math.floor(H * dpr));
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ⚡️ On appelle tout de suite resize une première fois
+resize();
+
+// événements
+window.addEventListener('resize', resize, { passive:true });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    resize();
+    resizeCanvasHard();
+  }, { passive:true });
+}
+
+window.addEventListener('orientationchange', () => {
+  // la rotation livre souvent des tailles intermédiaires → on recalcule 2x
+  setTimeout(resize, 60);
+  setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
+}, { passive:true });
+  
   // ------- Game state -------
   // modes: 'splash' | 'play' | 'battle_intro' | 'battle' | 'win' | 'dead'
   let mode = 'splash';
