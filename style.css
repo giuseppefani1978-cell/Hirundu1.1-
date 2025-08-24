@@ -206,3 +206,31 @@ canvas#c {
   position: absolute;   /* la plupart l’ont déjà */
   z-index: 22;          /* > 1 pour être au-dessus du canvas */
 }
+/* plein écran fiable, stop scroll/bounce */
+html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
+.wrap, .game { height:100%; }
+
+/* le canvas colle au viewport, quelles que soient les barres système */
+#c {
+  position: fixed; inset: 0;
+  width: 100vw;
+  height: 100dvh;          /* unités dynamiques modernes */
+  display:block;
+}
+
+@supports (height: 100svh) {
+  #c { height: 100svh; }   /* encore plus stable si supporté */
+}
+
+/* évite que les pads ou overlays déplacent la page */
+#touch, #__battle_ui__, #__battle_rotate__ {
+  touch-action: none;
+}
+
+/* iOS safe areas (encoches) si tu as des HUD en bord d'écran */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
