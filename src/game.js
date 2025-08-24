@@ -126,6 +126,11 @@ function getCountry(){
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 // ------- UI HOF PANEL -------
+function formatBonusBreakdown(bb){
+  if (!bb) return '';
+  const P = bb.pasticciotto||0, R = bb.rustico||0, C = bb.caffe||0;
+  return `P:${P} • R:${R} • C:${C}`;
+}
 function ensureHofPanel(){
   let panel = document.getElementById('__hof__');
   if (panel) return panel;
@@ -166,6 +171,7 @@ function renderHofTable(list){
       <td class="score">${e.score}</td>
       <td>${e.stars}★</td>
       <td>${e.bonuses}</td>
+      <td>${formatBonusBreakdown(e.bonusBreakdown)}</td>
       <td>${e.hits}</td>
       <td>${fmtTime(e.time)}</td>
       <td>${new Date(e.date).toLocaleString()}</td>
@@ -185,10 +191,10 @@ function renderHofTable(list){
       <thead>
         <tr>
           <th>#</th><th>Pays</th><th>Joueur</th><th>Score</th><th>Étoiles</th>
-          <th>Bonus</th><th>Coups</th><th>Temps</th><th>Date</th>
+          <th>Bonus</th><th>Détail bonus</th><th>Coups</th><th>Temps</th><th>Date</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="9" style="opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="10" style="opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
     </table>
   `;
   host.style.display = 'block';
@@ -239,9 +245,9 @@ export function boot(){
   const imgRustico      = new Image();
   const imgCaffe        = new Image();
 
-imgPasticciotto.src = ASSETS.BONUS_PASTICCIOTTO;
-imgRustico.src      = ASSETS.BONUS_RUSTICO;
-imgCaffe.src        = ASSETS.BONUS_CAFFE;
+  imgPasticciotto.src = ASSETS.BONUS_PASTICCIOTTO;
+  imgRustico.src      = ASSETS.BONUS_RUSTICO;
+  imgCaffe.src        = ASSETS.BONUS_CAFFE;
 
   mapImg.onload    = () => { dbg('map load OK'); resize(); };
   mapImg.onerror   = () => ui.assetFail('Map', ASSETS.MAP_URL);
@@ -301,22 +307,24 @@ imgCaffe.src        = ASSETS.BONUS_CAFFE;
   let hitShake = 0;
 
   // ------ SCORE RUNTIME ------
-let score = 0;
-let hits = 0;
-let bonusesPicked = 0;
-let bonusScore = 0;     // <- NOUVEAU : somme des points issus des bonus
-let starsPicked = 0;
-let gameStartAt = 0;
-let finalized = false;
-let playerName = null;
-let country = getCountry();
+  let score = 0;
+  let hits = 0;
+  let bonusesPicked = 0;
+  let bonusScore = 0;     // somme des points issus des bonus
+  let starsPicked = 0;
+  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 }; // ← NEW
+  let gameStartAt = 0;
+  let finalized = false;
+  let playerName = null;
+  let country = getCountry();
 
-function scoreReset(){
-  score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; starsPicked = 0;
-  gameStartAt = performance.now();
-  finalized = false;
-  updateScoreLive();
-}
+  function scoreReset(){
+    score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; starsPicked = 0;
+    pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
+    gameStartAt = performance.now();
+    finalized = false;
+    updateScoreLive();
+  }
 
   // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
@@ -350,24 +358,31 @@ function scoreReset(){
     enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
   }
   function spawnBonus(){
-  // tirage pondéré selon probabilité
-  const r = Math.random();
-  let type = BONUS_TYPES.PASTICCIOTTO;
-  if (r < BONUS_TYPES.PASTICCIOTTO.prob) type = BONUS_TYPES.PASTICCIOTTO;
-  else if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) type = BONUS_TYPES.RUSTICO;
-  else type = BONUS_TYPES.CAFFE;
+    // tirage pondéré selon probabilité
+    const r = Math.random();
+    let type = BONUS_TYPES.PASTICCIOTTO;
+    if (r < BONUS_TYPES.PASTICCIOTTO.prob) type = BONUS_TYPES.PASTICCIOTTO;
+    else if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) type = BONUS_TYPES.RUSTICO;
+    else type = BONUS_TYPES.CAFFE;
 
-  bonuses.push({
-    type: type.key,
-    score: type.score,
-    heal: type.heal,
-    x: Math.random()*0.9+0.05,
-    y: Math.random()*0.9+0.05,
-    life: BONUS_CONFIG.LIFETIME_S,
-    age: 0,
-    pulse: 0
-  });
-}
+    bonuses.push({
+      type: type.key,
+      score: type.score,
+      heal: type.heal,
+      x: Math.random()*0.9+0.05,
+      y: Math.random()*0.9+0.05,
+      life: BONUS_CONFIG.LIFETIME_S,
+      age: 0,
+      pulse: 0
+    });
+  }
+
+  function bonusLabel(b){
+    const name =
+      (b.type === 'caffe') ? 'Caffè Leccese' :
+      (b.type === 'rustico') ? 'Rustico' : 'Pasticciotto';
+    return `+${b.score} ${name}  (+${b.heal} NRJ)`;
+  }
 
   function finalizeRun({won}) {
     if (finalized) return;
@@ -385,6 +400,8 @@ function scoreReset(){
       time: performance.now() - gameStartAt,
       date: new Date().toISOString(),
       won: !!won,
+      bonusScore,                         // ← NEW
+      bonusBreakdown: { ...pickedCounts } // ← NEW
     };
     addToHof(entry);
 
@@ -392,10 +409,15 @@ function scoreReset(){
     const lines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
-      `Temps: ${fmtTime(entry.time)}`,
-      ``,
-      `👉 check le Hall of Fame en bas du HUD.`
     ];
+
+    // détail bonus dans l’écran de fin
+    const breakdown = `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`;
+    lines.push(breakdown);
+    lines.push(`Temps: ${fmtTime(entry.time)}`);
+    lines.push('');
+    lines.push(`👉 check le Hall of Fame en bas du HUD.`);
+
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
   }
@@ -454,7 +476,7 @@ function scoreReset(){
     const by = oy + player.y*dh;
 
     if (mode === 'play') {
-      const { collided, picked } = handleCollisions({ bx, by, ox, oy, dw, dh });
+      const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
       if (collided) setEnergy(energy - 18);
       const dead = energy <= 0;
       if (dead) { return triggerGameOver(); }
@@ -462,11 +484,11 @@ function scoreReset(){
 
     if (mode === 'play') {
       drawBonuses(
-  ctx,
-  bonuses,
-  { ox, oy, dw, dh },
-  { imgPasticciotto, imgRustico, imgCaffe }
-);
+        ctx,
+        bonuses,
+        { ox, oy, dw, dh },
+        { imgPasticciotto, imgRustico, imgCaffe }
+      );
       drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
 
@@ -498,11 +520,11 @@ function scoreReset(){
         ui.renderStars(collected.size, STARS_TARGET);
         starEmphasis();
         // Petit label éphémère au-dessus du POI
-ui.showEphemeralLabel(px, py - 28, poiName(p.key), { 
-  color: 'rgba(255,255,255,0.7)', // fond blanc translucide
-  durationMs: 950,
-  dy: -30
-});
+        ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
+          color: 'rgba(255,255,255,0.7)',
+          durationMs: 950,
+          dy: -30
+        });
         // scoring étoile
         score += SCORE.STAR; starsPicked++; updateScoreLive();
 
@@ -514,7 +536,6 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
         if (currentIdx === QUEST.length){
           triggerWin();
         } else {
-          // ⏱️ attendre 1 seconde AVANT la nouvelle question
           setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
         }
       }
@@ -580,8 +601,10 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
 
   // ---------- collisions ----------
   function handleCollisions({ bx, by, ox, oy, dw, dh }){
-    let collided=false, picked=false;
+    let collided=false;
     const now = performance.now();
+
+    // Ennemis
     for (const e of enemies){
       if (e.state === 'flee') continue;
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
@@ -600,40 +623,51 @@ ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
         score += SCORE.HIT; hits++; updateScoreLive();
       }
     }
-  for (let i = bonuses.length - 1; i >= 0; i--) {
-  const b = bonuses[i];
-  const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
 
-  if (Math.hypot(bx - bpx, by - bpy) < BONUS_CONFIG.PICK_RADIUS_PX) {
-    picked = true;
-    playerSlowTimer = 0;
-    hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
+    // Bonus
+    for (let i = bonuses.length - 1; i >= 0; i--) {
+      const b = bonuses[i];
+      const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
 
-    // scoring & effets selon le type
-    score += b.score;
-    bonusScore += b.score;
-    bonusesPicked++;
-    setEnergy(energy + b.heal);
+      if (Math.hypot(bx - bpx, by - bpy) < BONUS_CONFIG.PICK_RADIUS_PX) {
+        playerSlowTimer = 0;
+        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
 
-    // petit son différent selon le type
-    const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
-    ping(hz, 0.35);
+        // scoring & effets selon le type
+        score += b.score;
+        bonusScore += b.score;
+        bonusesPicked++;
+        setEnergy(energy + b.heal);
 
-    // on retire le bonus
-    bonuses.splice(i, 1);
+        // label éphémère sur le bonus ramassé
+        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), {
+          color: 'transparent',
+          durationMs: 1000,
+          dy: -28
+        });
 
-    updateScoreLive();
+        // compteur par type
+        pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
+
+        // petit son différent selon le type
+        const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
+        ping(hz, 0.35);
+
+        // on retire le bonus
+        bonuses.splice(i, 1);
+
+        updateScoreLive();
+      }
+    }
+    return { collided };
   }
-}
 
-return { collided, picked };
-  }
   // ---------- modes ----------
   function triggerWin(){
     mode = 'win';
     finalizeRun({won:true});
-    stopMusic();        // coupe la boucle de fond
-    playFinaleLong();   // fanfare / musique de victoire
+    stopMusic();
+    playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
   }
 
@@ -731,18 +765,16 @@ return { collided, picked };
     }
   }
   const musicBtn = document.getElementById('musicBtn');
-if (musicBtn) {
-  // état initial
-  musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-
-  // clic → toggle
-  musicBtn.addEventListener('click', () => {
-    toggleMusic();
-    ui.setMusicLabel(isMusicOn());
+  if (musicBtn) {
     musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-  });
+    musicBtn.addEventListener('click', () => {
+      toggleMusic();
+      ui.setMusicLabel(isMusicOn());
+      musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
+    });
+  }
 }
-}
+
 // ------------------------
 // Rendu utilitaires
 // ------------------------
@@ -823,7 +855,6 @@ function drawBonuses(ctx, bonuses, bounds, images){
     ctx.restore();
   }
 }
-
 
 // --------- Win scene rendering + FX ----------
 function renderWin(ctx, view, sprites, winFx){
