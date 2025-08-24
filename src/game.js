@@ -3,17 +3,21 @@
 // CONFIG + GAMEPLAY (imports: i18n, ui, audio uniquement)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong, stopFinaleLoop } from './audio.js';
+import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong } from './audio.js';
 import * as ui from './ui.js';
+
+// ---- NEW: Battle modules (ex-duel supprimé) ----
+import { startBattleIntro } from './battle_intro.js';
 import {
-  isDuelActive,
-  setDuelCallbacks,
-  setDuelAmmoFromPicked,
-  setupDuelInputs,
-  enterDuel,
-  tickDuel,
-  renderDuel
-} from './duel.js';
+  setupBattleInputs,
+  setBattleCallbacks,
+  setBattleAmmo,
+  startBattle,
+  tickBattle,
+  renderBattle,
+  isBattleActive
+} from './battle.js';
+
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 
@@ -90,21 +94,12 @@ const BONUS = {
   RUSTICO: 'rustico',
   CAFFE: 'caffe'
 };
-
-/**
- * Définition des bonus :
- * - weight : probabilité relative d'apparition (plus grand = plus fréquent)
- * - score  : points ajoutés
- * - heal   : énergie rendue
- * - lifeS  : durée de vie (secondes)
- * - pingHz : feedback sonore (différencié)
- */
 const BONUS_TYPES = {
   PASTICCIOTTO: { key:'pasticciotto', score: 20, heal: 15, prob: 0.5 },
   RUSTICO:      { key:'rustico',      score: 40, heal: 25, prob: 0.35 },
   CAFFE:        { key:'caffe',        score: 70, heal: 40, prob: 0.15 }
 };
-// rayon/pick inchangé → on réutilise BONUS_CONFIG.PICK_RADIUS_PX
+
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
 // ----- SCORE CONFIG -----
@@ -147,7 +142,7 @@ function ensureHofPanel(){
   panel.style.cssText = `
     position:fixed; inset:0; z-index:10002; display:none;
     background:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.75));
-    color:#fff; font:14px system-ui; overflow:hidden; /* on gère le scroll dans le contenu */
+    color:#fff; font:14px system-ui; overflow:hidden;
   `;
   panel.innerHTML = `
     <div style="height:100%;max-width:900px;margin:0 auto;display:flex;flex-direction:column;padding:16px">
@@ -219,11 +214,11 @@ export function boot(){
 
   // UI init
   ui.initUI();
-  setupDuelInputs();
-setDuelCallbacks({
-  onWin:  () => triggerWin(),
-  onLose: () => triggerGameOver()
-});
+  setupBattleInputs();
+  setBattleCallbacks({
+    onWin:  () => triggerWin(),
+    onLose: () => triggerGameOver()
+  });
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -301,7 +296,8 @@ setDuelCallbacks({
   window.addEventListener('resize', resize, { passive:true });
 
   // ------- Game state -------
-  let mode = 'splash'; // 'splash' | 'play' | 'win' | 'dead'
+  // modes: 'splash' | 'play' | 'battle_intro' | 'battle' | 'win' | 'dead'
+  let mode = 'splash';
   let running = false;
   let lastTS = 0;
   let collected = new Set();
@@ -319,13 +315,16 @@ setDuelCallbacks({
   let playerSlowTimer = 0;
   let hitShake = 0;
 
+  // Anti double-collecte (bugfix)
+  let collectLockUntil = 0; // timestamp ms, on ignore la collecte tant que now < collectLockUntil
+
   // ------ SCORE RUNTIME ------
   let score = 0;
   let hits = 0;
   let bonusesPicked = 0;
   let bonusScore = 0;     // somme des points issus des bonus
   let starsPicked = 0;
-  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 }; // ← NEW
+  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 }; // + on passera aussi le nombre d’étoiles au battle
   let gameStartAt = 0;
   let finalized = false;
   let playerName = null;
@@ -336,6 +335,7 @@ setDuelCallbacks({
     pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
     gameStartAt = performance.now();
     finalized = false;
+    collectLockUntil = 0;
     updateScoreLive();
   }
 
@@ -371,7 +371,6 @@ setDuelCallbacks({
     enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
   }
   function spawnBonus(){
-    // tirage pondéré selon probabilité
     const r = Math.random();
     let type = BONUS_TYPES.PASTICCIOTTO;
     if (r < BONUS_TYPES.PASTICCIOTTO.prob) type = BONUS_TYPES.PASTICCIOTTO;
@@ -413,8 +412,8 @@ setDuelCallbacks({
       time: performance.now() - gameStartAt,
       date: new Date().toISOString(),
       won: !!won,
-      bonusScore,                         // ← NEW
-      bonusBreakdown: { ...pickedCounts } // ← NEW
+      bonusScore,
+      bonusBreakdown: { ...pickedCounts }
     };
     addToHof(entry);
 
@@ -422,15 +421,11 @@ setDuelCallbacks({
     const lines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
+      `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
+      `Temps: ${fmtTime(entry.time)}`,
+      ``,
+      `👉 check le Hall of Fame en bas du HUD.`
     ];
-
-    // détail bonus dans l’écran de fin
-    const breakdown = `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`;
-    lines.push(breakdown);
-    lines.push(`Temps: ${fmtTime(entry.time)}`);
-    lines.push('');
-    lines.push(`👉 check le Hall of Fame en bas du HUD.`);
-
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
   }
@@ -444,17 +439,17 @@ setDuelCallbacks({
       const dt = Math.min(0.05, (ts - lastTS)/1000);
       lastTS = ts;
 
-        if (mode === 'play') {
-    tickEnemies(dt);
-    if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-    if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-  } else if (mode === 'win') {
-    tickWin(dt);
-  } else if (mode === 'duel') {
-    // mise à jour du mode Duel
-    tickDuel(dt, ctx);
-  }
-}
+      if (mode === 'play') {
+        tickEnemies(dt);
+        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+      } else if (mode === 'win') {
+        tickWin(dt);
+      } else if (mode === 'battle') {
+        // boucle du mini-jeu “Bataille de Trento”
+        tickBattle(dt, ctx);
+      }
+    }
 
     // viewport + fond
     const mw = mapImg.naturalWidth || 1920;
@@ -462,6 +457,16 @@ setDuelCallbacks({
     const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
 
     ctx.clearRect(0,0,W,H);
+
+    // ----- rendu en fonction du mode -----
+    if (mode === 'battle' || isBattleActive()) {
+      // la battle gère son propre décor (placeholder ville de Trento dans battle.js)
+      renderBattle(ctx, { ox, oy, dw, dh }, { birdImg, spiderImg, crowImg, jellyImg });
+      requestAnimationFrame(draw);
+      return;
+    }
+
+    // mode "play" / "win" → on dessine la map
     if (mapImg.complete && mapImg.naturalWidth){
       ctx.drawImage(mapImg, ox, oy, dw, dh);
     } else {
@@ -470,7 +475,7 @@ setDuelCallbacks({
       ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
     }
 
-    // POIs
+    // POIs (seulement hors battle)
     for(const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
       if(collected.has(p.key)){
@@ -486,7 +491,7 @@ setDuelCallbacks({
       }
     }
 
-    // joueur (px)
+    // joueur (play uniquement)
     const bw = Math.min(160, Math.max(90, dw * player.size || 90));
     const bx = ox + player.x*dw;
     const by = oy + player.y*dh;
@@ -499,12 +504,7 @@ setDuelCallbacks({
     }
 
     if (mode === 'play') {
-      drawBonuses(
-        ctx,
-        bonuses,
-        { ox, oy, dw, dh },
-        { imgPasticciotto, imgRustico, imgCaffe }
-      );
+      drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
       drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
 
@@ -525,51 +525,64 @@ setDuelCallbacks({
       }
     }
 
-    // progression
+    // progression (bugfix: cooldown anti multi-collect)
     if (mode === 'play' && currentIdx < QUEST.length){
-      const p = QUEST[currentIdx];
-      const px = ox + p.x*dw, py = oy + p.y*dh;
-      const onTarget = Math.hypot(bx - px, by - py) < 44;
-      if(onTarget){
-        collected.add(p.key);
-        ui.updateScore(collected.size, STARS_TARGET);
-        ui.renderStars(collected.size, STARS_TARGET);
-        starEmphasis();
-        // Petit label éphémère au-dessus du POI
-        ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
-          color: 'rgba(255,255,255,0.7)',
-          durationMs: 950,
-          dy: -30
-        });
-        // scoring étoile
-        score += SCORE.STAR; starsPicked++; updateScoreLive();
+      const now = performance.now();
+      if (now >= collectLockUntil){
+        const p = QUEST[currentIdx];
+        const px = ox + p.x*dw, py = oy + p.y*dh;
+        const onTarget = Math.hypot(bx - px, by - py) < 44;
+        if(onTarget){
+          collectLockUntil = now + 900; // ← empêche d’enchaîner 2-3 POIs la même frame
+          collected.add(p.key);
+          ui.updateScore(collected.size, STARS_TARGET);
+          ui.renderStars(collected.size, STARS_TARGET);
+          starEmphasis();
+          ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+          score += SCORE.STAR; starsPicked++; updateScoreLive();
 
-        const nameShort = poiName(p.key);
-        ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
+          const nameShort = poiName(p.key);
+          ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
-        currentIdx++;
+          currentIdx++;
 
-        if (currentIdx === QUEST.length){
-        // passer en mode duel (niveau 1 : méduses)
-
-        ui.showTouch(false); // masque le D-pad normal
-
-        setDuelAmmoFromPicked(pickedCounts || { pasticciotto:0, rustico:0, caffe:0 });
-        mode = enterDuel('jelly'); // ou 'crow' pour un autre niveau;
-        } else {
-        setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
-       }
+          if (currentIdx === QUEST.length){
+            // → Transition vers “Bataille de Trento” (intro séparée + orientation paysage)
+            enterBattleFlow();
+          } else {
+            setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1200);
+          }
+        }
       }
     }
 
     if (mode === 'win') {
       renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
     }
-    if (mode === 'duel') {
-      renderDuel(ctx, { ox, oy, dw, dh }, { birdImg, spiderImg, crowImg, jellyImg });
-    }
 
     requestAnimationFrame(draw);
+  }
+
+  // ---------- Battle flow ----------
+  function enterBattleFlow(){
+    mode = 'battle_intro';
+    ui.showTouch(false);
+    // Passe les munitions bonus + les étoiles collectées (comme “shuriken”)
+    setBattleAmmo({
+      pasticciotto: pickedCounts.pasticciotto|0,
+      rustico: pickedCounts.rustico|0,
+      caffe: pickedCounts.caffe|0,
+      stars: starsPicked|0
+    });
+    // Écran d’intro (affiche “Bataille de Trento”, invite à pivoter en horizontal, etc.)
+    startBattleIntro({
+      ammo: { ...pickedCounts, stars: starsPicked|0 },
+      onProceed: () => {
+        // Quand le joueur appuie sur “Commencer” depuis l’intro
+        mode = 'battle';
+        startBattle('jelly'); // niveau 1 : méduses
+      }
+    });
   }
 
   // ---------- ticks ----------
@@ -663,7 +676,7 @@ setDuelCallbacks({
         bonusesPicked++;
         setEnergy(energy + b.heal);
 
-        // label éphémère sur le bonus ramassé
+        // label éphémère
         ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), {
           color: 'transparent',
           durationMs: 1000,
@@ -887,7 +900,6 @@ function renderWin(ctx, view, sprites, winFx){
   const cx = ox + dw/2;
   const cy = oy + dh/2;
 
-  // Duo au centre (2× plus gros)
   const t = winFx.t;
   const base = Math.min(dw, dh) * 0.36;
   const s = 0.9 + 0.08*Math.sin(t*4);
@@ -910,7 +922,6 @@ function renderWin(ctx, view, sprites, winFx){
   }
   ctx.restore();
 
-  // Feux d’artifice
   for (const p of winFx.fw){
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.life / p.life0);
