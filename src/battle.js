@@ -1,6 +1,6 @@
 // src/battle.js
 // ---------------------------------------------------------
-// Mini-jeu "Bataille de Trento" — version avec GRACE PERIOD + READY/GO
+// Mini-jeu "Bataille de Trento" — orientation paysage + pads tactiles
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
@@ -16,14 +16,14 @@ const BTL = {
   SHOT: 760,
   FOE_SHOT: 520,
 
-  FOE_FIRE_MS_MIN: 700,
-  FOE_FIRE_MS_MAX: 1200,
+  FOE_FIRE_MS_MIN: 900,
+  FOE_FIRE_MS_MAX: 1400,
 
-  HIT_R: 30, // ← un peu moins permissif
+  HIT_R: 28,
 
-  START_GRACE_MS: 1000,   // ← 1s de mise en route (pas de dégâts)
-  COUNTDOWN_MS: 900,      // ← "READY…" avant GO
-  GO_FLASH_MS: 500        // ← petit "GO!" visuel
+  START_GRACE_MS: 1000,
+  COUNTDOWN_MS: 900,
+  GO_FLASH_MS: 500
 };
 
 let state = {
@@ -32,7 +32,7 @@ let state = {
   w: 960, h: 540,
 
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
-  foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: 0 },
+  foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity },
 
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
@@ -41,25 +41,27 @@ let state = {
 
   onWin: ()=>{}, onLose: ()=>{},
 
-  // phases affichage/tempo
-  startAt: 0,          // timestamp démarrage battle
-  goAt: 0,             // moment du "GO" (fin du READY)
-  graceUntil: 0,       // pas de dégâts avant cette date
-  foeFireBlockUntil: 0,// l’ennemi ne peut pas tirer avant ça
+  startAt: 0,
+  goAt: 0,
+  graceUntil: 0,
+  foeFireBlockUntil: 0,
 
-  // décor pré-calculé
-  skyline: null
+  skyline: null,
+
+  // UI éléments battle
+  ui: { root:null, move:null, ab:null, rotateOverlay:null }
 };
 
 // ---------------------------------------------------------
-// API attendue par game.js
+// API
 // ---------------------------------------------------------
 export function setupBattleInputs(){
   window.removeEventListener('keydown', _onKeyDown, true);
   window.removeEventListener('keyup', _onKeyUp, true);
   window.addEventListener('keydown', _onKeyDown, true);
   window.addEventListener('keyup', _onKeyUp, true);
-  ensureTouchBtns();
+  _ensureBattleUI(false); // créer mais caché
+  _installOrientationWatch();
 }
 
 export function setBattleCallbacks({ onWin, onLose } = {}){
@@ -75,7 +77,7 @@ export function setBattleAmmo(ammo){
 }
 
 export function startBattle(foeType='jelly'){
-  if (state.active) return; // évite double start
+  if (state.active) return;
   state.active = true;
   state.foeType = foeType;
 
@@ -85,30 +87,31 @@ export function startBattle(foeType='jelly'){
 
   const now = performance.now();
   state.startAt = now;
-  state.goAt = now + BTL.COUNTDOWN_MS;                        // READY… jusqu’à goAt
-  state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS; // encore 1s de grâce après GO
-  state.foeFireBlockUntil = state.goAt + 900;                 // foe attend ~0.9s après GO
+  state.goAt = now + BTL.COUNTDOWN_MS;
+  state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
+  state.foeFireBlockUntil = state.goAt + 1000;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
+
+  _ensureBattleUI(true);    // affiche les pads battle
+  _maybeLockLandscape();    // tente FS + lock paysage
+  _updateRotateOverlay();   // si en portrait, montrer overlay
 }
 
 export function isBattleActive(){ return state.active; }
 
-export function tickBattle(dt /* seconds */){
+export function tickBattle(dt){
   if (!state.active) return;
-
-  // clamp dt pour éviter gros sauts
   dt = Math.min(0.05, Math.max(0.001, dt));
 
   const now = performance.now();
   const readyPhase = now < state.goAt;
   const inGrace   = now < state.graceUntil;
 
-  // Physique (joueur/ennemi)
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
-  // Déplacements joueur (bloqués pendant "READY…")
+  // Mouvements joueur (bloqués pendant READY…)
   state.player.vx = 0;
   if (!readyPhase){
     if (state.input.left)  { state.player.vx = -BTL.SPEED; state.player.facing = -1; }
@@ -116,19 +119,19 @@ export function tickBattle(dt /* seconds */){
     if (state.input.up && state.player.onGround){
       state.player.vy = BTL.JUMP_VY; state.player.onGround = false;
     }
+  } else {
+    // on purge pour éviter buffer
+    state.input.atk = false; state.input.spc = false;
   }
   state.player.x = Math.max(60, Math.min(state.w-60, state.player.x + state.player.vx * dt));
 
-  // Attaques joueur (bloquées pendant "READY…")
+  // Attaques joueur
   if (!readyPhase){
     if (_consume('atk'))  _fireNormal();
     if (_consume('spc'))  _fireSpecial();
-  } else {
-    // on consomme quand même pour éviter mise en mémoire d’un spam pendant READY
-    _consume('atk'); _consume('spc');
   }
 
-  // IA de base foe (pas pendant READY)
+  // IA simple
   if (!readyPhase){
     const dist = state.foe.x - state.player.x;
     if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
@@ -146,7 +149,6 @@ export function tickBattle(dt /* seconds */){
     const s = state.shots[i];
     s.x += s.vx * dt; s.y += s.vy * dt;
 
-    // Collisions (désactivées pendant la grâce)
     if (!inGrace){
       if (s.from === 'player'){
         const dx = s.x - state.foe.x, dy = s.y - 0;
@@ -168,10 +170,10 @@ export function tickBattle(dt /* seconds */){
     if (s.x < -80 || s.x > state.w+80) state.shots.splice(i,1);
   }
 
-  // Fin de manche (pas pendant READY/GO et hors grâce)
-  if (!readyPhase && !inGrace){
-    if (state.foe.hp <= 0){ state.active = false; state.onWin();  }
-    if (state.player.hp <= 0){ state.active = false; state.onLose(); }
+  // Fin de manche (hors READY/GRACE)
+  if (now >= state.graceUntil){
+    if (state.foe.hp <= 0) { _endBattle(true);  }
+    if (state.player.hp <= 0) { _endBattle(false); }
   }
 }
 
@@ -181,7 +183,7 @@ export function renderBattle(ctx, _view, sprites){
   const h = ctx.canvas.height / dpr;
   state.w = w; state.h = h;
 
-  // Fond (Trento placeholder)
+  // Fond (placeholder)
   ctx.save();
   ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
   ctx.fillStyle = '#1d3b5a';
@@ -196,8 +198,8 @@ export function renderBattle(ctx, _view, sprites){
   ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
   ctx.restore();
 
-  // Personnages (gros)
-  const P_W = 120, P_H = 132;
+  // Personnages
+  const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H;
 
@@ -232,7 +234,7 @@ export function renderBattle(ctx, _view, sprites){
   ctx.fillText(`Foe: ${state.foe.hp}`,  w-120, 28);
   ctx.fillText(`★: ${state.ammo.stars}`, w/2-12, 28);
 
-  // READY… GO!
+  // READY / GO
   const now = performance.now();
   if (now < state.goAt){
     ctx.font='700 42px system-ui';
@@ -252,6 +254,12 @@ export function renderBattle(ctx, _view, sprites){
 // ---------------------------------------------------------
 // Internes
 // ---------------------------------------------------------
+function _endBattle(victory){
+  state.active = false;
+  _ensureBattleUI(false); // masque les pads
+  if (victory) state.onWin(); else state.onLose();
+}
+
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
   ent.y  += ent.vy * dt;
@@ -268,7 +276,6 @@ function _fireNormal(){
     dmg: 12
   });
 }
-
 function _fireSpecial(){
   const order = [
     ['caffe', { dmg: 26 }],
@@ -278,9 +285,7 @@ function _fireSpecial(){
   ];
   const pick = order.find(([k]) => (state.ammo[k]|0) > 0);
   if (!pick){ _fireNormal(); return; }
-
-  const [kind, spec] = pick;
-  state.ammo[kind]--;
+  const [kind, spec] = pick; state.ammo[kind]--;
 
   const mk = () => state.shots.push({
     x: state.player.x + (state.player.facing>0? 36 : -36),
@@ -291,11 +296,8 @@ function _fireSpecial(){
     dmg: spec.dmg
   });
 
-  if (spec.burst){
-    for (let i=0;i<spec.burst;i++) setTimeout(mk, i*(spec.gap||120));
-  } else {
-    mk();
-  }
+  if (spec.burst){ for (let i=0;i<spec.burst;i++) setTimeout(mk, i*(spec.gap||120)); }
+  else mk();
 }
 
 function _fireFoe(){
@@ -310,51 +312,143 @@ function _fireFoe(){
 }
 
 function _rnd(a,b){ return a + Math.random()*(b-a); }
-
-function _consume(name){
-  if (state.input[name]){ state.input[name] = false; return true; }
-  return false;
-}
+function _consume(name){ if (state.input[name]){ state.input[name]=false; return true; } return false; }
 
 // ---------------------------------------------------------
-// Entrées clavier + boutons tactiles
+// Entrées clavier
 // ---------------------------------------------------------
 function _onKeyDown(e){
   if (!state.active) return;
   if (e.repeat) return;
-  if (e.key === 'ArrowLeft')  state.input.left  = true;
-  if (e.key === 'ArrowRight') state.input.right = true;
-  if (e.key === 'ArrowUp')    state.input.up    = true;
-  if (e.key.toLowerCase() === 'a') state.input.atk = true;
-  if (e.key.toLowerCase() === 'b') state.input.spc = true;
+  const k = e.key;
+  if (k === 'ArrowLeft')  state.input.left  = true;
+  if (k === 'ArrowRight') state.input.right = true;
+  if (k === 'ArrowUp')    state.input.up    = true;
+  if (k && k.toLowerCase() === 'a') state.input.atk = true;
+  if (k && k.toLowerCase() === 'b') state.input.spc = true;
 }
 function _onKeyUp(e){
   if (!state.active) return;
-  if (e.key === 'ArrowLeft')  state.input.left  = false;
-  if (e.key === 'ArrowRight') state.input.right = false;
-  if (e.key === 'ArrowUp')    state.input.up    = false;
+  const k = e.key;
+  if (k === 'ArrowLeft')  state.input.left  = false;
+  if (k === 'ArrowRight') state.input.right = false;
+  if (k === 'ArrowUp')    state.input.up    = false;
 }
 
-function ensureTouchBtns(){
-  const id = '__battle_btns__';
-  let root = document.getElementById(id);
-  if (!root){
-    root = document.createElement('div');
-    root.id = id;
+// ---------------------------------------------------------
+// UI Battle (pads + overlay rotation)
+// ---------------------------------------------------------
+function _ensureBattleUI(show){
+  // conteneur global
+  if (!state.ui.root){
+    const root = document.createElement('div');
+    root.id = '__battle_ui__';
     root.style.cssText = `
-      position:fixed; right:12px; bottom:82px; z-index:10003; display:flex; flex-direction:column; gap:8px;
+      position:fixed; inset:0; pointer-events:none; z-index:10003; display:none;
     `;
-    const mk = (label, onTap) => {
-      const b = document.createElement('button');
-      b.type='button'; b.textContent = label;
-      b.style.cssText = 'min-width:84px;padding:10px 12px;border-radius:12px;border:0;font:700 14px system-ui;background:#ffd166';
-      b.addEventListener('click', onTap);
-      return b;
-    };
-    root.appendChild(mk('A • Attaque', ()=>{ if (state.active){ state.input.atk = true; }}));
-    root.appendChild(mk('B • Spécial', ()=>{ if (state.active){ state.input.spc = true; }}));
+    // pad déplacement (gauche)
+    const move = document.createElement('div');
+    move.style.cssText = `
+      position:absolute; left:12px; bottom:82px; display:flex; gap:8px; align-items:center; pointer-events:auto;
+    `;
+    move.innerHTML = `
+      <button data-act="left"  class="__padbtn">←</button>
+      <button data-act="up"    class="__padbtn">↑</button>
+      <button data-act="right" class="__padbtn">→</button>
+    `;
+
+    // pad A/B (droite)
+    const ab = document.createElement('div');
+    ab.style.cssText = `
+      position:absolute; right:12px; bottom:82px; display:flex; flex-direction:column; gap:8px; pointer-events:auto;
+    `;
+    ab.innerHTML = `
+      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
+      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
+    `;
+
+    // style boutons
+    const style = document.createElement('style');
+    style.textContent = `
+      .__padbtn{
+        min-width:84px; padding:12px 14px; border-radius:12px; border:0;
+        font:700 14px system-ui; background:#eee; box-shadow:0 4px 10px rgba(0,0,0,.25);
+      }
+    `;
+
+    // overlay rotation (portrait)
+    const rot = document.createElement('div');
+    rot.id = '__battle_rotate__';
+    rot.style.cssText = `
+      position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.75); color:#fff; font:700 18px system-ui; text-align:center; padding:20px; pointer-events:auto;
+    `;
+    rot.innerHTML = `<div>📱 Tourne ton téléphone en mode paysage pour la bataille.</div>`;
+
+    root.appendChild(style);
+    root.appendChild(move);
+    root.appendChild(ab);
+    root.appendChild(rot);
     document.body.appendChild(root);
+
+    // handlers tactiles
+    const press = (act, on)=> {
+      if (act === 'left')  state.input.left  = on;
+      if (act === 'right') state.input.right = on;
+      if (act === 'up')    state.input.up    = on;
+      if (on === true && act === 'atk') state.input.atk = true;
+      if (on === true && act === 'spc') state.input.spc = true;
+    };
+    root.querySelectorAll('.__padbtn').forEach(b=>{
+      const act = b.dataset.act;
+      b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
+      b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
+      b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
+      b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
+      b.addEventListener('mouseleave', e=>{ press(act, false); });
+      b.addEventListener('click',      e=>{ e.preventDefault(); }); // éviter double déclenchement
+    });
+
+    state.ui.root = root;
+    state.ui.move = move;
+    state.ui.ab = ab;
+    state.ui.rotateOverlay = rot;
   }
+
+  state.ui.root.style.display = show ? 'block' : 'none';
+}
+
+function _installOrientationWatch(){
+  window.addEventListener('orientationchange', _updateRotateOverlay, {passive:true});
+  window.addEventListener('resize', _updateRotateOverlay, {passive:true});
+}
+
+function _isLandscape(){
+  const o = screen.orientation;
+  if (o && o.type) return o.type.startsWith('landscape');
+  // fallback
+  return window.innerWidth >= window.innerHeight;
+}
+
+async function _maybeLockLandscape(){
+  // tente le plein écran puis le lock paysage (meilleur taux de réussite si déclenché depuis un user-gesture)
+  try {
+    if (document.fullscreenElement == null && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch{}
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape');
+    }
+  } catch {}
+}
+
+function _updateRotateOverlay(){
+  if (!state.ui.rotateOverlay) return;
+  // Affiche l’overlay si portrait ET battle active
+  const need = state.active && !_isLandscape();
+  state.ui.rotateOverlay.style.display = need ? 'flex' : 'none';
 }
 
 // ---------------------------------------------------------
