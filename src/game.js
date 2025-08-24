@@ -5,7 +5,15 @@
 import { t, poiName, poiInfo } from './i18n.js';
 import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong, stopFinaleLoop } from './audio.js';
 import * as ui from './ui.js';
-
+import {
+  isDuelActive,
+  setDuelCallbacks,
+  setDuelAmmoFromPicked,
+  setupDuelInputs,
+  enterDuel,
+  tickDuel,
+  renderDuel
+} from './duel.js';
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 
@@ -211,6 +219,11 @@ export function boot(){
 
   // UI init
   ui.initUI();
+  setupDuelInputs();
+setDuelCallbacks({
+  onWin:  () => triggerWin(),
+  onLose: () => triggerGameOver()
+});
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -431,14 +444,16 @@ export function boot(){
       const dt = Math.min(0.05, (ts - lastTS)/1000);
       lastTS = ts;
 
-      if (mode === 'play') {
-        tickEnemies(dt);
-        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-      } else if (mode === 'win') {
-        tickWin(dt);
-      }
-    }
+        if (mode === 'play') {
+    tickEnemies(dt);
+    if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+    if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+  } else if (mode === 'win') {
+    tickWin(dt);
+  } else if (mode === 'duel') {
+    // mise à jour du mode Duel
+    tickDuel(dt, ctx);
+  }
 
     // viewport + fond
     const mw = mapImg.naturalWidth || 1920;
@@ -534,7 +549,9 @@ export function boot(){
         currentIdx++;
 
         if (currentIdx === QUEST.length){
-          triggerWin();
+          // passer en mode duel (niveau 1 : méduses)
+        setDuelAmmoFromPicked(pickedCounts || { pasticciotto:0, rustico:0, caffe:0 });
+        mode = enterDuel('jelly'); // ou 'crow' pour un autre niveau;
         } else {
           setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 2000);
         }
@@ -543,6 +560,9 @@ export function boot(){
 
     if (mode === 'win') {
       renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
+    }
+    if (mode === 'duel') {
+      renderDuel(ctx, { ox, oy, dw, dh }, { birdImg, spiderImg, crowImg, jellyImg });
     }
 
     requestAnimationFrame(draw);
