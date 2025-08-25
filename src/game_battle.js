@@ -130,6 +130,33 @@ function _loop(ts) {
   renderBattle(_ctx, vp, _sprites);
 }
 
+// ------------------------------------------------------------------
+// Helpers plein-écran du canvas (ajoutés pour corriger le cadrage)
+// ------------------------------------------------------------------
+function _enterCanvasFullscreen() {
+  if (!_canvas) return;
+  // on sauvegarde le style pour pouvoir le restaurer ensuite
+  _canvas.__prevStyle = _canvas.getAttribute('style') || '';
+  _canvas.style.position = 'fixed';
+  _canvas.style.left = '0';
+  _canvas.style.top = '0';
+  _canvas.style.right = '0';
+  _canvas.style.bottom = '0';
+  _canvas.style.margin = '0';
+  _canvas.style.zIndex = '10002'; // sous les pads (10003)
+  // width/height sont gérées par _sizeCanvas() via _onResize()
+}
+
+function _exitCanvasFullscreen() {
+  if (!_canvas) return;
+  if (_canvas.__prevStyle != null) {
+    _canvas.setAttribute('style', _canvas.__prevStyle);
+    delete _canvas.__prevStyle;
+  } else {
+    _canvas.removeAttribute('style');
+  }
+}
+
 // ---------------------------
 // API publique (utilisée par battle_intro.js)
 // ---------------------------
@@ -141,6 +168,9 @@ export async function startBattleFlow(
   _canvas = document.getElementById('c');
   if (!_canvas) { alert("Canvas #c introuvable pour la battle."); return; }
   _ctx = _canvas.getContext('2d', { alpha:true });
+
+  // --- AJOUT : canvas en plein écran pendant la battle
+  _enterCanvasFullscreen();
 
   _bottomExtra = bottomExtra;
   _lastTS = 0;
@@ -197,6 +227,9 @@ export function stopBattleFlow() {
     try { window.visualViewport.removeEventListener('resize', _onResize); } catch {}
   }
   try { window.removeEventListener('resize', _onResize); } catch {}
+
+  // --- AJOUT : on restaure le style initial du canvas
+  _exitCanvasFullscreen();
 }
 
 export function isBattleActive() { return isActiveRaw(); }
