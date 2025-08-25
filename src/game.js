@@ -515,163 +515,153 @@ export function boot(){
 
   // ---------- Game loop ----------
   function draw(ts){
-    if(!running) return;
+  if(!running) return;
 
-    if(ts){
-      if(!lastTS) lastTS = ts;
-      const dt = Math.min(0.05, (ts - lastTS)/1000);
-      lastTS = ts;
+  // --- Time step / ticks ---
+  if (ts){
+    if(!lastTS) lastTS = ts;
+    const dt = Math.min(0.05, (ts - lastTS)/1000);
+    lastTS = ts;
 
-      if (mode === 'play') {
-        tickEnemies(dt);
-        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-      } else if (mode === 'win') {
-        tickWin(dt);
-      } else if (mode === 'battle') {
-        // boucle du mini-jeu “Bataille de Trento”
-        tickBattle(dt, ctx);
-      }
+    if (mode === 'play') {
+      tickEnemies(dt);
+      if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+      if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+    } else if (mode === 'win') {
+      tickWin(dt);
+    } else if (mode === 'battle') {
+      // boucle logique du mini-jeu (IA/physique interne)
+      tickBattle(dt, ctx);
     }
+  }
 
-    // viewport + fond
-    const mw = mapImg.naturalWidth || 1920;
-    const mh = mapImg.naturalHeight || 1080;
-    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
+  // --- Viewport carte de fond (utile hors battle) ---
+  const mw = mapImg.naturalWidth || 1920;
+  const mh = mapImg.naturalHeight || 1080;
+  const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
 
-    ctx.clearRect(0,0,W,H);
+  ctx.clearRect(0,0,W,H);
 
-  // ----- rendu en fonction du mode -----
-if (mode === 'battle' || isBattleActive()) {
-  // Scène collée au bas de l’écran, centrée horizontalement
-  const vp = computeBattleViewportBottom(W, H, {
-    sideExtra: 0,
-    bottomExtra: 16,   // mets 0 si tu veux “flush”,
-                       // ou ajuste pour aligner pile avec « FORCE REFRESH »
-  });
+  // =========================
+  //   RENDU MODE "BATTLE"
+  // =========================
+  if (mode === 'battle' || isBattleActive()) {
+    // Scène collée au bas de l’écran, centrée horizontalement
+    const vp = computeBattleViewportBottom(W, H, {
+      sideExtra: 0,
+      // ajuste si besoin pour aligner exactement avec "Force Refresh"
+      // (mets 0 pour coller au pixel en bas)
+      bottomExtra: 16
+    });
 
-  // si renderBattle attend juste {ox,oy,dw,dh} → OK
-  renderBattle(ctx, vp, { birdImg, spiderImg, crowImg, jellyImg });
+    // renderBattle dessine en utilisant {ox,oy,dw,dh} à l’échelle écran
+    renderBattle(ctx, vp, { birdImg, spiderImg, crowImg, jellyImg });
 
-  // (optionnel) si un jour renderBattle a aussi besoin des virtuels :
-  // renderBattle(ctx, { ...vp, vw: BTL_VIRTUAL.W, vh: BTL_VIRTUAL.H }, sprites);
+    requestAnimationFrame(draw);
+    return;
+  }
 
-  requestAnimationFrame(draw);
-  return;
-}
-  // On utilise 100% de l’écran, mais on centre la scène battle
-  const vw = BTL_VIRTUAL.W, vh = BTL_VIRTUAL.H;
+  // =========================
+  //   RENDU HORS "BATTLE"
+  // =========================
 
-  // Échelle uniforme pour couvrir le plus possible l’écran sans déformer
-  const s = Math.min(W / vw, H / vh);
+  // Fond carte
+  if (mapImg.complete && mapImg.naturalWidth){
+    ctx.drawImage(mapImg, ox, oy, dw, dh);
+  } else {
+    ctx.fillStyle = '#bfe2f8';
+    ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
+    ctx.fillStyle = '#0e2b4a';
+    ctx.font = '14px system-ui';
+    ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+  }
 
-  // Décalage pour centrer (on garde tout l’écran)
-  const tx = Math.round((W - vw * s) / 2);
-  const ty = Math.round((H - vh * s) / 2);
-
-  ctx.save();
-  ctx.translate(tx, ty);
-  ctx.scale(s, s);
-
-  // IMPORTANT : on passe un viewport LOCAL (0..vw, 0..vh).
-  // renderBattle dessine donc "comme si" la surface faisait vw×vh,
-  // et notre translate/scale l’aligne/centre plein écran.
-  renderBattle(ctx, { ox: 0, oy: 0, dw: vw, dh: vh }, { birdImg, spiderImg, crowImg, jellyImg });
-
-  ctx.restore();
-
-  requestAnimationFrame(draw);
-  return;
-}
-    // mode "play" / "win" → on dessine la map
-    if (mapImg.complete && mapImg.naturalWidth){
-      ctx.drawImage(mapImg, ox, oy, dw, dh);
+  // POIs
+  for (const p of POIS){
+    const x = ox + p.x*dw, y = oy + p.y*dh;
+    if (collected.has(p.key)){
+      drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
     } else {
-      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
-      ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
-      ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+      ctx.save();
+      ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
+      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
+      ctx.stroke();
+      ctx.restore();
     }
+  }
 
-    // POIs (seulement hors battle)
-    for(const p of POIS){
-      const x = ox + p.x*dw, y = oy + p.y*dh;
-      if(collected.has(p.key)){
-        drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
-      } else {
-        ctx.save();
-        ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
-        ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
-        ctx.stroke();
-        ctx.restore();
-      }
+  // Joueur + collisions + ennemis/bonus (mode play)
+  const bw = Math.min(160, Math.max(90, dw * player.size || 90));
+  const bx = ox + player.x*dw;
+  const by = oy + player.y*dh;
+
+  if (mode === 'play') {
+    const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
+    if (collided) setEnergy(energy - 18);
+    if (energy <= 0) { return triggerGameOver(); }
+
+    drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
+    drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
+  }
+
+  let sx=0, sy=0;
+  if (mode === 'play' && hitShake > 0){
+    const a = Math.min(1, hitShake / SHAKE.MAX_S);
+    const mag = 6 * a;
+    sx = (Math.random()*2-1)*mag;
+    sy = (Math.random()*2-1)*mag;
+  }
+
+  if (mode === 'play') {
+    if (birdImg.complete && birdImg.naturalWidth){
+      ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
+    } else {
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
     }
+  }
 
-    // joueur (play uniquement)
-    const bw = Math.min(160, Math.max(90, dw * player.size || 90));
-    const bx = ox + player.x*dw;
-    const by = oy + player.y*dh;
+  // Progression vers prochaine étoile
+  if (mode === 'play' && currentIdx < QUEST.length){
+    const now = performance.now();
+    if (now >= collectLockUntil){
+      const p = QUEST[currentIdx];
+      const px = ox + p.x*dw, py = oy + p.y*dh;
+      const onTarget = Math.hypot(bx - px, by - py) < 44;
+      if (onTarget){
+        collectLockUntil = now + 900;
+        collected.add(p.key);
+        ui.updateScore(collected.size, STARS_TARGET);
+        ui.renderStars(collected.size, STARS_TARGET);
+        starEmphasis();
+        ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
+          color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30
+        });
+        score += SCORE.STAR; starsPicked++; updateScoreLive();
 
-    if (mode === 'play') {
-      const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
-      if (collided) setEnergy(energy - 18);
-      const dead = energy <= 0;
-      if (dead) { return triggerGameOver(); }
-    }
+        const nameShort = poiName(p.key);
+        ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
-    if (mode === 'play') {
-      drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
-      drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
-    }
-
-    let sx=0, sy=0;
-    if (mode === 'play' && hitShake > 0){
-      const a = Math.min(1, hitShake / SHAKE.MAX_S);
-      const mag = 6 * a;
-      sx = (Math.random()*2-1)*mag;
-      sy = (Math.random()*2-1)*mag;
-    }
-
-    if (mode === 'play') {
-      if (birdImg.complete && birdImg.naturalWidth){
-        ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      }else{
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
-      }
-    }
-
-    // progression (bugfix: cooldown anti multi-collect)
-    if (mode === 'play' && currentIdx < QUEST.length){
-      const now = performance.now();
-      if (now >= collectLockUntil){
-        const p = QUEST[currentIdx];
-        const px = ox + p.x*dw, py = oy + p.y*dh;
-        const onTarget = Math.hypot(bx - px, by - py) < 44;
-        if(onTarget){
-          collectLockUntil = now + 900;
-          collected.add(p.key);
-          ui.updateScore(collected.size, STARS_TARGET);
-          ui.renderStars(collected.size, STARS_TARGET);
-          starEmphasis();
-          ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
-          score += SCORE.STAR; starsPicked++; updateScoreLive();
-
-          const nameShort = poiName(p.key);
-          ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
-
-          currentIdx++;
-
-          if (currentIdx === QUEST.length){
-            // → Transition vers “Bataille de Trento” (intro séparée + orientation paysage)
-            enterBattleFlow();
-          } else {
-            queueNextAsk(1200);
-          }
+        currentIdx++;
+        if (currentIdx === QUEST.length){
+          // Transition vers la battle
+          enterBattleFlow();
+        } else {
+          // reposer la prochaine question
+          queueNextAsk(1200);
         }
       }
     }
+  }
+
+  if (mode === 'win') {
+    renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
+  }
+
+  requestAnimationFrame(draw);
+}
 
     if (mode === 'win') {
       renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
