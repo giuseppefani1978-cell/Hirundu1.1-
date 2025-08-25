@@ -637,6 +637,7 @@ startBattleIntro({
     }
   }
 });
+}
 
   // ---------- ticks ----------
   function tickEnemies(dt){
