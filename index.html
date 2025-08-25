@@ -103,5 +103,14 @@
       }
     });
   </script>
+  <script>
+  window.addEventListener('error', e => {
+    alert('Erreur JS: ' + e.message);
+  });
+  window.addEventListener('unhandledrejection', e => {
+    alert('Erreur async: ' + (e.reason?.message || e.reason));
+  });
+</script>
+  
 </body>
 </html>
