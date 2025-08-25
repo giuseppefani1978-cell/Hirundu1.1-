@@ -336,6 +336,25 @@ window.addEventListener('orientationchange', () => {
   let collected = new Set();
   let QUEST = shuffle(POIS);
   let currentIdx = 0;
+  let askTimer = 0;
+
+function askQuestionAt(idx){
+  if (idx >= 0 && idx < QUEST.length) {
+    const key = QUEST[idx].key;
+    ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
+  }
+}
+
+function queueNextAsk(delayMs = 1200){
+  if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+  askTimer = setTimeout(() => {
+    // Ne pose une question que si on est encore en mode “play” et
+    // qu’il reste des POI
+    if (mode === 'play' && currentIdx < QUEST.length) {
+      askQuestionAt(currentIdx);
+    }
+  }, delayMs);
+}
 
   const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
   let energy = ENERGY.START;
