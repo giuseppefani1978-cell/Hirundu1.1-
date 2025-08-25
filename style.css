@@ -33,32 +33,28 @@ body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; over
 .wrap, .game { height: 100dvh; }
 @supports (height: 100svh){ .wrap, .game { height: 100svh; } }
 
-/* ---------- Canvas plein écran sous l’UI ---------- */
-.game{ position:relative; overflow:hidden; }
-
-/* (garde-fou) canvas derrière l'UI */
-canvas#c{
+/* --- CHASSE (par défaut) : canvas calé dans .game, sous la HUD --- */
+canvas#c {
   position: absolute;
   inset: 0;
-  z-index: 1; /* sous la HUD */
-  width:100%;
-  height:100%;
-  display:block;
-  background:#bfe2f8;
-  touch-action:none;
+  z-index: 1;          /* sous la HUD */
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #bfe2f8;
+  touch-action: none;
 }
 
-/* Règle finale : canvas fixe au viewport (plus stable mobile) */
-#c{
-  position: fixed; inset: 0;
+/* --- BATTLE : quand body a .mode-battle, on remplace par un plein écran fiable --- */
+body.mode-battle canvas#c {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;      /* sous les pads battle (10003) */
   width: 100vw;
   height: 100dvh;
-  display:block;
-  background:#bfe2f8;
-  touch-action:none;
 }
 @supports (height: 100svh) {
-  #c { height: 100svh; }
+  body.mode-battle canvas#c { height: 100svh; }
 }
 
 /* Empêche les overlays/pads de faire scroller */
