@@ -1,24 +1,22 @@
 // src/game_battle.js
-// Couche d’intégration de la battle : intro, callbacks, viewport bas-écran, rendu.
-// Utilise battle.js et battle_intro.js, expose une API minimale à game.js.
+// Couche "battle" séparée : inputs, callbacks, tick+render et viewport bas-centré
 
-import { startBattleIntro } from './battle_intro.js';
 import {
   setupBattleInputs,
-  setBattleCallbacks,
-  setBattleAmmo,
-  startBattle,
+  setBattleCallbacks as setCallbacksRaw,
+  setBattleAmmo as setAmmoRaw,
+  startBattle as startBattleRaw,
   tickBattle,
   renderBattle,
-  isBattleActive
+  isBattleActive as isActiveRaw
 } from './battle.js';
 
-// --- Taille logique de la scène battle (aspect fixe 16:9)
+// --- Taille logique (aspect) utilisée par battle.js (16:9 conseillé)
 const BTL_VIRTUAL = { W: 800, H: 450 };
 
-// --- Helpers safe-area depuis :root (CSS)
-// Assure l’alignement pile en bas (home indicator iOS, etc.)
-function getSafeInset(pxName){
+// --- Helpers safe-area lus depuis :root (si présents)
+// Mets dans ton CSS :root { --safe-bottom: env(safe-area-inset-bottom); ... } si tu veux
+function getSafeInset(pxName) {
   try {
     const v = getComputedStyle(document.documentElement).getPropertyValue(pxName).trim();
     const n = parseFloat(v || '0');
@@ -26,8 +24,8 @@ function getSafeInset(pxName){
   } catch { return 0; }
 }
 
-// --- Viewport battle : centré horizontalement, collé en bas de l’écran
-export function computeBattleViewportBottom(W, H, { sideExtra = 0, bottomExtra = 0 } = {}){
+// Viewport bas-centré : remplit au max sans déformer, collé au bas de l’écran
+export function computeBattleViewportBottom(W, H, { sideExtra = 0, bottomExtra = 0 } = {}) {
   const safeBottom = getSafeInset('--safe-bottom');
   const safeLeft   = getSafeInset('--safe-left');
   const safeRight  = getSafeInset('--safe-right');
@@ -38,69 +36,51 @@ export function computeBattleViewportBottom(W, H, { sideExtra = 0, bottomExtra =
 
   let dw = availW;
   let dh = Math.round(dw / targetAR);
-  if (dh > availH){ dh = availH; dw = Math.round(availH * targetAR); }
+  if (dh > availH) { dh = availH; dw = Math.round(availH * targetAR); }
 
-  const ox = Math.floor((W - dw) / 2);                         // centré X
-  const oy = Math.floor(H - safeBottom - bottomExtra - dh);    // collé en bas
+  const ox = Math.floor((W - dw) / 2);
+  const oy = Math.floor(H - safeBottom - bottomExtra - dh);
   return { ox, oy, dw, dh };
 }
 
-// --- API vers game.js ---
-
-/**
- * Initialise la couche battle : inputs + callbacks.
- * @param {{onWin:Function, onLose:Function}} handlers
- */
-export function setupBattleLayer({ onWin, onLose }){
+// --- API exposée à game.js (chasse) ---
+// (mince adaptateur autour de battle.js)
+export function initBattleLayer() {
   setupBattleInputs();
-  setBattleCallbacks({
-    onWin:  () => { document.body.classList.remove('mode-battle'); onWin?.(); },
-    onLose: () => { document.body.classList.remove('mode-battle'); onLose?.(); }
-  });
 }
 
-/**
- * Lance le flow “intro → démarrage battle”.
- * game.js garde son propre `mode`. On lui donne un hook `onStartBattle`
- * pour qu’il puisse basculer en mode 'battle' au moment opportun.
- */
-export function startBattleFlow({ ammoCounts, stars, onStartBattle }){
-  // masque HUD carte via classe (si tu as du CSS qui s’y accroche)
-  document.body.classList.add('mode-battle');
-
-  // Munitions transmises au mini-jeu
-  setBattleAmmo({
-    pasticciotto: ammoCounts?.pasticciotto | 0,
-    rustico:      ammoCounts?.rustico      | 0,
-    caffe:        ammoCounts?.caffe        | 0,
-    stars:        stars | 0
-  });
-
-  startBattleIntro({
-    ammo: { ...(ammoCounts||{}), stars: stars|0 },
-    onProceed: () => {
-      onStartBattle?.();          // ← game.js met `mode = 'battle'`
-      startBattle('jelly');       // ton niveau 1
-      // petit nudge pour iOS après rotation
-      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-      setTimeout(() => { window.dispatchEvent(new Event('resize')); window.scrollTo(0,0); }, 220);
-    }
-  });
+// on laisse la possibilité à game.js de brancher ses onWin/onLose
+export function setBattleCallbacks(cbs) {
+  setCallbacksRaw(cbs);
 }
 
-/** Renvoie true si la battle est en cours côté moteur. */
-export function isBattleRunning(){
-  return !!isBattleActive();
+export function setBattleAmmo(ammo) {
+  setAmmoRaw(ammo);
 }
 
-/** Tick logique battle (IA/physique interne) */
-export function tickBattleLogic(dt, ctx){
-  // (ctx est passé à tickBattle selon ton battle.js)
+export function startBattle(levelKey) {
+  startBattleRaw(levelKey);
+}
+
+export function isBattleActive() {
+  return isActiveRaw();
+}
+
+// Boucle locale de la battle : on gère notre propre dt ici
+let _lastTS = 0;
+export function renderBattleFrame(ctx, W, H, sprites, opts = {}) {
+  // calcule le viewport bas-centré (ajuste bottomExtra si tu veux coller pile au bouton)
+  const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: opts.bottomExtra ?? 16 });
+
+  const now = performance.now();
+  if (!_lastTS) _lastTS = now;
+  const dt = Math.min(0.05, (now - _lastTS) / 1000);
+  _lastTS = now;
+
+  // tick logique + rendu battle
   tickBattle(dt, ctx);
-}
-
-/** Rendu battle : scène centrée et collée en bas */
-export function renderBattleFrame(ctx, W, H, sprites, { sideExtra = 0, bottomExtra = 16 } = {}){
-  const vp = computeBattleViewportBottom(W, H, { sideExtra, bottomExtra });
   renderBattle(ctx, vp, sprites);
 }
+
+// reset interne si besoin (ex: quand on quitte la battle)
+export function resetBattleClock() { _lastTS = 0; }
