@@ -103,14 +103,32 @@
       }
     });
   </script>
+
+  <!-- Debug erreurs JS -->
   <script>
-  window.addEventListener('error', e => {
-    alert('Erreur JS: ' + e.message);
-  });
-  window.addEventListener('unhandledrejection', e => {
-    alert('Erreur async: ' + (e.reason?.message || e.reason));
-  });
-</script>
+    // Catch JS fatal errors pour éviter un "fige silencieux"
+    window.addEventListener('error', e => {
+      console.error('JS Error:', e.message, e.error);
+      const box = document.getElementById('debugBox');
+      if (box) {
+        box.style.display = 'block';
+        box.style.position = 'fixed';
+        box.style.left = '8px'; box.style.top = '8px';
+        box.style.zIndex = 99999;
+        box.style.background = '#300';
+        box.style.color = '#fff';
+        box.style.padding = '8px 10px';
+        box.style.borderRadius = '8px';
+        box.textContent = 'Erreur: ' + e.message;
+      } else {
+        alert('Erreur JS: ' + e.message);
+      }
+    });
+    window.addEventListener('unhandledrejection', e => {
+      console.error('Unhandled promise:', e.reason);
+      alert('Erreur async: ' + (e.reason?.message || e.reason));
+    });
+  </script>
   
 </body>
 </html>
