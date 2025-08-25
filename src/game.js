@@ -1,19 +1,12 @@
 // src/game.js
 // =====================================================
-// GAMEPLAY "chasse" (carte, POIs, bonus) + handoff vers battle
+// CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
+// (aucune dépendance vers battle.js)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
 import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong } from './audio.js';
 import * as ui from './ui.js';
-
-// La battle est gérée via ce fin wrapper :
-import {
-  setupBattleLayer,
-  startBattleFlow,
-  isBattleRunning,
-  tickBattleLogic,
-  renderBattleFrame
-} from './game_battle.js';
+import { startBattleIntro } from './battle_intro.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -25,7 +18,7 @@ const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
 
-// ⚠️ noms EXACTS des fichiers dans /assets
+// ⚠️ Les noms doivent correspondre exactement aux fichiers dans /assets
 const ASSETS = {
   MAP_URL:       asset('assets/salento-map.PNG'),
   BIRD_URL:      asset('assets/aracne .PNG'),
@@ -37,9 +30,9 @@ const ASSETS = {
   BONUS_CAFFE:   asset('assets/caffeleccese .PNG'),
 };
 
+// UI carte
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
 
-function pickDPR(){ return Math.max(1, Math.min(2, window.devicePixelRatio || 1)); }
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
   const availW = canvasW;
   const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
@@ -52,7 +45,7 @@ function computeMapViewport(canvasW, canvasH, mapW, mapH){
 }
 
 // ------------------------
-// Données
+// Données chasse
 // ------------------------
 const SHIFT_COAST = { x:0.045, y:0.026 };
 const SHIFT_EAST  = 0.04;
@@ -72,8 +65,8 @@ const STARS_TARGET = POIS.length;
 
 const PLAYER_BASE = { x:0.55, y:0.25, speed:0.0048, size:0.11 };
 const ENERGY = { MAX:100, START:100 };
-const ENEMY  = { JELLY:'jelly', CROW:'crow' };
 
+const ENEMY  = { JELLY:'jelly', CROW:'crow' };
 const ENEMY_CONFIG = {
   MAX_ON_SCREEN: 4,
   LIFETIME_S: 14,
@@ -84,20 +77,17 @@ const ENEMY_CONFIG = {
   FLEE:  { SPEED: 0.38, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
   SPRITE_PX: { [ENEMY.JELLY]: 42, [ENEMY.CROW]: 42 },
 };
-
-const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36 };
-
+const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
+const BONUS = { PASTICCIOTTO: 'pasticciotto', RUSTICO: 'rustico', CAFFE: 'caffe' };
 const BONUS_TYPES = {
   PASTICCIOTTO: { key:'pasticciotto', score: 20, heal: 15, prob: 0.5 },
   RUSTICO:      { key:'rustico',      score: 40, heal: 25, prob: 0.35 },
   CAFFE:        { key:'caffe',        score: 70, heal: 40, prob: 0.15 }
 };
-
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
-
 const SCORE = { STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0 };
 
-// ----- HALL OF FAME (local) -----
+// ----- HOF local -----
 const HOF_KEY = 'salento_hof_v1';
 const HOF_SIZE = 10;
 function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
@@ -195,7 +185,7 @@ function renderHofTable(list){
 function openHofPanel(){ renderHofTable(loadHof()); }
 
 // ------------------------
-// BOOT
+// BOOT (chasse uniquement)
 // ------------------------
 export function boot(){
   const canvas = document.getElementById('c');
@@ -204,13 +194,6 @@ export function boot(){
 
   // UI init
   ui.initUI();
-
-  // Branches battle (inputs + callbacks) via la couche wrapper
-  setupBattleLayer({
-    onWin:  () => { document.body.classList.remove('mode-battle'); triggerWin(); },
-    onLose: () => { document.body.classList.remove('mode-battle'); triggerGameOver(); }
-  });
-
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -218,7 +201,7 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Rejouer flottant
+  // Déplacer le bouton Rejouer sous le score live
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
@@ -229,7 +212,10 @@ export function boot(){
     replayBtn.style.zIndex = '10001';
   }
 
+  // Lien Hall of Fame dans le HUD (en bas)
   ensureHofLinkInHud();
+
+  // Score live (top-right)
   ensureScoreLive();
 
   // Images
@@ -253,6 +239,7 @@ export function boot(){
   crowImg.onerror  = () => ui.assetFail('Crow', ASSETS.CROW_URL);
   jellyImg.onerror = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
 
+  // Splash avatars
   const heroAr = document.getElementById('heroAr');
   const heroTa = document.getElementById('heroTa');
   const tarAvatar = document.getElementById('tarAvatar');
@@ -260,17 +247,21 @@ export function boot(){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
+  // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
   spiderImg.src = ASSETS.TARANTULA_URL;
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-  // ===== Canvas sizing =====
+  // ===== Canvas sizing (mobile robuste) =====
   let W = 0, H = 0, dpr = 1;
 
   function resizeCanvasHard() {
-    try { window.scrollTo(0,0); requestAnimationFrame(()=>window.scrollTo(0,0)); } catch {}
+    try {
+      window.scrollTo(0,0);
+      requestAnimationFrame(()=>window.scrollTo(0,0));
+    } catch {}
   }
   function resize(){
     const vp = window.visualViewport;
@@ -284,7 +275,10 @@ export function boot(){
     canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+
+  // 1er resize
   resize();
+
   window.addEventListener('resize', resize, { passive:true });
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
@@ -294,8 +288,8 @@ export function boot(){
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
 
-  // ------- Game state -------
-  // modes: 'splash' | 'play' | 'battle_intro' | 'battle' | 'win' | 'dead'
+  // ------- Game state (chasse) -------
+  // modes: 'splash' | 'play' | 'battle_intro' | 'win' | 'dead'
   let mode = 'splash';
   let running = false;
   let lastTS = 0;
@@ -303,7 +297,7 @@ export function boot(){
   let QUEST = shuffle(POIS);
   let currentIdx = 0;
 
-  // Questions
+  // timers/questions
   let askTimer = 0;
   function askQuestionAt(idx){
     if (idx >= 0 && idx < QUEST.length) {
@@ -313,7 +307,9 @@ export function boot(){
   }
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
-    askTimer = setTimeout(() => { if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx); }, delayMs);
+    askTimer = setTimeout(() => {
+      if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
+    }, delayMs);
   }
 
   const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
@@ -326,9 +322,11 @@ export function boot(){
 
   let playerSlowTimer = 0;
   let hitShake = 0;
+
+  // anti double-collecte
   let collectLockUntil = 0;
 
-  // ------ SCORE RUNTIME ------
+  // SCORE runtime
   let score = 0;
   let hits = 0;
   let bonusesPicked = 0;
@@ -349,6 +347,7 @@ export function boot(){
     updateScoreLive();
   }
 
+  // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
 
   // D-pad (actif seulement en mode 'play')
@@ -361,7 +360,7 @@ export function boot(){
   // Première question
   askQuestionAt(0);
 
-  // ---------- helpers ----------
+  // helpers
   function setEnergy(p){
     energy = Math.max(0, Math.min(ENERGY.MAX, p|0));
     ui.updateEnergy((energy / ENERGY.MAX) * 100);
@@ -397,7 +396,6 @@ export function boot(){
       pulse: 0
     });
   }
-
   function bonusLabel(b){
     const name =
       (b.type === 'caffe') ? 'Caffè Leccese' :
@@ -439,15 +437,13 @@ export function boot(){
     ui.showReplay(true);
   }
 
-  // ---------- Game loop ----------
+  // ---------- Game loop (chasse) ----------
   function draw(ts){
     if(!running) return;
 
-    // time step
-    let dt = 0;
-    if (ts){
+    if(ts){
       if(!lastTS) lastTS = ts;
-      dt = Math.min(0.05, (ts - lastTS)/1000);
+      const dt = Math.min(0.05, (ts - lastTS)/1000);
       lastTS = ts;
 
       if (mode === 'play') {
@@ -456,38 +452,31 @@ export function boot(){
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
       } else if (mode === 'win') {
         tickWin(dt);
-      } else if (mode === 'battle') {
-        // logique interne du mini-jeu
-        tickBattleLogic(dt, ctx);
       }
     }
 
-    // viewport carte
+    // viewport + fond carte
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
     const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
 
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,W,H);
 
-    // ======= RENDU BATTLE (centré bas) =======
-    if (mode === 'battle' || isBattleRunning()){
-      renderBattleFrame(ctx, W, H, { birdImg, spiderImg, crowImg, jellyImg }, { sideExtra: 0, bottomExtra: 16 });
-      requestAnimationFrame(draw);
-      return;
-    }
-
-    // ======= RENDU CHASSE =======
+    // Fond carte
     if (mapImg.complete && mapImg.naturalWidth){
       ctx.drawImage(mapImg, ox, oy, dw, dh);
     } else {
-      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
+      ctx.fillStyle = '#bfe2f8';
+      ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
       ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
       ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
     }
 
-    for(const p of POIS){
+    // POIs
+    for (const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
-      if(collected.has(p.key)){
+      if (collected.has(p.key)){
         drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
         ctx.save();
@@ -500,6 +489,7 @@ export function boot(){
       }
     }
 
+    // joueur + collisions + ennemis/bonus (mode play)
     const bw = Math.min(160, Math.max(90, dw * player.size || 90));
     const bx = ox + player.x*dw;
     const by = oy + player.y*dh;
@@ -524,20 +514,20 @@ export function boot(){
     if (mode === 'play') {
       if (birdImg.complete && birdImg.naturalWidth){
         ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      }else{
+      } else {
         ctx.fillStyle = '#333';
         ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
       }
     }
 
-    // progression
+    // progression vers prochaine étoile
     if (mode === 'play' && currentIdx < QUEST.length){
       const now = performance.now();
       if (now >= collectLockUntil){
         const p = QUEST[currentIdx];
         const px = ox + p.x*dw, py = oy + p.y*dh;
         const onTarget = Math.hypot(bx - px, by - py) < 44;
-        if(onTarget){
+        if (onTarget){
           collectLockUntil = now + 900;
           collected.add(p.key);
           ui.updateScore(collected.size, STARS_TARGET);
@@ -551,15 +541,8 @@ export function boot(){
 
           currentIdx++;
           if (currentIdx === QUEST.length){
-            // → Handoff battle (intro → start)
-            mode = 'battle_intro';
-            ui.showTouch(false);
-            if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
-            startBattleFlow({
-              ammoCounts: pickedCounts,
-              stars: starsPicked,
-              onStartBattle: () => { mode = 'battle'; }
-            });
+            // Transition vers l’intro de la bataille
+            enterBattleFlow();
           } else {
             queueNextAsk(1200);
           }
@@ -572,6 +555,50 @@ export function boot(){
     }
 
     requestAnimationFrame(draw);
+  }
+
+  // ---------- Battle flow (handoff only) ----------
+  function enterBattleFlow(){
+    mode = 'battle_intro';
+    ui.showTouch(false);
+
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+
+    // Petit tip dans la bulle, puis intro
+    try {
+      const bdText  = document.getElementById('bdText');
+      const bdTitle = document.getElementById('bdTitle');
+      const tar     = document.getElementById('tarTop');
+      if (bdText && bdTitle && tar) {
+        bdTitle.textContent = 'Tarantula';
+        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        tar.classList.add('show');
+        setTimeout(()=> tar.classList.remove('show'), 2200);
+      }
+    } catch {}
+
+    const ammo = {
+      pasticciotto: pickedCounts.pasticciotto|0,
+      rustico:      pickedCounts.rustico|0,
+      caffe:        pickedCounts.caffe|0,
+      stars:        starsPicked|0
+    };
+
+    // Lance l’intro puis, au clic "Commencer", on passe la main à game_battle.js
+    startBattleIntro({
+      ammo: { ...ammo },
+      onProceed: () => {
+        // masque HUD carte / prépare layout battle via CSS
+        document.body.classList.add('mode-battle');
+
+        // 🔔 main → battle (game_battle.js doit écouter cet event)
+        window.dispatchEvent(new CustomEvent('salento:enter-battle', { detail: { ammo } }));
+
+        // double resize pour iOS après rotation
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+        setTimeout(() => { window.dispatchEvent(new Event('resize')); window.scrollTo(0,0); }, 220);
+      }
+    });
   }
 
   // ---------- ticks ----------
@@ -630,6 +657,7 @@ export function boot(){
     let collided=false;
     const now = performance.now();
 
+    // Ennemis
     for (const e of enemies){
       if (e.state === 'flee') continue;
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
@@ -639,8 +667,8 @@ export function boot(){
         playerSlowTimer = Math.max(playerSlowTimer, 1.25);
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
         const away = Math.atan2((ey - by), (ex - bx));
-        e.vx = Math.cos(away) *  ENEMY_CONFIG.FLEE.SPEED;
-        e.vy = Math.sin(away) *  ENEMY_CONFIG.FLEE.SPEED;
+        e.vx = Math.cos(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
         e.state='flee';
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
 
@@ -648,6 +676,7 @@ export function boot(){
       }
     }
 
+    // Bonus
     for (let i = bonuses.length - 1; i >= 0; i--) {
       const b = bonuses[i];
       const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
@@ -656,15 +685,14 @@ export function boot(){
         playerSlowTimer = 0;
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
 
-        score += b.score;
-        bonusScore += b.score;
-        bonusesPicked++;
+        score += b.score; bonusScore += b.score; bonusesPicked++;
         setEnergy(energy + b.heal);
 
-        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), { color: 'transparent', durationMs: 1000, dy: -28 });
+        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), {
+          color: 'transparent', durationMs: 1000, dy: -28
+        });
 
         pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
-
         const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
         ping(hz, 0.35);
 
@@ -692,9 +720,9 @@ export function boot(){
   // ---------- controls ----------
   function startGame(){
     try{
-      document.body.classList.remove('mode-battle');
+      document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
       const name = prompt("Ton nom/pseudo ?") || "Joueur";
-      playerName = name.trim() || "Joueur";
+      playerName = (name||'').trim() || "Joueur";
       country = getCountry();
 
       ui.hideOverlay();
@@ -737,7 +765,7 @@ export function boot(){
   window.addEventListener('hashchange', ()=>{ if (location.hash === '#hof') openHofPanel(); });
   if (location.hash === '#hof') openHofPanel();
 
-  // ---------- helpers UI internes ----------
+  // helpers UI
   function ensureScoreLive(){
     let el = document.getElementById('__score_live');
     if (!el){
@@ -777,8 +805,6 @@ export function boot(){
       link.addEventListener('click', openHofPanel);
     }
   }
-
-  // expose rien d’autre
 }
 
 // ------------------------
@@ -910,7 +936,14 @@ function spawnFirework(store){
   for (let i=0;i<n;i++){
     const a = (i/n)*Math.PI*2;
     const sp = 90 + Math.random()*160;
-    store.push({ x: cx, y: cy, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, r: 2 + Math.random()*2, color: col, life: 0.9 + Math.random()*0.8, life0: 1.7 });
+    store.push({
+      x: cx, y: cy,
+      vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+      r: 2 + Math.random()*2,
+      color: col,
+      life: 0.9 + Math.random()*0.8,
+      life0: 1.7
+    });
   }
 }
 
