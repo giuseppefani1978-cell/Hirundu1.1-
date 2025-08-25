@@ -43,7 +43,40 @@ const ASSETS = {
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
 // Taille logique de la scène battle (peu importe la vraie taille écran)
 const BTL_VIRTUAL = { W: 800, H: 450 }; // 16:9 ; mets les valeurs que battle.js attend le mieux
+// --- Helpers safe-area depuis le CSS :root
+function getSafeInset(pxName) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(pxName).trim();
+    // ex: "20px" → 20
+    const n = parseFloat(v || '0');
+    return Number.isFinite(n) ? n : 0;
+  } catch { return 0; }
+}
 
+// --- Viewport battle : centré horizontalement, collé en bas
+// sideExtra/bottomExtra te permettent d'ajuster sans toucher le code plus tard.
+function computeBattleViewportBottom(W, H, {
+  sideExtra = 0,
+  bottomExtra = 0,
+} = {}) {
+  const safeBottom = getSafeInset('--safe-bottom');  // iOS home-indicator
+  const safeLeft   = getSafeInset('--safe-left');
+  const safeRight  = getSafeInset('--safe-right');
+
+  const targetAR = BTL_VIRTUAL.W / BTL_VIRTUAL.H; // 16/9
+  // largeur dispo = largeur écran moins safe areas et marges facultatives
+  const availW = Math.max(1, W - safeLeft - safeRight - sideExtra * 2);
+  const availH = Math.max(1, H - safeBottom - bottomExtra); // on colle au bas
+
+  // on remplit tant que possible en respectant l'aspect 16:9
+  let dw = availW;
+  let dh = Math.round(dw / targetAR);
+  if (dh > availH) { dh = availH; dw = Math.round(availH * targetAR); }
+
+  const ox = Math.floor((W - dw) / 2);                                   // centré X
+  const oy = Math.floor(H - safeBottom - bottomExtra - dh);              // collé en bas
+  return { ox, oy, dw, dh };
+}
 function pickDPR(){ return Math.max(1, Math.min(2, window.devicePixelRatio || 1)); }
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
   const availW = canvasW;
@@ -508,8 +541,24 @@ export function boot(){
 
     ctx.clearRect(0,0,W,H);
 
-    // ----- rendu en fonction du mode -----
-    if (mode === 'battle' || isBattleActive()) {
+  // ----- rendu en fonction du mode -----
+if (mode === 'battle' || isBattleActive()) {
+  // Scène collée au bas de l’écran, centrée horizontalement
+  const vp = computeBattleViewportBottom(W, H, {
+    sideExtra: 0,
+    bottomExtra: 16,   // mets 0 si tu veux “flush”,
+                       // ou ajuste pour aligner pile avec « FORCE REFRESH »
+  });
+
+  // si renderBattle attend juste {ox,oy,dw,dh} → OK
+  renderBattle(ctx, vp, { birdImg, spiderImg, crowImg, jellyImg });
+
+  // (optionnel) si un jour renderBattle a aussi besoin des virtuels :
+  // renderBattle(ctx, { ...vp, vw: BTL_VIRTUAL.W, vh: BTL_VIRTUAL.H }, sprites);
+
+  requestAnimationFrame(draw);
+  return;
+}
   // On utilise 100% de l’écran, mais on centre la scène battle
   const vw = BTL_VIRTUAL.W, vh = BTL_VIRTUAL.H;
 
