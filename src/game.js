@@ -279,16 +279,6 @@ export function boot(){
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-  // ===== Canvas sizing =====
-  let W = 0, H = 0, dpr = 1;
-// ===== Canvas sizing (plus robuste mobile) =====
-let W = 0, H = 0, dpr = 1;
-
-function resizeCanvasHard() {
-  // forcer le scroll en haut pour éviter la zone "collée"
-  try { window.scrollTo(0,0); requestAnimationFrame(()=>window.scrollTo(0,0)); } catch {}
-}
-
 // ===== Canvas sizing (plus robuste mobile) =====
 let W = 0, H = 0, dpr = 1;
 
