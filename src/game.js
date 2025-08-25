@@ -216,15 +216,15 @@ export function boot(){
   ui.initUI();
   setupBattleInputs();
   setBattleCallbacks({
-  onWin:  () => {
-    document.body.classList.remove('mode-battle');
-    triggerWin();
-  },
-  onLose: () => {
-    document.body.classList.remove('mode-battle');
-    triggerGameOver();
-  }
-});
+    onWin:  () => {
+      document.body.classList.remove('mode-battle');
+      triggerWin();
+    },
+    onLose: () => {
+      document.body.classList.remove('mode-battle');
+      triggerGameOver();
+    }
+  });
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -285,48 +285,46 @@ export function boot(){
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-// ===== Canvas sizing (plus robuste mobile) =====
-let W = 0, H = 0, dpr = 1;
+  // ===== Canvas sizing (plus robuste mobile) =====
+  let W = 0, H = 0, dpr = 1;
 
-function resizeCanvasHard() {
-  // forcer le scroll en haut pour éviter la zone "collée"
-  try {
-    window.scrollTo(0,0);
-    requestAnimationFrame(()=>window.scrollTo(0,0));
-  } catch {}
-}
+  function resizeCanvasHard() {
+    try {
+      window.scrollTo(0,0);
+      requestAnimationFrame(()=>window.scrollTo(0,0));
+    } catch {}
+  }
 
-function resize(){
-  const vp = window.visualViewport;
-  W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
-  H = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+  function resize(){
+    const vp = window.visualViewport;
+    W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
+    H = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
 
-  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  canvas.width  = Math.max(1, Math.floor(W * dpr));
-  canvas.height = Math.max(1, Math.floor(H * dpr));
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    canvas.width  = Math.max(1, Math.floor(W * dpr));
+    canvas.height = Math.max(1, Math.floor(H * dpr));
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
-// ⚡️ On appelle tout de suite resize une première fois
-resize();
+  // ⚡️ On appelle tout de suite resize une première fois
+  resize();
 
-// événements
-window.addEventListener('resize', resize, { passive:true });
+  // événements
+  window.addEventListener('resize', resize, { passive:true });
 
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', () => {
-    resize();
-    resizeCanvasHard();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      resize();
+      resizeCanvasHard();
+    }, { passive:true });
+  }
+
+  window.addEventListener('orientationchange', () => {
+    setTimeout(resize, 60);
+    setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
-}
-
-window.addEventListener('orientationchange', () => {
-  // la rotation livre souvent des tailles intermédiaires → on recalcule 2x
-  setTimeout(resize, 60);
-  setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
-}, { passive:true });
   
   // ------- Game state -------
   // modes: 'splash' | 'play' | 'battle_intro' | 'battle' | 'win' | 'dead'
@@ -336,25 +334,23 @@ window.addEventListener('orientationchange', () => {
   let collected = new Set();
   let QUEST = shuffle(POIS);
   let currentIdx = 0;
+
+  // ---- NEW: timers/questions helpers ----
   let askTimer = 0;
-
-function askQuestionAt(idx){
-  if (idx >= 0 && idx < QUEST.length) {
-    const key = QUEST[idx].key;
-    ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
-  }
-}
-
-function queueNextAsk(delayMs = 1200){
-  if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
-  askTimer = setTimeout(() => {
-    // Ne pose une question que si on est encore en mode “play” et
-    // qu’il reste des POI
-    if (mode === 'play' && currentIdx < QUEST.length) {
-      askQuestionAt(currentIdx);
+  function askQuestionAt(idx){
+    if (idx >= 0 && idx < QUEST.length) {
+      const key = QUEST[idx].key;
+      ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
     }
-  }, delayMs);
-}
+  }
+  function queueNextAsk(delayMs = 1200){
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    askTimer = setTimeout(() => {
+      if (mode === 'play' && currentIdx < QUEST.length) {
+        askQuestionAt(currentIdx);
+      }
+    }, delayMs);
+  }
 
   const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
   let energy = ENERGY.START;
@@ -368,15 +364,15 @@ function queueNextAsk(delayMs = 1200){
   let hitShake = 0;
 
   // Anti double-collecte (bugfix)
-  let collectLockUntil = 0; // timestamp ms, on ignore la collecte tant que now < collectLockUntil
+  let collectLockUntil = 0;
 
   // ------ SCORE RUNTIME ------
   let score = 0;
   let hits = 0;
   let bonusesPicked = 0;
-  let bonusScore = 0;     // somme des points issus des bonus
+  let bonusScore = 0;
   let starsPicked = 0;
-  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 }; // + on passera aussi le nombre d’étoiles au battle
+  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
   let gameStartAt = 0;
   let finalized = false;
   let playerName = null;
@@ -401,8 +397,8 @@ function queueNextAsk(delayMs = 1200){
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startGame);
 
-  // Première question
-  if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || `Où est ${poiInfo(QUEST[0].key)} ?`);
+  // Première question (sécurisée)
+  askQuestionAt(0);
 
   // ---------- helpers ----------
   function setEnergy(p){
@@ -512,7 +508,6 @@ function queueNextAsk(delayMs = 1200){
 
     // ----- rendu en fonction du mode -----
     if (mode === 'battle' || isBattleActive()) {
-      // la battle gère son propre décor (placeholder ville de Trento dans battle.js)
       renderBattle(ctx, { ox, oy, dw, dh }, { birdImg, spiderImg, crowImg, jellyImg });
       requestAnimationFrame(draw);
       return;
@@ -585,7 +580,7 @@ function queueNextAsk(delayMs = 1200){
         const px = ox + p.x*dw, py = oy + p.y*dh;
         const onTarget = Math.hypot(bx - px, by - py) < 44;
         if(onTarget){
-          collectLockUntil = now + 900; // ← empêche d’enchaîner 2-3 POIs la même frame
+          collectLockUntil = now + 900;
           collected.add(p.key);
           ui.updateScore(collected.size, STARS_TARGET);
           ui.renderStars(collected.size, STARS_TARGET);
@@ -602,7 +597,7 @@ function queueNextAsk(delayMs = 1200){
             // → Transition vers “Bataille de Trento” (intro séparée + orientation paysage)
             enterBattleFlow();
           } else {
-            setTimeout(()=> ui.showAsk(t.ask?.(poiInfo(QUEST[currentIdx].key)) || ''), 1200);
+            queueNextAsk(1200);
           }
         }
       }
@@ -617,49 +612,52 @@ function queueNextAsk(delayMs = 1200){
 
   // ---------- Battle flow ----------
   function enterBattleFlow(){
-  mode = 'battle_intro';
-  ui.showTouch(false);
+    mode = 'battle_intro';
+    ui.showTouch(false);
 
-  // NEW: bascule CSS → masque HUD/bulle carte et prépare les pads battle
-  document.body.classList.add('mode-battle');
+    // stop tout rappel de question pendant la battle
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
 
-  // NEW: tip rapide dans la bulle Tarantula (puis on la masque)
-  try {
-    const bdText  = document.getElementById('bdText');
-    const bdTitle = document.getElementById('bdTitle');
-    const tar     = document.getElementById('tarTop');
-    if (bdText && bdTitle && tar) {
-      bdTitle.textContent = 'Tarantula';
-      bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A pour attaquer, B pour spécial. Tourne en paysage.';
-      tar.classList.add('show');
-      setTimeout(()=> tar.classList.remove('show'), 2200);
-    }
-  } catch {}
+    // NEW: bascule CSS → masque HUD/bulle carte et prépare les pads battle
+    document.body.classList.add('mode-battle');
 
-  // Munitions transmises au mini-jeu
-  setBattleAmmo({
-    pasticciotto: pickedCounts.pasticciotto|0,
-    rustico:      pickedCounts.rustico|0,
-    caffe:        pickedCounts.caffe|0,
-    stars:        starsPicked|0
-  });
+    // NEW: tip rapide dans la bulle Tarantula (puis on la masque)
+    try {
+      const bdText  = document.getElementById('bdText');
+      const bdTitle = document.getElementById('bdTitle');
+      const tar     = document.getElementById('tarTop');
+      if (bdText && bdTitle && tar) {
+        bdTitle.textContent = 'Tarantula';
+        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A pour attaquer, B pour spécial. Tourne en paysage.';
+        tar.classList.add('show');
+        setTimeout(()=> tar.classList.remove('show'), 2200);
+      }
+    } catch {}
 
-  // Écran d’intro “Bataille de Otronto”
-  startBattleIntro({
-    ammo: { ...pickedCounts, stars: starsPicked|0 },
-    onProceed: () => {
-      mode = 'battle';
-      startBattle('jelly'); // niveau 1
+    // Munitions transmises au mini-jeu
+    setBattleAmmo({
+      pasticciotto: pickedCounts.pasticciotto|0,
+      rustico:      pickedCounts.rustico|0,
+      caffe:        pickedCounts.caffe|0,
+      stars:        starsPicked|0
+    });
 
-      // NEW: double coup de pouce au resize pour qu’iOS recalcule bien après rotation
-      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-      setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-        window.scrollTo(0,0);
-      }, 220);
-    }
-  });
-}
+    // Écran d’intro “Bataille de Otronto”
+    startBattleIntro({
+      ammo: { ...pickedCounts, stars: starsPicked|0 },
+      onProceed: () => {
+        mode = 'battle';
+        startBattle('jelly'); // niveau 1
+
+        // double coup de pouce au resize pour qu’iOS recalcule bien après rotation
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+          window.scrollTo(0,0);
+        }, 220);
+      }
+    });
+  }
 
   // ---------- ticks ----------
   function tickEnemies(dt){
@@ -792,28 +790,27 @@ function queueNextAsk(delayMs = 1200){
 
   // ---------- controls ----------
   function startGame(){
-  try{
-    // 🔒 Sécurité : si on relance une partie après/pendant une battle,
-    // on enlève le mode-battle pour retrouver l'UI carte normale.
-    document.body.classList.remove('mode-battle');
+    try{
+      // 🔒 si on relance une partie après/pendant une battle, on enlève le mode-battle
+      document.body.classList.remove('mode-battle');
 
-    // demander le nom à CHAQUE session
-    const name = prompt("Ton nom/pseudo ?") || "Joueur";
-    playerName = name.trim() || "Joueur";
-    country = getCountry();
+      // demander le nom à CHAQUE session
+      const name = prompt("Ton nom/pseudo ?") || "Joueur";
+      playerName = name.trim() || "Joueur";
+      country = getCountry();
 
-    ui.hideOverlay();
-    ui.showTouch(true);
-    if (!isMusicOn()) startMusic();
-    ui.setMusicLabel(isMusicOn());
-    resetGame();
-    gameStartAt = performance.now();
-    mode = 'play';
-    if (!running){ running = true; requestAnimationFrame(draw); }
-  }catch(e){
-    alert('Chargement du jeu impossible : ' + (e?.message || e));
+      ui.hideOverlay();
+      ui.showTouch(true);
+      if (!isMusicOn()) startMusic();
+      ui.setMusicLabel(isMusicOn());
+      resetGame();
+      gameStartAt = performance.now();
+      mode = 'play';
+      if (!running){ running = true; requestAnimationFrame(draw); }
+    }catch(e){
+      alert('Chargement du jeu impossible : ' + (e?.message || e));
+    }
   }
-}
 
   function resetGame(){
     collected = new Set();
@@ -834,7 +831,9 @@ function queueNextAsk(delayMs = 1200){
     ui.renderStars(0, STARS_TARGET);
     resetAudioForNewGame();
 
-    if (QUEST.length) ui.showAsk(t.ask?.(poiInfo(QUEST[0].key)) || '');
+    // question initiale via helper + purge timer
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    askQuestionAt(0);
   }
 
   // hash #hof → ouvrir panel
@@ -965,7 +964,6 @@ function drawBonuses(ctx, bonuses, bounds, images){
       const size = 42;
       ctx.drawImage(img, x - size/2, y - size/2, size, size);
     } else {
-      // fallback simple
       ctx.fillStyle = '#ffe06b';
       ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2); ctx.fill();
     }
