@@ -41,6 +41,8 @@ const ASSETS = {
 };
 
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
+// Taille logique de la scène battle (peu importe la vraie taille écran)
+const BTL_VIRTUAL = { W: 800, H: 450 }; // 16:9 ; mets les valeurs que battle.js attend le mieux
 
 function pickDPR(){ return Math.max(1, Math.min(2, window.devicePixelRatio || 1)); }
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
@@ -508,11 +510,30 @@ export function boot(){
 
     // ----- rendu en fonction du mode -----
     if (mode === 'battle' || isBattleActive()) {
-      renderBattle(ctx, { ox, oy, dw, dh }, { birdImg, spiderImg, crowImg, jellyImg });
-      requestAnimationFrame(draw);
-      return;
-    }
+  // On utilise 100% de l’écran, mais on centre la scène battle
+  const vw = BTL_VIRTUAL.W, vh = BTL_VIRTUAL.H;
 
+  // Échelle uniforme pour couvrir le plus possible l’écran sans déformer
+  const s = Math.min(W / vw, H / vh);
+
+  // Décalage pour centrer (on garde tout l’écran)
+  const tx = Math.round((W - vw * s) / 2);
+  const ty = Math.round((H - vh * s) / 2);
+
+  ctx.save();
+  ctx.translate(tx, ty);
+  ctx.scale(s, s);
+
+  // IMPORTANT : on passe un viewport LOCAL (0..vw, 0..vh).
+  // renderBattle dessine donc "comme si" la surface faisait vw×vh,
+  // et notre translate/scale l’aligne/centre plein écran.
+  renderBattle(ctx, { ox: 0, oy: 0, dw: vw, dh: vh }, { birdImg, spiderImg, crowImg, jellyImg });
+
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+  return;
+}
     // mode "play" / "win" → on dessine la map
     if (mapImg.complete && mapImg.naturalWidth){
       ctx.drawImage(mapImg, ox, oy, dw, dh);
