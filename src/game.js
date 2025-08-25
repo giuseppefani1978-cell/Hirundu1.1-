@@ -216,9 +216,15 @@ export function boot(){
   ui.initUI();
   setupBattleInputs();
   setBattleCallbacks({
-    onWin:  () => triggerWin(),
-    onLose: () => triggerGameOver()
-  });
+  onWin:  () => {
+    document.body.classList.remove('mode-battle');
+    triggerWin();
+  },
+  onLose: () => {
+    document.body.classList.remove('mode-battle');
+    triggerGameOver();
+  }
+});
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -592,25 +598,49 @@ window.addEventListener('orientationchange', () => {
 
   // ---------- Battle flow ----------
   function enterBattleFlow(){
-    mode = 'battle_intro';
-    ui.showTouch(false);
-    // Passe les munitions bonus + les étoiles collectées (comme “shuriken”)
-    setBattleAmmo({
-      pasticciotto: pickedCounts.pasticciotto|0,
-      rustico: pickedCounts.rustico|0,
-      caffe: pickedCounts.caffe|0,
-      stars: starsPicked|0
-    });
-    // Écran d’intro (affiche “Bataille de Trento”, invite à pivoter en horizontal, etc.)
-    startBattleIntro({
-      ammo: { ...pickedCounts, stars: starsPicked|0 },
-      onProceed: () => {
-        // Quand le joueur appuie sur “Commencer” depuis l’intro
-        mode = 'battle';
-        startBattle('jelly'); // niveau 1 : méduses
-      }
-    });
-  }
+  mode = 'battle_intro';
+  ui.showTouch(false);
+
+  // NEW: bascule CSS → masque HUD/bulle carte et prépare les pads battle
+  document.body.classList.add('mode-battle');
+
+  // NEW: tip rapide dans la bulle Tarantula (puis on la masque)
+  try {
+    const bdText  = document.getElementById('bdText');
+    const bdTitle = document.getElementById('bdTitle');
+    const tar     = document.getElementById('tarTop');
+    if (bdText && bdTitle && tar) {
+      bdTitle.textContent = 'Tarantula';
+      bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A pour attaquer, B pour spécial. Tourne en paysage.';
+      tar.classList.add('show');
+      setTimeout(()=> tar.classList.remove('show'), 2200);
+    }
+  } catch {}
+
+  // Munitions transmises au mini-jeu
+  setBattleAmmo({
+    pasticciotto: pickedCounts.pasticciotto|0,
+    rustico:      pickedCounts.rustico|0,
+    caffe:        pickedCounts.caffe|0,
+    stars:        starsPicked|0
+  });
+
+  // Écran d’intro “Bataille de Otronto”
+  startBattleIntro({
+    ammo: { ...pickedCounts, stars: starsPicked|0 },
+    onProceed: () => {
+      mode = 'battle';
+      startBattle('jelly'); // niveau 1
+
+      // NEW: double coup de pouce au resize pour qu’iOS recalcule bien après rotation
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        window.scrollTo(0,0);
+      }, 220);
+    }
+  });
+}
 
   // ---------- ticks ----------
   function tickEnemies(dt){
@@ -743,24 +773,28 @@ window.addEventListener('orientationchange', () => {
 
   // ---------- controls ----------
   function startGame(){
-    try{
-      // demander le nom à CHAQUE session
-      const name = prompt("Ton nom/pseudo ?") || "Joueur";
-      playerName = name.trim() || "Joueur";
-      country = getCountry();
+  try{
+    // 🔒 Sécurité : si on relance une partie après/pendant une battle,
+    // on enlève le mode-battle pour retrouver l'UI carte normale.
+    document.body.classList.remove('mode-battle');
 
-      ui.hideOverlay();
-      ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
-      ui.setMusicLabel(isMusicOn());
-      resetGame();
-      gameStartAt = performance.now();
-      mode = 'play';
-      if (!running){ running = true; requestAnimationFrame(draw); }
-    }catch(e){
-      alert('Chargement du jeu impossible : ' + (e?.message || e));
-    }
+    // demander le nom à CHAQUE session
+    const name = prompt("Ton nom/pseudo ?") || "Joueur";
+    playerName = name.trim() || "Joueur";
+    country = getCountry();
+
+    ui.hideOverlay();
+    ui.showTouch(true);
+    if (!isMusicOn()) startMusic();
+    ui.setMusicLabel(isMusicOn());
+    resetGame();
+    gameStartAt = performance.now();
+    mode = 'play';
+    if (!running){ running = true; requestAnimationFrame(draw); }
+  }catch(e){
+    alert('Chargement du jeu impossible : ' + (e?.message || e));
   }
+}
 
   function resetGame(){
     collected = new Set();
