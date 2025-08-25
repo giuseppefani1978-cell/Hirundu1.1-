@@ -1,180 +1,213 @@
-/* ====== Base & Canvas ====== */
-html,body {
-  height:100%;
-  margin:0;
-  background:#a9d6f5;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+/* =========================================================
+   SALENTO — STYLE GLOBAL (Treasure + Battle)
+   - plein écran stable mobile (iOS/Android)
+   - HUD et overlays au-dessus du canvas
+   - D-pad chasse & pads battle séparés
+   - safe areas / notches / dynamic viewport units
+   ========================================================= */
+
+/* ---------- Variables & resets ---------- */
+:root{
+  --bg: #a9d6f5;
+  --paper: #fffdf5;
+  --ink: #111;
+  --accent: #c8b37a;
+  --accent-strong: #b08a3c;
+  --shadow: rgba(0,0,0,.18);
+  --hud-bg: rgba(255,248,220,.96);
+  --hud-ink: #000;
+  --star: #d26f45;
+
+  /* iOS safe areas (encoches) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
-* { -webkit-tap-highlight-color:transparent; }
 
-.wrap { display:flex; flex-direction:column; height:100%; }
-.game { position:relative; flex:1; overflow:hidden; }
-canvas { width:100%; height:100%; display:block; background:#bfe2f8; touch-action:none; }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--ink); }
+body{ font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; overscroll-behavior: none; }
 
-/* ====== Overlay (Start) ====== */
-.overlay {
+/* Stabilise le viewport mobile (barres dynamiques) */
+.wrap, .game { height: 100dvh; }
+@supports (height: 100svh){ .wrap, .game { height: 100svh; } }
+
+/* ---------- Canvas plein écran sous l’UI ---------- */
+.game{ position:relative; overflow:hidden; }
+
+/* (garde-fou) canvas derrière l'UI */
+canvas#c{
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 1; /* sous la HUD */
+  width:100%;
+  height:100%;
+  display:block;
+  background:#bfe2f8;
+  touch-action:none;
+}
+
+/* Règle finale : canvas fixe au viewport (plus stable mobile) */
+#c{
+  position: fixed; inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  display:block;
+  background:#bfe2f8;
+  touch-action:none;
+}
+@supports (height: 100svh) {
+  #c { height: 100svh; }
+}
+
+/* Empêche les overlays/pads de faire scroller */
+#touch, #__battle_ui__, #__battle_rotate__ { touch-action:none; }
+
+/* ---------- Overlay Start ---------- */
+.overlay{
+  position:absolute; inset:0; z-index:50;
+  display:flex; align-items:center; justify-content:center;
   background: rgba(169,214,245,.84);
   backdrop-filter: blur(3px);
-  z-index: 50;
+  padding: max(10px, var(--safe-top)) max(10px, var(--safe-right)) max(10px, var(--safe-bottom)) max(10px, var(--safe-left));
 }
-
-.card {
+.card{
   width:min(560px,92vw);
-  border:2px solid #c8b37a; border-radius:14px;
-  background:#fffdf5;
-  box-shadow:0 10px 26px rgba(0,0,0,.18);
+  border:2px solid var(--accent); border-radius:14px;
+  background:var(--paper); box-shadow:0 10px 26px var(--shadow);
   padding:18px; text-align:center;
 }
-.card h1 { margin:0 0 6px 0; font-size:24px; }
-.card p { margin:6px 0 14px 0; opacity:.82; }
-.card button {
-  border:1px solid #c8b37a;
+.card h1{ margin:0 0 6px; font-size:24px; }
+.card p{ margin:6px 0 14px; opacity:.82; }
+.card button{
+  border:1px solid var(--accent);
   background:#ffe8a6; border-radius:10px;
-  padding:12px 16px; font-weight:700;
-  cursor:pointer;
+  padding:12px 16px; font-weight:700; cursor:pointer;
 }
+.card button:focus-visible{ outline:2px solid #3a86ff; outline-offset: 2px; }
 
 /* Intro anim — Aracne & Tarantula */
-.heroes {
+.heroes{
   display:flex; justify-content:center; gap:16px;
-  margin:10px 0 8px 0; position:relative;
+  margin:10px 0 8px; position:relative;
 }
-.heroes img {
+.heroes img{
   width:72px; height:72px; object-fit:contain;
   image-rendering:pixelated; image-rendering:crisp-edges;
-  animation:floatY 2.4s ease-in-out infinite,
-             pulse 3.2s ease-in-out infinite;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,.25));
+  animation: floatY 2.4s ease-in-out infinite, pulse 3.2s ease-in-out infinite;
 }
 .heroes img#heroAr { animation-delay:.0s,.0s; }
 .heroes img#heroTa { animation-delay:.6s,.3s; }
-@keyframes floatY { 0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)} }
-@keyframes pulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.05)} }
 
-.inspiration {
-  font-size:.92em;
-  font-style:italic;
-  color:#555;
-  margin:2px 0 16px;
+@keyframes floatY{ 0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)} }
+@keyframes pulse{ 0%,100%{transform:scale(1)}50%{transform:scale(1.05)} }
+
+/* Respecte l’accessibilité (réduit les animations si demandé) */
+@media (prefers-reduced-motion: reduce){
+  .heroes img{ animation: none; }
+  .overlay, .card{ transition: none !important; }
 }
 
-/* ====== HUD — plus étroit ====== */
-.hud {
-  position:absolute; left:8px; top:50%; transform:translateY(-50%);
-  background:rgba(255,248,220,.96);
-  border:2px solid #c8b37a; border-radius:10px;
-  padding:8px 6px; font-size:14px;
-  z-index:22; width:42px;
+/* ---------- HUD (colonne étroite) ---------- */
+.hud{
+  position:absolute; z-index:22;
+  left: calc(8px + var(--safe-left)); top:50%; transform: translateY(-50%);
+  width:42px;
+  background: var(--hud-bg);
+  color:var(--hud-ink);
+  border:2px solid var(--accent); border-radius:10px;
+  padding:8px 6px;
   display:flex; flex-direction:column; align-items:center; gap:6px;
 }
-.hud h3 { margin:0; font-size:14px; line-height:1; text-align:center; }
-.hud .score { margin:0; font-weight:800; font-size:13px; line-height:1.1; }
-.stars { display:flex; flex-direction:column; gap:4px; margin-top:2px; align-items:center; }
-.star { width:15px; height:15px; opacity:.95; }
+.hud h3{ margin:0; font-size:14px; line-height:1; text-align:center; }
+.hud .score{ margin:0; font-weight:800; font-size:13px; line-height:1.1; }
+.stars{ display:flex; flex-direction:column; gap:4px; margin-top:2px; align-items:center; }
+.star{ width:15px; height:15px; opacity:.95; }
 
-/* ====== Barre énergie ====== */
-.energyBar {
-  display:flex; gap:2px; margin-top:8px; justify-content:center;
+/* Barre énergie (si utilisée) */
+.energyBar{ display:flex; gap:2px; margin-top:8px; justify-content:center; }
+.energyUnit{
+  width:8px; height:18px; border:1px solid #555; border-radius:2px; background:#ddd;
 }
-.energyUnit {
-  width:8px; height:18px;
-  border:1px solid #555; border-radius:2px;
-  background:#ddd;
-}
-.energyUnit.on { background:#6ad16a; }
-.energyUnit.low { background:#e74c3c; }
+.energyUnit.on{ background:#6ad16a; }
+.energyUnit.low{ background:#e74c3c; }
 
-/* ====== Bulle Tarantula ====== */
-.tarTop {
-  position:absolute; display:none; align-items:flex-start; gap:8px;
-  z-index:40; max-width:calc(100vw - 16px);
-  left:8px; top:8px;
+/* ---------- Bulle Tarantula ---------- */
+.tarTop{
+  position:absolute; z-index:40; display:none;
+  left: calc(8px + var(--safe-left)); top: calc(8px + var(--safe-top));
+  max-width: calc(100vw - 16px - var(--safe-left) - var(--safe-right));
+  align-items:flex-start; gap:8px;
 }
-.tarTop.show { display:flex; }
-.tarTop img {
-  width:56px; height:56px; object-fit:contain;
+.tarTop.show{ display:flex; }
+.tarTop img{
+  width:56px; height:56px; object-fit:contain; image-rendering:pixelated;
   background:transparent; border:none; border-radius:0; box-shadow:none;
-  image-rendering:pixelated;
 }
-.bdBubble {
-  max-width:min(860px,92vw);
-  background:#fff; border:1px solid #bbb; border-radius:12px;
+.bdBubble{
+  max-width:min(860px,92vw); background:#fff; border:1px solid #bbb; border-radius:12px;
   padding:8px 10px; box-shadow:0 4px 10px rgba(0,0,0,.12);
   font-size:14px; line-height:1.35;
 }
-.bdTitle { font-weight:700; margin:0 0 4px 0; }
-.bdBubble p { margin:0; }
+.bdTitle{ font-weight:700; margin:0 0 4px; }
+.bdBubble p{ margin:0; }
 
-/* ====== D-pad ====== */
-.touch { position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-         display:none; gap:12px; align-items:center; z-index:30; }
-.touch.show { display:flex; }
-.dpad {
-  display:grid;
-  grid-template-columns:56px 56px 56px;
-  grid-template-rows:56px 56px 56px;
-  gap:10px;
+/* ---------- D-pad Chasse (#touch) ---------- */
+.touch{
+  position:absolute; z-index:30; display:none;
+  left:50%; transform:translateX(-50%);
+  bottom: calc(10px + var(--safe-bottom));
+  gap:12px; align-items:center;
 }
-.btn {
-  width:56px; height:56px;
-  border-radius:12px; border:2px solid #c8b37a;
-  background:#fff7de;
-  display:flex; align-items:center; justify-content:center;
-  user-select:none; touch-action:none;
-  font-weight:800; font-size:20px;
-  box-shadow:0 3px 0 #c8b37a;
+.touch.show{ display:flex; }
+.dpad{
+  display:grid; grid-template-columns:56px 56px 56px; grid-template-rows:56px 56px 56px; gap:10px;
 }
-.btn:active { transform:translateY(1px); }
+.btn{
+  width:56px; height:56px; border-radius:12px; border:2px solid var(--accent);
+  background:#fff7de; display:flex; align-items:center; justify-content:center;
+  user-select:none; touch-action:none; font-weight:800; font-size:20px;
+  box-shadow:0 3px 0 var(--accent);
+}
+.btn:active{ transform:translateY(1px); }
 
-/* Calque pour labels éphémères (déjà posé inline, ceci sert de garde-fou) */
+/* Labels éphémères (fallback) */
 #labelLayer { pointer-events:none; z-index: 9998; }
-
-/* Classe des labels (au cas où le JS n’injecte pas tout inline) */
 .epi-label{
-  font: 700 14px system-ui;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 2px solid rgba(0,0,0,.25);
-  background: #b04123; /* rouge terre cuite (cohérent étoiles/accents) */
-  text-shadow: 0 1px 0 rgba(0,0,0,.2);
+  font: 700 14px system-ui; color:#fff; padding: 6px 10px;
+  border-radius: 10px; border: 2px solid rgba(0,0,0,.25);
+  background: #b04123; text-shadow: 0 1px 0 rgba(0,0,0,.2);
   box-shadow: 0 6px 12px rgba(0,0,0,.25);
   transform: translate(-50%, -50%);
 }
 
-/* ====== Boutons flottants ====== */
-
-/* Bouton musique : fixe bas-droite, au-dessus du badge version */
+/* ---------- Boutons flottants ---------- */
 #musicBtn{
-  position: fixed;
-  right: 8px;
-  bottom: 48px;   /* badge est à bottom:8px → on se met juste au-dessus */
-  z-index: 10000;
-  font: 14px/1.1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #bfa86a;
-  background: #fff8dc;
-  box-shadow: 0 2px 0 rgba(0,0,0,.15);
-  cursor: pointer;
+  position: fixed; z-index:10000;
+  right: calc(8px + var(--safe-right));
+  bottom: calc(48px + var(--safe-bottom));
+  font: 14px/1.1 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #bfa86a; background: #fff8dc;
+  box-shadow: 0 2px 0 rgba(0,0,0,.15); cursor: pointer;
+}
+#musicBtn.on  { background:#f6ffe5; border-color:#93c572; }
+#musicBtn.off { background:#ffecec; border-color:#d49090; }
+#musicBtn:focus-visible{ outline:2px solid #3a86ff; outline-offset:2px; }
+
+#replayFloat{
+  position:fixed; z-index:10001;
+  right: calc(8px + var(--safe-right));
+  bottom: calc(16px + var(--safe-bottom));
+  padding: 8px 10px; border-radius: 8px; border:1px solid var(--accent-strong);
+  background:#fff; cursor:pointer;
 }
 
-/* États visuels ON/OFF */
-#musicBtn.on  { background: #f6ffe5; border-color:#93c572; }
-#musicBtn.off { background: #ffecec; border-color:#d49090; }
-
-/* petit focus accessible */
-#musicBtn:focus-visible{
-  outline: 2px solid #3a86ff;
-  outline-offset: 2px;
-}
-
-/* ====== Erreurs / Debug ====== */
+/* =========================================================
+   ====== Erreurs / Debug (section demandée) ======
+   ========================================================= */
 .err {
   position:absolute; right:10px; top:10px;
   background:#ffefef; border:2px solid #d66; border-radius:10px;
@@ -189,12 +222,11 @@ canvas { width:100%; height:100%; display:block; background:#bfe2f8; touch-actio
   padding:8px 10px; border-radius:8px;
   font:12px/1.3 system-ui; max-width:80vw; display:none;
 }
-/* Le conteneur du jeu doit être un contexte de positionnement */
-.game {
-  position: relative;
-}
 
-/* Le canvas occupe toute la zone de .game, derrière l'UI */
+/* Le conteneur du jeu doit être un contexte de positionnement */
+.game { position: relative; }
+
+/* Le canvas occupe toute la zone de .game, derrière l'UI (garde-fou) */
 canvas#c {
   position: absolute;
   inset: 0;        /* équivaut à top:0; right:0; bottom:0; left:0 */
@@ -206,18 +238,18 @@ canvas#c {
   position: absolute;   /* la plupart l’ont déjà */
   z-index: 22;          /* > 1 pour être au-dessus du canvas */
 }
+
 /* plein écran fiable, stop scroll/bounce */
 html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
 .wrap, .game { height:100%; }
 
-/* le canvas colle au viewport, quelles que soient les barres système */
+/* le canvas colle au viewport, quelles que soient les barres système (règle finale) */
 #c {
   position: fixed; inset: 0;
   width: 100vw;
   height: 100dvh;          /* unités dynamiques modernes */
   display:block;
 }
-
 @supports (height: 100svh) {
   #c { height: 100svh; }   /* encore plus stable si supporté */
 }
@@ -233,4 +265,40 @@ html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* =========================================================
+   ---------- Battle UI (injectée par battle.js) ----------
+   ========================================================= */
+/* Le JS injecte sa propre mise en forme inline pour être autonome,
+   ces règles ne sont que des garde-fous / tweaks globaux. */
+#__battle_ui__{ position:fixed; inset:0; z-index:10003; pointer-events:none; display:none; }
+#__battle_ui__ > div{ pointer-events:auto; margin-bottom:max(0px, var(--safe-bottom)); }
+#__battle_ui__ .__padbtn{ /* surcharge optionnelle */ }
+#__battle_rotate__{
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.75); color:#fff; font:700 18px system-ui;
+  text-align:center; padding:20px;
+}
+
+/* ---------- Petit badge version ---------- */
+#__ver__{
+  position:fixed; right: calc(8px + var(--safe-right)); bottom: calc(8px + var(--safe-bottom));
+  z-index:9999; background:rgba(0,0,0,.55); color:#fff;
+  font:12px system-ui; padding:4px 6px; border-radius:6px; pointer-events:none;
+}
+
+/* ---------- Responsif ---------- */
+@media (max-width: 420px){
+  .card h1{ font-size:20px; }
+  .heroes img{ width:64px; height:64px; }
+  .hud{ left: calc(6px + var(--safe-left)); }
+  .dpad{ grid-template-columns:52px 52px 52px; grid-template-rows:52px 52px 52px; gap:8px; }
+  .btn{ width:52px; height:52px; font-size:18px; }
+}
+
+/* ---------- Thèmes (optionnel) ---------- */
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#fcfbf6; --ink:#111; }
+  #musicBtn, #replayFloat{ background:#fffdf7; }
 }
