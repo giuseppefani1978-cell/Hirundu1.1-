@@ -3,9 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport"
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+  <!-- iOS (Safari) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne">
+  <!-- Icône iOS (mets une vraie image 180x180 / 192x192) -->
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Android (Chrome) -->
+  <meta name="theme-color" content="#0f1e2d">
+  <!-- Optionnel : fournis ce fichier si tu veux l’install PWA -->
+  <link rel="manifest" href="manifest.json">
+
   <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
-  <!-- Ta feuille de styles existante -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -35,7 +47,10 @@
       <!-- UI / HUD -->
       <button id="musicBtn" type="button">🎵 Musique</button>
       <button id="replayFloat" type="button">⟲ Rejouer</button>
-      <div class="err" id="err" style="display:none"><b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div></div>
+      <div class="err" id="err" style="display:none">
+        <b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div>
+      </div>
+
       <canvas id="c"></canvas>
 
       <div class="hud" id="hud">
@@ -52,7 +67,7 @@
         </div>
       </div>
 
-      <!-- D-pad -->
+      <!-- D-pad (pour la chasse au trésor uniquement ; la Battle a ses propres pads) -->
       <div class="touch" id="touch">
         <div class="dpad">
           <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
@@ -63,6 +78,7 @@
     </div>
   </div>
 
+  <!-- Petit panneau debug non intrusif (s’affiche seulement en cas d’erreur) -->
   <div id="debugBox" style="display:none"></div>
 
   <!-- Force Refresh -->
@@ -92,7 +108,7 @@
     })();
   </script>
 
-  <!-- CHARGEMENT UNIQUE du jeu : game.js importe i18n/ui/audio. AUCUN autre <script type="module"> -->
+  <!-- CHARGEMENT UNIQUE du jeu : game.js importe i18n/ui/audio/battle. AUCUN autre <script type="module"> -->
   <script type="module">
     import { boot } from './src/game.js';
     window.addEventListener('DOMContentLoaded', () => {
@@ -104,9 +120,8 @@
     });
   </script>
 
-  <!-- Debug erreurs JS -->
+  <!-- Debug erreurs JS (affiche un petit bandeau seulement quand ça plante) -->
   <script>
-    // Catch JS fatal errors pour éviter un "fige silencieux"
     window.addEventListener('error', e => {
       console.error('JS Error:', e.message, e.error);
       const box = document.getElementById('debugBox');
@@ -120,6 +135,7 @@
         box.style.padding = '8px 10px';
         box.style.borderRadius = '8px';
         box.textContent = 'Erreur: ' + e.message;
+        setTimeout(()=>{ box.style.display='none'; }, 6000);
       } else {
         alert('Erreur JS: ' + e.message);
       }
@@ -129,6 +145,5 @@
       alert('Erreur async: ' + (e.reason?.message || e.reason));
     });
   </script>
-  
 </body>
 </html>
