@@ -1,82 +1,44 @@
 // src/game.js
 // =====================================================
-// CONFIG + GAMEPLAY (imports: i18n, ui, audio uniquement)
+// GAMEPLAY "chasse" (carte, POIs, bonus) + handoff vers battle
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
 import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong } from './audio.js';
 import * as ui from './ui.js';
 
-// ---- NEW: Battle modules (ex-duel supprimé) ----
-import { startBattleIntro } from './battle_intro.js';
+// La battle est gérée via ce fin wrapper :
 import {
-  setupBattleInputs,
-  setBattleCallbacks,
-  setBattleAmmo,
-  startBattle,
-  tickBattle,
-  renderBattle,
-  isBattleActive
-} from './battle.js';
+  setupBattleLayer,
+  startBattleFlow,
+  isBattleRunning,
+  tickBattleLogic,
+  renderBattleFrame
+} from './game_battle.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 
 // ------------------------
-// Config (fusionnée ici)
+// Config
 // ------------------------
 const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
 
-// ⚠️ les noms doivent correspondre exactement aux fichiers dans /assets
+// ⚠️ noms EXACTS des fichiers dans /assets
 const ASSETS = {
   MAP_URL:       asset('assets/salento-map.PNG'),
-  BIRD_URL:      asset('assets/aracne .PNG'),     // (avec espace si le fichier l’a vraiment)
+  BIRD_URL:      asset('assets/aracne .PNG'),
   TARANTULA_URL: asset('assets/tarantula .PNG'),
   CROW_URL:      asset('assets/crow.PNG'),
   JELLY_URL:     asset('assets/jellyfish.PNG'),
   BONUS_PASTICCIOTTO: asset('assets/bonus-pasticciotto.PNG'),
   BONUS_RUSTICO: asset('assets/rustico.PNG'),
-  BONUS_CAFFE:   asset('assets/caffeleccese .PNG'), // ← avec espace à la fin
+  BONUS_CAFFE:   asset('assets/caffeleccese .PNG'),
 };
 
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
-// Taille logique de la scène battle (peu importe la vraie taille écran)
-const BTL_VIRTUAL = { W: 800, H: 450 }; // 16:9 ; mets les valeurs que battle.js attend le mieux
-// --- Helpers safe-area depuis le CSS :root
-function getSafeInset(pxName) {
-  try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(pxName).trim();
-    // ex: "20px" → 20
-    const n = parseFloat(v || '0');
-    return Number.isFinite(n) ? n : 0;
-  } catch { return 0; }
-}
 
-// --- Viewport battle : centré horizontalement, collé en bas
-// sideExtra/bottomExtra te permettent d'ajuster sans toucher le code plus tard.
-function computeBattleViewportBottom(W, H, {
-  sideExtra = 0,
-  bottomExtra = 0,
-} = {}) {
-  const safeBottom = getSafeInset('--safe-bottom');  // iOS home-indicator
-  const safeLeft   = getSafeInset('--safe-left');
-  const safeRight  = getSafeInset('--safe-right');
-
-  const targetAR = BTL_VIRTUAL.W / BTL_VIRTUAL.H; // 16/9
-  // largeur dispo = largeur écran moins safe areas et marges facultatives
-  const availW = Math.max(1, W - safeLeft - safeRight - sideExtra * 2);
-  const availH = Math.max(1, H - safeBottom - bottomExtra); // on colle au bas
-
-  // on remplit tant que possible en respectant l'aspect 16:9
-  let dw = availW;
-  let dh = Math.round(dw / targetAR);
-  if (dh > availH) { dh = availH; dw = Math.round(availH * targetAR); }
-
-  const ox = Math.floor((W - dw) / 2);                                   // centré X
-  const oy = Math.floor(H - safeBottom - bottomExtra - dh);              // collé en bas
-  return { ox, oy, dw, dh };
-}
 function pickDPR(){ return Math.max(1, Math.min(2, window.devicePixelRatio || 1)); }
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
   const availW = canvasW;
@@ -122,13 +84,9 @@ const ENEMY_CONFIG = {
   FLEE:  { SPEED: 0.38, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
   SPRITE_PX: { [ENEMY.JELLY]: 42, [ENEMY.CROW]: 42 },
 };
-const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
-// ----- BONUS (3 types) -----
-const BONUS = {
-  PASTICCIOTTO: 'pasticciotto',
-  RUSTICO: 'rustico',
-  CAFFE: 'caffe'
-};
+
+const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36 };
+
 const BONUS_TYPES = {
   PASTICCIOTTO: { key:'pasticciotto', score: 20, heal: 15, prob: 0.5 },
   RUSTICO:      { key:'rustico',      score: 40, heal: 25, prob: 0.35 },
@@ -137,10 +95,7 @@ const BONUS_TYPES = {
 
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 
-// ----- SCORE CONFIG -----
-const SCORE = {
-  STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0,
-};
+const SCORE = { STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0 };
 
 // ----- HALL OF FAME (local) -----
 const HOF_KEY = 'salento_hof_v1';
@@ -249,17 +204,13 @@ export function boot(){
 
   // UI init
   ui.initUI();
-  setupBattleInputs();
-  setBattleCallbacks({
-    onWin:  () => {
-      document.body.classList.remove('mode-battle');
-      triggerWin();
-    },
-    onLose: () => {
-      document.body.classList.remove('mode-battle');
-      triggerGameOver();
-    }
+
+  // Branches battle (inputs + callbacks) via la couche wrapper
+  setupBattleLayer({
+    onWin:  () => { document.body.classList.remove('mode-battle'); triggerWin(); },
+    onLose: () => { document.body.classList.remove('mode-battle'); triggerGameOver(); }
   });
+
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -267,7 +218,7 @@ export function boot(){
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
-  // Déplacer le bouton Rejouer sous le score live
+  // Rejouer flottant
   const replayBtn = document.getElementById('replayFloat');
   if (replayBtn){
     replayBtn.style.position = 'fixed';
@@ -278,10 +229,7 @@ export function boot(){
     replayBtn.style.zIndex = '10001';
   }
 
-  // Lien Hall of Fame dans le HUD (en bas)
   ensureHofLinkInHud();
-
-  // Score live (top-right, arcade rouge/jaune)
   ensureScoreLive();
 
   // Images
@@ -305,7 +253,6 @@ export function boot(){
   crowImg.onerror  = () => ui.assetFail('Crow', ASSETS.CROW_URL);
   jellyImg.onerror = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
 
-  // Splash avatars
   const heroAr = document.getElementById('heroAr');
   const heroTa = document.getElementById('heroTa');
   const tarAvatar = document.getElementById('tarAvatar');
@@ -313,23 +260,18 @@ export function boot(){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
   spiderImg.src = ASSETS.TARANTULA_URL;
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-  // ===== Canvas sizing (plus robuste mobile) =====
+  // ===== Canvas sizing =====
   let W = 0, H = 0, dpr = 1;
 
   function resizeCanvasHard() {
-    try {
-      window.scrollTo(0,0);
-      requestAnimationFrame(()=>window.scrollTo(0,0));
-    } catch {}
+    try { window.scrollTo(0,0); requestAnimationFrame(()=>window.scrollTo(0,0)); } catch {}
   }
-
   function resize(){
     const vp = window.visualViewport;
     W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
@@ -342,25 +284,16 @@ export function boot(){
     canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-
-  // ⚡️ On appelle tout de suite resize une première fois
   resize();
-
-  // événements
   window.addEventListener('resize', resize, { passive:true });
-
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-      resize();
-      resizeCanvasHard();
-    }, { passive:true });
+    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-
   window.addEventListener('orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
-  
+
   // ------- Game state -------
   // modes: 'splash' | 'play' | 'battle_intro' | 'battle' | 'win' | 'dead'
   let mode = 'splash';
@@ -370,7 +303,7 @@ export function boot(){
   let QUEST = shuffle(POIS);
   let currentIdx = 0;
 
-  // ---- NEW: timers/questions helpers ----
+  // Questions
   let askTimer = 0;
   function askQuestionAt(idx){
     if (idx >= 0 && idx < QUEST.length) {
@@ -380,11 +313,7 @@ export function boot(){
   }
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
-    askTimer = setTimeout(() => {
-      if (mode === 'play' && currentIdx < QUEST.length) {
-        askQuestionAt(currentIdx);
-      }
-    }, delayMs);
+    askTimer = setTimeout(() => { if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx); }, delayMs);
   }
 
   const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
@@ -397,8 +326,6 @@ export function boot(){
 
   let playerSlowTimer = 0;
   let hitShake = 0;
-
-  // Anti double-collecte (bugfix)
   let collectLockUntil = 0;
 
   // ------ SCORE RUNTIME ------
@@ -422,7 +349,6 @@ export function boot(){
     updateScoreLive();
   }
 
-  // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
 
   // D-pad (actif seulement en mode 'play')
@@ -432,7 +358,7 @@ export function boot(){
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startGame);
 
-  // Première question (sécurisée)
+  // Première question
   askQuestionAt(0);
 
   // ---------- helpers ----------
@@ -515,208 +441,137 @@ export function boot(){
 
   // ---------- Game loop ----------
   function draw(ts){
-  if(!running) return;
+    if(!running) return;
 
-  // --- Time step / ticks ---
-  if (ts){
-    if(!lastTS) lastTS = ts;
-    const dt = Math.min(0.05, (ts - lastTS)/1000);
-    lastTS = ts;
+    // time step
+    let dt = 0;
+    if (ts){
+      if(!lastTS) lastTS = ts;
+      dt = Math.min(0.05, (ts - lastTS)/1000);
+      lastTS = ts;
+
+      if (mode === 'play') {
+        tickEnemies(dt);
+        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+      } else if (mode === 'win') {
+        tickWin(dt);
+      } else if (mode === 'battle') {
+        // logique interne du mini-jeu
+        tickBattleLogic(dt, ctx);
+      }
+    }
+
+    // viewport carte
+    const mw = mapImg.naturalWidth || 1920;
+    const mh = mapImg.naturalHeight || 1080;
+    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
+
+    ctx.clearRect(0,0,W,H);
+
+    // ======= RENDU BATTLE (centré bas) =======
+    if (mode === 'battle' || isBattleRunning()){
+      renderBattleFrame(ctx, W, H, { birdImg, spiderImg, crowImg, jellyImg }, { sideExtra: 0, bottomExtra: 16 });
+      requestAnimationFrame(draw);
+      return;
+    }
+
+    // ======= RENDU CHASSE =======
+    if (mapImg.complete && mapImg.naturalWidth){
+      ctx.drawImage(mapImg, ox, oy, dw, dh);
+    } else {
+      ctx.fillStyle = '#bfe2f8'; ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
+      ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
+      ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+    }
+
+    for(const p of POIS){
+      const x = ox + p.x*dw, y = oy + p.y*dh;
+      if(collected.has(p.key)){
+        drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+      } else {
+        ctx.save();
+        ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
+        ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    const bw = Math.min(160, Math.max(90, dw * player.size || 90));
+    const bx = ox + player.x*dw;
+    const by = oy + player.y*dh;
 
     if (mode === 'play') {
-      tickEnemies(dt);
-      if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
-      if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
-    } else if (mode === 'win') {
-      tickWin(dt);
-    } else if (mode === 'battle') {
-      // boucle logique du mini-jeu (IA/physique interne)
-      tickBattle(dt, ctx);
+      const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
+      if (collided) setEnergy(energy - 18);
+      if (energy <= 0) { return triggerGameOver(); }
+
+      drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
+      drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
-  }
 
-  // --- Viewport carte de fond (utile hors battle) ---
-  const mw = mapImg.naturalWidth || 1920;
-  const mh = mapImg.naturalHeight || 1080;
-  const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
-
-  ctx.clearRect(0,0,W,H);
-
-  // =========================
-  //   RENDU MODE "BATTLE"
-  // =========================
-  if (mode === 'battle' || isBattleActive()) {
-    // Scène collée au bas de l’écran, centrée horizontalement
-    const vp = computeBattleViewportBottom(W, H, {
-      sideExtra: 0,
-      // ajuste si besoin pour aligner exactement avec "Force Refresh"
-      // (mets 0 pour coller au pixel en bas)
-      bottomExtra: 16
-    });
-
-    // renderBattle dessine en utilisant {ox,oy,dw,dh} à l’échelle écran
-    renderBattle(ctx, vp, { birdImg, spiderImg, crowImg, jellyImg });
-
-    requestAnimationFrame(draw);
-    return;
-  }
-
-  // =========================
-  //   RENDU HORS "BATTLE"
-  // =========================
-
-  // Fond carte
-  if (mapImg.complete && mapImg.naturalWidth){
-    ctx.drawImage(mapImg, ox, oy, dw, dh);
-  } else {
-    ctx.fillStyle = '#bfe2f8';
-    ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
-    ctx.fillStyle = '#0e2b4a';
-    ctx.font = '14px system-ui';
-    ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
-  }
-
-  // POIs
-  for (const p of POIS){
-    const x = ox + p.x*dw, y = oy + p.y*dh;
-    if (collected.has(p.key)){
-      drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
-    } else {
-      ctx.save();
-      ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
-      ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
-      ctx.stroke();
-      ctx.restore();
+    let sx=0, sy=0;
+    if (mode === 'play' && hitShake > 0){
+      const a = Math.min(1, hitShake / SHAKE.MAX_S);
+      const mag = 6 * a;
+      sx = (Math.random()*2-1)*mag;
+      sy = (Math.random()*2-1)*mag;
     }
-  }
 
-  // Joueur + collisions + ennemis/bonus (mode play)
-  const bw = Math.min(160, Math.max(90, dw * player.size || 90));
-  const bx = ox + player.x*dw;
-  const by = oy + player.y*dh;
-
-  if (mode === 'play') {
-    const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
-    if (collided) setEnergy(energy - 18);
-    if (energy <= 0) { return triggerGameOver(); }
-
-    drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
-    drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
-  }
-
-  let sx=0, sy=0;
-  if (mode === 'play' && hitShake > 0){
-    const a = Math.min(1, hitShake / SHAKE.MAX_S);
-    const mag = 6 * a;
-    sx = (Math.random()*2-1)*mag;
-    sy = (Math.random()*2-1)*mag;
-  }
-
-  if (mode === 'play') {
-    if (birdImg.complete && birdImg.naturalWidth){
-      ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-    } else {
-      ctx.fillStyle = '#333';
-      ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
+    if (mode === 'play') {
+      if (birdImg.complete && birdImg.naturalWidth){
+        ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
+      }else{
+        ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
+      }
     }
-  }
 
-  // Progression vers prochaine étoile
-  if (mode === 'play' && currentIdx < QUEST.length){
-    const now = performance.now();
-    if (now >= collectLockUntil){
-      const p = QUEST[currentIdx];
-      const px = ox + p.x*dw, py = oy + p.y*dh;
-      const onTarget = Math.hypot(bx - px, by - py) < 44;
-      if (onTarget){
-        collectLockUntil = now + 900;
-        collected.add(p.key);
-        ui.updateScore(collected.size, STARS_TARGET);
-        ui.renderStars(collected.size, STARS_TARGET);
-        starEmphasis();
-        ui.showEphemeralLabel(px, py - 28, poiName(p.key), {
-          color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30
-        });
-        score += SCORE.STAR; starsPicked++; updateScoreLive();
+    // progression
+    if (mode === 'play' && currentIdx < QUEST.length){
+      const now = performance.now();
+      if (now >= collectLockUntil){
+        const p = QUEST[currentIdx];
+        const px = ox + p.x*dw, py = oy + p.y*dh;
+        const onTarget = Math.hypot(bx - px, by - py) < 44;
+        if(onTarget){
+          collectLockUntil = now + 900;
+          collected.add(p.key);
+          ui.updateScore(collected.size, STARS_TARGET);
+          ui.renderStars(collected.size, STARS_TARGET);
+          starEmphasis();
+          ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+          score += SCORE.STAR; starsPicked++; updateScoreLive();
 
-        const nameShort = poiName(p.key);
-        ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
+          const nameShort = poiName(p.key);
+          ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
-        currentIdx++;
-        if (currentIdx === QUEST.length){
-          // Transition vers la battle
-          enterBattleFlow();
-        } else {
-          // reposer la prochaine question
-          queueNextAsk(1200);
+          currentIdx++;
+          if (currentIdx === QUEST.length){
+            // → Handoff battle (intro → start)
+            mode = 'battle_intro';
+            ui.showTouch(false);
+            if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+            startBattleFlow({
+              ammoCounts: pickedCounts,
+              stars: starsPicked,
+              onStartBattle: () => { mode = 'battle'; }
+            });
+          } else {
+            queueNextAsk(1200);
+          }
         }
       }
     }
-  }
-
-  if (mode === 'win') {
-    renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
-  }
-
-  requestAnimationFrame(draw);
-}
 
     if (mode === 'win') {
       renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
     }
 
     requestAnimationFrame(draw);
-  }
-
-  // ---------- Battle flow ----------
-  function enterBattleFlow(){
-    mode = 'battle_intro';
-    ui.showTouch(false);
-
-    // stop tout rappel de question pendant la battle
-    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
-
-    // NEW: bascule CSS → masque HUD/bulle carte et prépare les pads battle
-    document.body.classList.add('mode-battle');
-
-    // NEW: tip rapide dans la bulle Tarantula (puis on la masque)
-    try {
-      const bdText  = document.getElementById('bdText');
-      const bdTitle = document.getElementById('bdTitle');
-      const tar     = document.getElementById('tarTop');
-      if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Tarantula';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A pour attaquer, B pour spécial. Tourne en paysage.';
-        tar.classList.add('show');
-        setTimeout(()=> tar.classList.remove('show'), 2200);
-      }
-    } catch {}
-
-    // Munitions transmises au mini-jeu
-    setBattleAmmo({
-      pasticciotto: pickedCounts.pasticciotto|0,
-      rustico:      pickedCounts.rustico|0,
-      caffe:        pickedCounts.caffe|0,
-      stars:        starsPicked|0
-    });
-
-    // Écran d’intro “Bataille de Otronto”
-    startBattleIntro({
-      ammo: { ...pickedCounts, stars: starsPicked|0 },
-      onProceed: () => {
-        mode = 'battle';
-        startBattle('jelly'); // niveau 1
-
-        // double coup de pouce au resize pour qu’iOS recalcule bien après rotation
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-        setTimeout(() => {
-          window.dispatchEvent(new Event('resize'));
-          window.scrollTo(0,0);
-        }, 220);
-      }
-    });
   }
 
   // ---------- ticks ----------
@@ -775,7 +630,6 @@ export function boot(){
     let collided=false;
     const now = performance.now();
 
-    // Ennemis
     for (const e of enemies){
       if (e.state === 'flee') continue;
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
@@ -785,17 +639,15 @@ export function boot(){
         playerSlowTimer = Math.max(playerSlowTimer, 1.25);
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
         const away = Math.atan2((ey - by), (ex - bx));
-        e.vx = Math.cos(away) * ENEMY_CONFIG.FLEE.SPEED;
-        e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.vx = Math.cos(away) *  ENEMY_CONFIG.FLEE.SPEED;
+        e.vy = Math.sin(away) *  ENEMY_CONFIG.FLEE.SPEED;
         e.state='flee';
         e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
 
-        // scoring coup reçu
         score += SCORE.HIT; hits++; updateScoreLive();
       }
     }
 
-    // Bonus
     for (let i = bonuses.length - 1; i >= 0; i--) {
       const b = bonuses[i];
       const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
@@ -804,29 +656,19 @@ export function boot(){
         playerSlowTimer = 0;
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
 
-        // scoring & effets selon le type
         score += b.score;
         bonusScore += b.score;
         bonusesPicked++;
         setEnergy(energy + b.heal);
 
-        // label éphémère
-        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), {
-          color: 'transparent',
-          durationMs: 1000,
-          dy: -28
-        });
+        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), { color: 'transparent', durationMs: 1000, dy: -28 });
 
-        // compteur par type
         pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
 
-        // petit son différent selon le type
         const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
         ping(hz, 0.35);
 
-        // on retire le bonus
         bonuses.splice(i, 1);
-
         updateScoreLive();
       }
     }
@@ -841,7 +683,6 @@ export function boot(){
     playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
   }
-
   function triggerGameOver(){
     mode = 'dead';
     running = false;
@@ -851,10 +692,7 @@ export function boot(){
   // ---------- controls ----------
   function startGame(){
     try{
-      // 🔒 si on relance une partie après/pendant une battle, on enlève le mode-battle
       document.body.classList.remove('mode-battle');
-
-      // demander le nom à CHAQUE session
       const name = prompt("Ton nom/pseudo ?") || "Joueur";
       playerName = name.trim() || "Joueur";
       country = getCountry();
@@ -891,7 +729,6 @@ export function boot(){
     ui.renderStars(0, STARS_TARGET);
     resetAudioForNewGame();
 
-    // question initiale via helper + purge timer
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
     askQuestionAt(0);
   }
@@ -940,15 +777,8 @@ export function boot(){
       link.addEventListener('click', openHofPanel);
     }
   }
-  const musicBtn = document.getElementById('musicBtn');
-  if (musicBtn) {
-    musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-    musicBtn.addEventListener('click', () => {
-      toggleMusic();
-      ui.setMusicLabel(isMusicOn());
-      musicBtn.textContent = isMusicOn() ? '🔊 Musique' : '🔈 Musique';
-    });
-  }
+
+  // expose rien d’autre
 }
 
 // ------------------------
@@ -1080,14 +910,7 @@ function spawnFirework(store){
   for (let i=0;i<n;i++){
     const a = (i/n)*Math.PI*2;
     const sp = 90 + Math.random()*160;
-    store.push({
-      x: cx, y: cy,
-      vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
-      r: 2 + Math.random()*2,
-      color: col,
-      life: 0.9 + Math.random()*0.8,
-      life0: 1.7
-    });
+    store.push({ x: cx, y: cy, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, r: 2 + Math.random()*2, color: col, life: 0.9 + Math.random()*0.8, life0: 1.7 });
   }
 }
 
