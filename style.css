@@ -302,3 +302,19 @@ html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
   :root{ --paper:#fcfbf6; --ink:#111; }
   #musicBtn, #replayFloat{ background:#fffdf7; }
 }
+
+/* === État combat : masque l’UI carte et affiche les pads de battle === */
+body.mode-battle .hud,
+body.mode-battle #touch,
+body.mode-battle .tarTop,
+body.mode-battle .overlay,
+body.mode-battle #replayFloat,
+body.mode-battle #musicBtn,
+body.mode-battle #__ver__ {
+  display: none !important;
+}
+
+body.mode-battle #__battle_ui__,
+body.mode-battle #__battle_rotate__ {
+  display: block !important;
+}
