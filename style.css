@@ -306,15 +306,18 @@ html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
 /* === État combat : masque l’UI carte et affiche les pads de battle === */
 body.mode-battle .hud,
 body.mode-battle #touch,
-body.mode-battle .tarTop,
+/* .tarTop n'est PAS masqué pour laisser passer le tip */
 body.mode-battle .overlay,
 body.mode-battle #replayFloat,
 body.mode-battle #musicBtn,
-body.mode-battle #__ver__ {
+body.mode-battle #__ver__,
+body.mode-battle #__score_live {
   display: none !important;
 }
 
-body.mode-battle #__battle_ui__,
-body.mode-battle #__battle_rotate__ {
+body.mode-battle #__battle_ui__ {
   display: block !important;
+}
+body.mode-battle #__battle_rotate__ {
+  display: flex !important; /* pour centrer le message de rotation */
 }
