@@ -584,22 +584,59 @@ export function boot(){
       stars:        starsPicked|0
     };
 
-    // Lance l’intro puis, au clic "Commencer", on passe la main à game_battle.js
-    startBattleIntro({
-      ammo: { ...ammo },
-      onProceed: () => {
-        // masque HUD carte / prépare layout battle via CSS
-        document.body.classList.add('mode-battle');
+  // Lance l’intro puis, au clic "Commencer", on passe la main à game_battle.js
+startBattleIntro({
+  ammo: {
+    pasticciotto: pickedCounts.pasticciotto|0,
+    rustico:      pickedCounts.rustico|0,
+    caffe:        pickedCounts.caffe|0,
+    stars:        starsPicked|0
+  },
+  onProceed: async () => {
+    try {
+      // 1) stop la boucle de game.js pour ne plus redessiner la carte
+      running = false;
+      mode = 'battle';
 
-        // 🔔 main → battle (game_battle.js doit écouter cet event)
-        window.dispatchEvent(new CustomEvent('salento:enter-battle', { detail: { ammo } }));
+      // 2) lazy-load la couche battle et démarre le flux battle
+      const { startBattleFlow } = await import('./game_battle.js');
 
-        // double resize pour iOS après rotation
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
-        setTimeout(() => { window.dispatchEvent(new Event('resize')); window.scrollTo(0,0); }, 220);
-      }
-    });
+      await startBattleFlow(
+        {
+          pasticciotto: pickedCounts.pasticciotto|0,
+          rustico:      pickedCounts.rustico|0,
+          caffe:        pickedCounts.caffe|0,
+          stars:        starsPicked|0
+        },
+        {
+          bottomExtra: 16, // ajuste si tu veux coller pile au bouton "Force Refresh"
+          onWin: () => {
+            // nettoyage + retour au jeu principal (écran win)
+            document.body.classList.remove('mode-battle');
+            mode = 'win';
+            running = true;
+            requestAnimationFrame(draw);
+            // triggerWin() si tu veux le cérémonial + Hall of Fame
+            try { triggerWin(); } catch {}
+          },
+          onLose: () => {
+            document.body.classList.remove('mode-battle');
+            mode = 'dead';
+            running = false;
+            try { triggerGameOver(); } catch {}
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Battle module load error:', err);
+      alert('Impossible de charger la battle. Retour à la carte.');
+      document.body.classList.remove('mode-battle');
+      mode = 'play';
+      running = true;
+      requestAnimationFrame(draw);
+    }
   }
+});
 
   // ---------- ticks ----------
   function tickEnemies(dt){
