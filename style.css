@@ -318,6 +318,6 @@ body.mode-battle #__score_live {
 body.mode-battle #__battle_ui__ {
   display: block !important;
 }
-body.mode-battle #__battle_rotate__ {
-  display: flex !important; /* pour centrer le message de rotation */
-}
+
+/* NE PAS forcer #__battle_rotate__ ici — la logique JS l’affiche/masque.
+   Il doit rester display:none par défaut dans le bloc #__battle_rotate__ plus haut. */
