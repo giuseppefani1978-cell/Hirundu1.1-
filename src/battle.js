@@ -385,27 +385,38 @@ function _ensureBattleUI(show){
     root.style.cssText = `
       position:fixed; inset:0; pointer-events:none; z-index:10003; display:none;
     `;
-    // pad déplacement (gauche)
-    const move = document.createElement('div');
-    move.style.cssText = `
-      position:absolute; left:12px; bottom:82px; display:flex; gap:8px; align-items:center; pointer-events:auto;
-    `;
-    move.innerHTML = `
-      <button data-act="left"  class="__padbtn">←</button>
-      <button data-act="up"    class="__padbtn">↑</button>
-      <button data-act="right" class="__padbtn">→</button>
-    `;
+ // pad déplacement (gauche)
+const move = document.createElement('div');
+move.style.cssText = `
+  position:absolute;
+  left:12px;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  display:flex;
+  gap:8px;
+  align-items:center;
+  pointer-events:auto;
+`;
+move.innerHTML = `
+  <button data-act="left"  class="__padbtn">←</button>
+  <button data-act="up"    class="__padbtn">↑</button>
+  <button data-act="right" class="__padbtn">→</button>
+`;
 
-    // pad A/B (droite)
-    const ab = document.createElement('div');
-    ab.style.cssText = `
-      position:absolute; right:12px; bottom:82px; display:flex; flex-direction:column; gap:8px; pointer-events:auto;
-    `;
-    ab.innerHTML = `
-      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
-      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
-    `;
-
+// pad A/B (droite)
+const ab = document.createElement('div');
+ab.style.cssText = `
+  position:absolute;
+  right:12px;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  pointer-events:auto;
+`;
+ab.innerHTML = `
+  <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
+  <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
+`;
     // style boutons
     const style = document.createElement('style');
     style.textContent = `
