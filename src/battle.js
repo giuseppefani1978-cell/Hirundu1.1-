@@ -16,22 +16,22 @@ const BTL = {
   SHOT: 760,
   FOE_SHOT: 520,
 
-  // Tir ennemi (plus agressif)
-  FOE_FIRE_MS_MIN: 500,      // ← plus court
-  FOE_FIRE_MS_MAX: 900,      // ← plus court
-  FOE_BURST_COUNT: 2,        // petites rafales
+  // Ennemi plus agressif
+  FOE_FIRE_MS_MIN: 500,
+  FOE_FIRE_MS_MAX: 900,
+  FOE_BURST_COUNT: 2,
   FOE_BURST_GAP_MS: 120,
 
-  // “Zap” électrique
+  // Zap électrique
   FOE_ZAP_SPEED: 640,
   FOE_ZAP_DMG: 14,
-  FOE_ZAP_TAIL: 38,          // longueur de l’éclair à l’écran
+  FOE_ZAP_TAIL: 38,
 
-  // Sauts de la méduse
+  // Sauts
   FOE_JUMP_VY: -520,
   FOE_JUMP_COOLDOWN_MS: 900,
-  FOE_JUMP_DIST: 320,        // saute si à portée du joueur
-  FOE_JUMP_PROB: 0.5,        // 50% des opportunités
+  FOE_JUMP_DIST: 320,
+  FOE_JUMP_PROB: 0.5,
 
   HIT_R: 28,
   START_GRACE_MS: 1000,
@@ -45,7 +45,7 @@ let state = {
   w: 960, h: 540,
 
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
-  foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity },
+  foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false },
 
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
@@ -58,7 +58,8 @@ let state = {
   goAt: 0,
   graceUntil: 0,
   foeFireBlockUntil: 0,
-  foeJumpReadyAt: 0, 
+  foeJumpReadyAt: 0,
+
   skyline: null,
 
   // UI battle
@@ -95,7 +96,7 @@ export function startBattle(foeType='jelly'){
   state.foeType = foeType;
 
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
-  state.foe    = { x: state.w - 200, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity };
+  state.foe    = { x: state.w - 200, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false };
   state.shots.length = 0;
 
   const now = performance.now();
@@ -103,21 +104,24 @@ export function startBattle(foeType='jelly'){
   state.goAt = now + BTL.COUNTDOWN_MS;
   state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
   state.foeFireBlockUntil = state.goAt + 1000;
+  state.foeJumpReadyAt = state.goAt + 500;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
 
-  _ensureBattleUI(true);    // affiche les pads battle
-  _maybeLockLandscape();    // tente FS + lock paysage
-  _updateRotateOverlay();   // si en portrait, montrer overlay
-  _maybeLockLandscape();    // re-tente au cas où
+  _ensureBattleUI(true);
+  _maybeLockLandscape();
+  _updateRotateOverlay();
+  _maybeLockLandscape();
 
-  // légère stabilisation taille iOS
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 100);
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 350);
 }
 
 export function isBattleActive(){ return state.active; }
 
+// ---------------------------------------------------------
+// Ticks
+// ---------------------------------------------------------
 export function tickBattle(dt){
   if (!state.active) return;
   dt = Math.min(0.05, Math.max(0.001, dt));
@@ -138,7 +142,6 @@ export function tickBattle(dt){
       state.player.vy = BTL.JUMP_VY; state.player.onGround = false;
     }
   } else {
-    // purge pour éviter buffer
     state.input.atk = false; state.input.spc = false;
   }
   state.player.x = Math.max(60, Math.min(state.w-60, state.player.x + state.player.vx * dt));
@@ -149,14 +152,15 @@ export function tickBattle(dt){
     if (_consume('spc'))  _fireSpecial();
   }
 
-    // IA simple
+  // IA simple + agressivité
   if (!readyPhase){
     const dist = state.foe.x - state.player.x;
+    // déplacement horizontal de base
     if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
     else state.foe.vx = 0;
     state.foe.x = Math.max(60, Math.min(state.w-60, state.foe.x + state.foe.vx * dt));
 
-    // --- FOE: sauts agressifs ---
+    // sauts
     if (now >= state.foeJumpReadyAt && state.foe.onGround) {
       const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
       if (close && Math.random() < BTL.FOE_JUMP_PROB) {
@@ -164,20 +168,20 @@ export function tickBattle(dt){
         state.foe.onGround = false;
         state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
       } else {
-        state.foeJumpReadyAt = now + 180; // petit délai avant de re-check
+        state.foeJumpReadyAt = now + 180;
       }
     }
 
-    // --- FOE: tirs électriques (visés + rafales) ---
+    // tirs: zaps
     if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil){
-      _fireFoeZap(); // nouveau tir “zap” (peut déclencher une rafale)
+      _fireFoeZap();
       state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
     }
   }
+
   // Projectiles
   for (let i = state.shots.length - 1; i >= 0; i--){
     const s = state.shots[i];
-
     s.x += s.vx * dt;
     s.y += s.vy * dt;
     if (s.life != null) s.life -= dt;
@@ -200,65 +204,61 @@ export function tickBattle(dt){
       }
     }
 
-    // Sortie écran / fin de vie
-    if (s.x < -80 || s.x > state.w+80 || s.life <= 0){
-      state.shots.splice(i,1);
-    }
+    // sortie écran / fin de vie
+    const out = (s.x < -80 || s.x > state.w + 80);
+    const dead = (s.life != null && s.life <= 0);
+    if (out || dead) state.shots.splice(i,1);
   }
 
-    if (s.x < -80 || s.x > state.w+80) state.shots.splice(i,1);
-  }
-
-  // Fin de manche (hors READY/GRACE)
+  // Fin de manche
   if (now >= state.graceUntil){
-    if (state.foe.hp <= 0) { _endBattle(true);  }
-    if (state.player.hp <= 0) { _endBattle(false); }
+    if (state.foe.hp <= 0)   { _endBattle(true);  }
+    if (state.player.hp <= 0){ _endBattle(false); }
   }
 }
 
+// ---------------------------------------------------------
+// Rendu
+// ---------------------------------------------------------
 export function renderBattle(ctx, _view, sprites){
-  // Dimensions du canvas en pixels CSS (pas bruts)
   const dpr = window.devicePixelRatio || 1;
   const CANVAS_W = ctx.canvas.width  / dpr;
   const CANVAS_H = ctx.canvas.height / dpr;
 
-  // Viewport reçu (ox,oy,dw,dh). Fallback: plein canvas.
   const vp = _view || { ox:0, oy:0, dw:CANVAS_W, dh:CANVAS_H };
   const { ox, oy, dw, dh } = vp;
 
-  // Nettoyer + letterbox autour de l'arène
+  // letterbox
   ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   ctx.fillStyle = '#0a1420';
-  ctx.fillRect(0, 0, CANVAS_W, oy);                        // top
-  ctx.fillRect(0, oy + dh, CANVAS_W, CANVAS_H - (oy + dh)); // bottom
-  ctx.fillRect(0, oy, ox, dh);                               // left
-  ctx.fillRect(ox + dw, oy, CANVAS_W - (ox + dw), dh);       // right
+  ctx.fillRect(0, 0, CANVAS_W, oy);
+  ctx.fillRect(0, oy + dh, CANVAS_W, CANVAS_H - (oy + dh));
+  ctx.fillRect(0, oy, ox, dh);
+  ctx.fillRect(ox + dw, oy, CANVAS_W - (ox + dw), dh);
   ctx.restore();
 
-  // Tout le rendu jeu DANS le viewport
+  // viewport
   ctx.save();
   ctx.beginPath();
   ctx.rect(ox, oy, dw, dh);
   ctx.clip();
   ctx.translate(ox, oy);
 
-  // Taille logique = viewport
   const w = dw, h = dh;
   state.w = w; state.h = h;
 
-  // --- Fond : image "cover" si dispo, sinon fallback
+  // Fond (image cover si dispo)
   if (sprites?.bgImg && sprites.bgImg.complete && sprites.bgImg.naturalWidth) {
     const img = sprites.bgImg;
-    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight); // cover
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
     const rw = img.naturalWidth * scale;
     const rh = img.naturalHeight * scale;
     const dx = (w - rw) / 2;
     const dy = (h - rh) / 2;
     ctx.drawImage(img, dx, dy, rw, rh);
   } else {
-    // Fallback minimal
     ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
     ctx.fillStyle = '#1d3b5a';
     ctx.fillRect(0, h*0.55, w, h*0.45);
@@ -270,9 +270,13 @@ export function renderBattle(ctx, _view, sprites){
     }
   }
 
-  // --- Personnages
+  // Sol
+  ctx.fillStyle = '#223d33';
+  ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
+
+  // Personnages
   const P_W = 140, P_H = 152;
-  const pY = h - BTL.FLOOR_H + state.player.y - P_H; // FLOOR_H = 0 ⇒ sprite posé tout en bas
+  const pY = h - BTL.FLOOR_H + state.player.y - P_H;
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H;
 
   // Joueur
@@ -293,7 +297,6 @@ export function renderBattle(ctx, _view, sprites){
   ctx.restore();
 
   // Tirs
-    // Tirs
   for (const s of state.shots){
     if (s.kind === 'zap'){
       // rendu éclair dentelé
@@ -306,14 +309,13 @@ export function renderBattle(ctx, _view, sprites){
       const x1 = x2 - nx * tail;
       const y1 = y2 - ny * tail;
 
-      // segments cassés
       const segs = 5;
       const pts = [{x:x1, y:y1}];
       for (let i=1;i<segs;i++){
         const t = i / segs;
         const bx = x1 + (x2 - x1) * t;
         const by = y1 + (y2 - y1) * t;
-        const perp = (Math.random() * 10 - 5); // déviation
+        const perp = (Math.random() * 10 - 5);
         pts.push({ x: bx + (-ny)*perp, y: by + (nx)*perp });
       }
       pts.push({x:x2, y:y2});
@@ -329,9 +331,22 @@ export function renderBattle(ctx, _view, sprites){
       for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
 
-      // cœur d’éclair
+      // cœur
       ctx.strokeStyle = '#bdf';
       ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // projectile rond classique
+      ctx.beginPath();
+      ctx.arc(s.x, h - BTL.FLOOR_H + s.y - 60, 8, 0, Math.PI*2);
+      ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
+      ctx.fill();
+    }
+  }
 
   // HUD
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
@@ -355,7 +370,7 @@ export function renderBattle(ctx, _view, sprites){
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
   ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, Math.max(12, h-12));
 
-  ctx.restore(); // fin viewport
+  ctx.restore();
 }
 
 // ---------------------------------------------------------
@@ -363,7 +378,7 @@ export function renderBattle(ctx, _view, sprites){
 // ---------------------------------------------------------
 function _endBattle(victory){
   state.active = false;
-  _ensureBattleUI(false); // masque les pads
+  _ensureBattleUI(false);
   if (victory) state.onWin(); else state.onLose();
 }
 
@@ -383,6 +398,7 @@ function _fireNormal(){
     dmg: 12
   });
 }
+
 function _fireSpecial(){
   const order = [
     ['caffe', { dmg: 26 }],
@@ -407,7 +423,7 @@ function _fireSpecial(){
   else mk();
 }
 
-function _fireFoe(){
+function _fireFoe(){ // (non utilisé, gardé si besoin)
   state.shots.push({
     x: state.foe.x - 36,
     y: state.foe.y,
@@ -417,8 +433,8 @@ function _fireFoe(){
     dmg: 10
   });
 }
+
 function _fireFoeZapOnce() {
-  // vecteur vers le joueur
   const dx = (state.player.x - state.foe.x);
   const dy = (state.player.y - state.foe.y);
   const L  = Math.max(1, Math.hypot(dx, dy));
@@ -426,18 +442,17 @@ function _fireFoeZapOnce() {
   const vy = (dy / L) * BTL.FOE_ZAP_SPEED;
 
   state.shots.push({
-    x: state.foe.x - 36,   // bouche à gauche
+    x: state.foe.x - 36,
     y: state.foe.y,
     vx, vy,
     from: 'foe',
     dmg: BTL.FOE_ZAP_DMG,
     kind: 'zap',
-    life: 1.2,           // pour un effet de queue/rendu
+    life: 1.2,
   });
 }
 
 function _fireFoeZap(){
-  // 1er tir immédiat + petite rafale
   _fireFoeZapOnce();
   for (let i = 1; i < BTL.FOE_BURST_COUNT; i++){
     setTimeout(_fireFoeZapOnce, i * BTL.FOE_BURST_GAP_MS);
@@ -478,38 +493,40 @@ function _ensureBattleUI(show){
     root.style.cssText = `
       position:fixed; inset:0; pointer-events:none; z-index:10003; display:none;
     `;
- // pad déplacement (gauche)
-const move = document.createElement('div');
-move.style.cssText = `
-  position:absolute;
-  left:12px;
-  bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  display:flex;
-  gap:8px;
-  align-items:center;
-  pointer-events:auto;
-`;
-move.innerHTML = `
-  <button data-act="left"  class="__padbtn">←</button>
-  <button data-act="up"    class="__padbtn">↑</button>
-  <button data-act="right" class="__padbtn">→</button>
-`;
 
-// pad A/B (droite)
-const ab = document.createElement('div');
-ab.style.cssText = `
-  position:absolute;
-  right:12px;
-  bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  pointer-events:auto;
-`;
-ab.innerHTML = `
-  <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
-  <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
-`;
+    // pad déplacement (gauche)
+    const move = document.createElement('div');
+    move.style.cssText = `
+      position:absolute;
+      left:12px;
+      bottom: max(8px, env(safe-area-inset-bottom, 0px));
+      display:flex;
+      gap:8px;
+      align-items:center;
+      pointer-events:auto;
+    `;
+    move.innerHTML = `
+      <button data-act="left"  class="__padbtn">←</button>
+      <button data-act="up"    class="__padbtn">↑</button>
+      <button data-act="right" class="__padbtn">→</button>
+    `;
+
+    // pad A/B (droite)
+    const ab = document.createElement('div');
+    ab.style.cssText = `
+      position:absolute;
+      right:12px;
+      bottom: max(8px, env(safe-area-inset-bottom, 0px));
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      pointer-events:auto;
+    `;
+    ab.innerHTML = `
+      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
+      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
+    `;
+
     // style boutons
     const style = document.createElement('style');
     style.textContent = `
@@ -569,7 +586,6 @@ function _installOrientationWatch(){
 function _isLandscape(){
   const o = screen.orientation;
   if (o && o.type) return o.type.startsWith('landscape');
-  // fallback
   return window.innerWidth >= window.innerHeight;
 }
 
