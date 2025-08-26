@@ -17,8 +17,8 @@ const BTL = {
   FOE_SHOT: 520,
 
   // Ennemi plus agressif
-  FOE_FIRE_MS_MIN: 500,
-  FOE_FIRE_MS_MAX: 900,
+  FOE_FIRE_MS_MIN: 1200,
+  FOE_FIRE_MS_MAX: 2000,
   FOE_BURST_COUNT: 2,
   FOE_BURST_GAP_MS: 120,
 
@@ -103,18 +103,25 @@ export function startBattle(foeType='jelly'){
   state.foeType = foeType;
 
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
-  state.foe    = { x: state.w - 200, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false };
+  // foe → à l'extrémité droite
+  state.foe = { 
+    x: state.w - 100,   // ← placé complètement à droite
+    y: 0, vx: 0, vy: 0, 
+    hp: BTL.FOE_HP, 
+    fireAt: Infinity, 
+    onGround:false
+  };
   state.shots.length = 0;
 
   const now = performance.now();
   state.startAt = now;
   state.goAt = now + BTL.COUNTDOWN_MS;
     // ✅ AMORÇAGE DU PROCHAIN TIR ENNEMI
-  state.foe.fireAt = state.goAt + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
+  
   state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
   state.foeFireBlockUntil = state.goAt + 1000;
   state.foeJumpReadyAt = state.goAt + 500;
-
+  state.foe.fireAt = state.goAt + 2000; // ← elle commence à tirer 2s après le "GO!"
   if (!state.skyline) state.skyline = _makeSkyline(12);
 
   _ensureBattleUI(true);
