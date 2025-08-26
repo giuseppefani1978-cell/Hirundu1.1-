@@ -599,7 +599,7 @@ startBattleIntro({
       mode = 'battle';
 
       // 2) lazy-load la couche battle et démarre le flux battle
-      const { startBattleFlow } = await import('./game_battle.js');
+      const { startBattleFlow } = await import(`./game_battle.js?v=${APP_VERSION}`);
 
       await startBattleFlow(
         {
