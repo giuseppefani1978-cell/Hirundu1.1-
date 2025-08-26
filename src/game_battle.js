@@ -170,7 +170,7 @@ function _exitCanvasFullscreen() {
 // ---------------------------
 export async function startBattleFlow(
   ammo,
-  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 16 } = {}
+  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0 } = {}
 ){
   // Canvas / contexte
   _canvas = document.getElementById('c');
