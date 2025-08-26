@@ -127,10 +127,15 @@ function _loop(ts) {
   tickBattle(dt, _ctx);
 
   // viewport bas-centré, collé au bas de l’écran
-  const W = _canvas.clientWidth  || parseInt(_canvas.style.width)  || window.innerWidth;
-  const H = _canvas.clientHeight || parseInt(_canvas.style.height) || window.innerHeight;
-  const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
+  const rect = _canvas.getBoundingClientRect();
+const W = Math.max(1, Math.round(rect.width));
+const H = Math.max(1, Math.round(rect.height));
+const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
 
+const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
+// console.debug('battle viewport', {W, H, vp});
+renderBattle(_ctx, vp, _sprites);
+  
   // rendu battle
   renderBattle(_ctx, vp, _sprites);
 }
@@ -217,9 +222,6 @@ export async function startBattleFlow(
     setTimeout(_onResize, 60);
     setTimeout(_onResize, 220);
   }, { passive:true });
-
-  // CSS mode-battle (masque HUD etc.)
-  try { document.body.classList.add('mode-battle'); } catch {}
 
   // go!
   startBattleRaw('jelly');   // si tu as plusieurs niveaux, passe la clé en param
