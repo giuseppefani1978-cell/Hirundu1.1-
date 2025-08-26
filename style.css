@@ -36,7 +36,7 @@ body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; }
 /* Stabilise le viewport mobile (barres dynamiques) */
 .wrap, .game { height: 100dvh; }
 @supports (height: 100svh) { .wrap, .game { height: 100svh; } }
-
+.game { position: relative; overflow: hidden; }
 /* =========================================================
    ---------- CANVAS : chasse vs battle ----------
    ========================================================= */
