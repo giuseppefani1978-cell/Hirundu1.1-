@@ -128,14 +128,10 @@ function _loop(ts) {
 
   // viewport bas-centré, collé au bas de l’écran
   const rect = _canvas.getBoundingClientRect();
-const W = Math.max(1, Math.round(rect.width));
-const H = Math.max(1, Math.round(rect.height));
-const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
+  const W = Math.max(1, Math.round(rect.width));
+  const H = Math.max(1, Math.round(rect.height));
+  const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
 
-const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
-// console.debug('battle viewport', {W, H, vp});
-renderBattle(_ctx, vp, _sprites);
-  
   // rendu battle
   renderBattle(_ctx, vp, _sprites);
 }
