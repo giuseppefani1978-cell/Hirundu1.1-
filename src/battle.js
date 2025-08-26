@@ -1,12 +1,12 @@
 // src/battle.js
 // ---------------------------------------------------------
-// Mini-jeu "Bataille de Trento" — orientation paysage + pads tactiles
+// Mini-jeu "Bataille de Trento" — paysage + pads tactiles
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
 
 const BTL = {
-  FLOOR_H: 120,
+  FLOOR_H: 0,        // ← plus de barre "sol" : on colle en bas de l'arène
   GRAV: 1200,
   SPEED: 300,
   JUMP_VY: -620,
@@ -48,7 +48,7 @@ let state = {
 
   skyline: null,
 
-  // UI éléments battle
+  // UI battle
   ui: { root:null, move:null, ab:null, rotateOverlay:null }
 };
 
@@ -96,9 +96,9 @@ export function startBattle(foeType='jelly'){
   _ensureBattleUI(true);    // affiche les pads battle
   _maybeLockLandscape();    // tente FS + lock paysage
   _updateRotateOverlay();   // si en portrait, montrer overlay
-  _maybeLockLandscape();    // tente FS + lock paysage
+  _maybeLockLandscape();    // re-tente au cas où
 
-  // --- ajout stabilisation écran ---
+  // légère stabilisation taille iOS
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 100);
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 350);
 }
@@ -125,7 +125,7 @@ export function tickBattle(dt){
       state.player.vy = BTL.JUMP_VY; state.player.onGround = false;
     }
   } else {
-    // on purge pour éviter buffer
+    // purge pour éviter buffer
     state.input.atk = false; state.input.spc = false;
   }
   state.player.x = Math.max(60, Math.min(state.w-60, state.player.x + state.player.vx * dt));
@@ -188,48 +188,43 @@ export function renderBattle(ctx, _view, sprites){
   const CANVAS_W = ctx.canvas.width  / dpr;
   const CANVAS_H = ctx.canvas.height / dpr;
 
-  // Viewport reçu depuis game_battle.js (ox,oy,dw,dh). Fallback: plein canvas.
+  // Viewport reçu (ox,oy,dw,dh). Fallback: plein canvas.
   const vp = _view || { ox:0, oy:0, dw:CANVAS_W, dh:CANVAS_H };
   const { ox, oy, dw, dh } = vp;
 
-  // Nettoyer + peindre les letterbox autour de l'arène
+  // Nettoyer + letterbox autour de l'arène
   ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   ctx.fillStyle = '#0a1420';
-  // top
-  ctx.fillRect(0, 0, CANVAS_W, oy);
-  // bottom
-  ctx.fillRect(0, oy + dh, CANVAS_W, CANVAS_H - (oy + dh));
-  // left
-  ctx.fillRect(0, oy, ox, dh);
-  // right
-  ctx.fillRect(ox + dw, oy, CANVAS_W - (ox + dw), dh);
+  ctx.fillRect(0, 0, CANVAS_W, oy);                        // top
+  ctx.fillRect(0, oy + dh, CANVAS_W, CANVAS_H - (oy + dh)); // bottom
+  ctx.fillRect(0, oy, ox, dh);                               // left
+  ctx.fillRect(ox + dw, oy, CANVAS_W - (ox + dw), dh);       // right
   ctx.restore();
 
-  // Tout le rendu jeu se fait DANS le viewport
+  // Tout le rendu jeu DANS le viewport
   ctx.save();
   ctx.beginPath();
   ctx.rect(ox, oy, dw, dh);
   ctx.clip();
   ctx.translate(ox, oy);
 
-  // Taille logique de l'arène = viewport
+  // Taille logique = viewport
   const w = dw, h = dh;
   state.w = w; state.h = h;
 
-  // --- Fond : image "cover" si dispo, sinon fallback uni
+  // --- Fond : image "cover" si dispo, sinon fallback
   if (sprites?.bgImg && sprites.bgImg.complete && sprites.bgImg.naturalWidth) {
     const img = sprites.bgImg;
-    // object-fit: cover
-    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-    const dw = img.naturalWidth * scale;
-    const dh = img.naturalHeight * scale;
-    const dx = (w - dw) / 2;
-    const dy = (h - dh) / 2;
-    ctx.drawImage(img, dx, dy, dw, dh);
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight); // cover
+    const rw = img.naturalWidth * scale;
+    const rh = img.naturalHeight * scale;
+    const dx = (w - rw) / 2;
+    const dy = (h - rh) / 2;
+    ctx.drawImage(img, dx, dy, rw, rh);
   } else {
-    // Fallback (ce que tu avais)
+    // Fallback minimal
     ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
     ctx.fillStyle = '#1d3b5a';
     ctx.fillRect(0, h*0.55, w, h*0.45);
@@ -241,12 +236,9 @@ export function renderBattle(ctx, _view, sprites){
     }
   }
 
-  // Sol (par-dessus l’image)
-  ctx.fillStyle = '#223d33';
-  ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
   // --- Personnages
   const P_W = 140, P_H = 152;
-  const pY = h - BTL.FLOOR_H + state.player.y - P_H;
+  const pY = h - BTL.FLOOR_H + state.player.y - P_H; // FLOOR_H = 0 ⇒ sprite posé tout en bas
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H;
 
   // Joueur
@@ -274,7 +266,7 @@ export function renderBattle(ctx, _view, sprites){
     ctx.fill();
   }
 
-  // HUD (dans le viewport)
+  // HUD
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
   ctx.fillText(`HP: ${state.player.hp}`, 16, 28);
   ctx.fillText(`Foe: ${state.foe.hp}`,  Math.max(16, w-120), 28);
@@ -296,7 +288,7 @@ export function renderBattle(ctx, _view, sprites){
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
   ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, Math.max(12, h-12));
 
-  ctx.restore(); // fin du viewport
+  ctx.restore(); // fin viewport
 }
 
 // ---------------------------------------------------------
@@ -387,7 +379,6 @@ function _onKeyUp(e){
 // UI Battle (pads + overlay rotation)
 // ---------------------------------------------------------
 function _ensureBattleUI(show){
-  // conteneur global
   if (!state.ui.root){
     const root = document.createElement('div');
     root.id = '__battle_ui__';
@@ -479,7 +470,6 @@ function _isLandscape(){
 }
 
 async function _maybeLockLandscape(){
-  // tente le plein écran puis le lock paysage (meilleur taux de réussite si déclenché depuis un user-gesture)
   try {
     if (document.fullscreenElement == null && document.documentElement.requestFullscreen) {
       await document.documentElement.requestFullscreen();
@@ -494,7 +484,6 @@ async function _maybeLockLandscape(){
 
 function _updateRotateOverlay(){
   if (!state.ui.rotateOverlay) return;
-  // Affiche l’overlay si portrait ET battle active
   const need = state.active && !_isLandscape();
   state.ui.rotateOverlay.style.display = need ? 'flex' : 'none';
 }
