@@ -69,18 +69,23 @@ export function computeBattleViewportBottom(W, H, { sideExtra = 0, bottomExtra =
 }
 
 function _sizeCanvas() {
-  const vp = window.visualViewport;
-  const W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
-  const H = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
-  const dpr = _pickDPR();
+  if (!_canvas) return;
+  // Mesurer la taille réelle affichée (après CSS .mode-battle / fixed / 100dvh)
+  const rect = _canvas.getBoundingClientRect();
+  const cssW = Math.max(1, Math.round(rect.width));
+  const cssH = Math.max(1, Math.round(rect.height));
+  const dpr  = _pickDPR(); // (1..2) chez toi
 
-  _canvas.width  = Math.max(1, Math.floor(W * dpr));
-  _canvas.height = Math.max(1, Math.floor(H * dpr));
-  _canvas.style.width  = W + 'px';
-  _canvas.style.height = H + 'px';
+  // Backing store = CSS * DPR (pour un rendu net)
+  const pxW = Math.max(1, Math.floor(cssW * dpr));
+  const pxH = Math.max(1, Math.floor(cssH * dpr));
+
+  if (_canvas.width  !== pxW) _canvas.width  = pxW;
+  if (_canvas.height !== pxH) _canvas.height = pxH;
+
+  // Le CSS (fixed/inset:0) contrôle déjà la taille visible, on ne touche pas style.width/height ici
   _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-
 function _onResize() {
   _sizeCanvas();
   // double nudge iOS après rotation
