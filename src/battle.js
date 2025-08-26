@@ -36,7 +36,7 @@ const BTL = {
   HIT_R: 28,
   START_GRACE_MS: 1000,
   COUNTDOWN_MS: 900,
-  GO_FLASH_MS: 500
+  GO_FLASH_MS: 500,
     // Feedback à l'impact (comme la chasse)
   HIT_SHAKE_MAX_S: 0.5,
   HIT_SHAKE_DECAY_PER_S: 1.8,
