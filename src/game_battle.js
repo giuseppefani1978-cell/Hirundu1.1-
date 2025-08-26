@@ -1,6 +1,6 @@
 // src/game_battle.js
 // Couche "battle" autonome : inputs, callbacks, tick+render, viewport bas-centré
-const BTL_BG_SRC = 'assets/battle_bg_salento.png';
+const BTL_BG_SRC = 'assets/battle_bg_salento.PNG';
 import {
   setupBattleInputs,
   setBattleCallbacks as setCallbacksRaw,
