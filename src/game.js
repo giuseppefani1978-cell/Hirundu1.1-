@@ -609,7 +609,7 @@ startBattleIntro({
           stars:        starsPicked|0
         },
         {
-          bottomExtra: 16, // ajuste si tu veux coller pile au bouton "Force Refresh"
+          bottomExtra: 0, // ajuste si tu veux coller pile au bouton "Force Refresh"
           onWin: () => {
             // nettoyage + retour au jeu principal (écran win)
             document.body.classList.remove('mode-battle');
