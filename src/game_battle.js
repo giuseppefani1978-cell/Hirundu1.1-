@@ -132,7 +132,9 @@ function _loop(ts) {
   const rect = _canvas.getBoundingClientRect();
   const W = Math.max(1, Math.round(rect.width));
   const H = Math.max(1, Math.round(rect.height));
-  const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
+  // viewport plein écran sans bandes
+const vp = { ox:0, oy:0, dw:W, dh:H };
+renderBattle(_ctx, vp, _sprites);
 
   // rendu battle
   renderBattle(_ctx, vp, _sprites);
