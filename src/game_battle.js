@@ -174,16 +174,19 @@ export async function startBattleFlow(
   if (!_canvas) { alert("Canvas #c introuvable pour la battle."); return; }
   _ctx = _canvas.getContext('2d', { alpha:true });
 
-  // --- AJOUT : canvas en plein écran pendant la battle
+  // 1) Activer le CSS battle AVANT toute mesure
+  try { document.body.classList.add('mode-battle'); } catch {}
+
+  // 2) Assurer le plein écran du canvas (helper style inline)
   _enterCanvasFullscreen();
 
   _bottomExtra = bottomExtra;
   _lastTS = 0;
 
-  // inputs battle
+  // 3) Inputs battle
   setupBattleInputs();
 
-  // callbacks (on injecte notre nettoyage + ceux fournis)
+  // 4) Callbacks (on injecte notre nettoyage + ceux fournis)
   _onWin  = onWin;
   _onLose = onLose;
   setCallbacksRaw({
@@ -198,7 +201,6 @@ export async function startBattleFlow(
       _onLose && _onLose();
     }
   });
-
   // munitions
   setAmmoRaw(ammo || {});
 
