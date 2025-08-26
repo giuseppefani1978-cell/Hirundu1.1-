@@ -183,13 +183,42 @@ export function tickBattle(dt){
 }
 
 export function renderBattle(ctx, _view, sprites){
-  const dpr = window.devicePixelRatio||1;
-  const w = ctx.canvas.width  / dpr;
-  const h = ctx.canvas.height / dpr;
+  // Dimensions du canvas en pixels CSS (pas bruts)
+  const dpr = window.devicePixelRatio || 1;
+  const CANVAS_W = ctx.canvas.width  / dpr;
+  const CANVAS_H = ctx.canvas.height / dpr;
+
+  // Viewport reçu depuis game_battle.js (ox,oy,dw,dh). Fallback: plein canvas.
+  const vp = _view || { ox:0, oy:0, dw:CANVAS_W, dh:CANVAS_H };
+  const { ox, oy, dw, dh } = vp;
+
+  // Nettoyer + peindre les letterbox autour de l'arène
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = '#0a1420';
+  // top
+  ctx.fillRect(0, 0, CANVAS_W, oy);
+  // bottom
+  ctx.fillRect(0, oy + dh, CANVAS_W, CANVAS_H - (oy + dh));
+  // left
+  ctx.fillRect(0, oy, ox, dh);
+  // right
+  ctx.fillRect(ox + dw, oy, CANVAS_W - (ox + dw), dh);
+  ctx.restore();
+
+  // Tout le rendu jeu se fait DANS le viewport
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(ox, oy, dw, dh);
+  ctx.clip();
+  ctx.translate(ox, oy);
+
+  // Taille logique de l'arène = viewport
+  const w = dw, h = dh;
   state.w = w; state.h = h;
 
-  // Fond (placeholder)
-  ctx.save();
+  // --- Fond
   ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
   ctx.fillStyle = '#1d3b5a';
   ctx.fillRect(0, h*0.55, w, h*0.45);
@@ -201,9 +230,8 @@ export function renderBattle(ctx, _view, sprites){
   }
   ctx.fillStyle = '#223d33';
   ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-  ctx.restore();
 
-  // Personnages
+  // --- Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H;
@@ -233,27 +261,29 @@ export function renderBattle(ctx, _view, sprites){
     ctx.fill();
   }
 
-  // HUD
+  // HUD (dans le viewport)
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
   ctx.fillText(`HP: ${state.player.hp}`, 16, 28);
-  ctx.fillText(`Foe: ${state.foe.hp}`,  w-120, 28);
-  ctx.fillText(`★: ${state.ammo.stars}`, w/2-12, 28);
+  ctx.fillText(`Foe: ${state.foe.hp}`,  Math.max(16, w-120), 28);
+  ctx.fillText(`★: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
 
   // READY / GO
   const now = performance.now();
   if (now < state.goAt){
     ctx.font='700 42px system-ui';
     ctx.fillStyle='rgba(255,255,255,.9)';
-    ctx.fillText('READY…', w/2 - 92, h/2 - 40);
+    ctx.fillText('READY…', Math.floor(w/2 - 92), Math.floor(h/2 - 40));
   } else if (now < state.goAt + BTL.GO_FLASH_MS){
     ctx.font='900 56px system-ui';
     ctx.fillStyle='rgba(255,235,0,.95)';
-    ctx.fillText('GO!', w/2 - 40, h/2 - 40);
+    ctx.fillText('GO!', Math.floor(w/2 - 40), Math.floor(h/2 - 40));
   }
 
   // Aide
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
-  ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, h-12);
+  ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, Math.max(12, h-12));
+
+  ctx.restore(); // fin du viewport
 }
 
 // ---------------------------------------------------------
