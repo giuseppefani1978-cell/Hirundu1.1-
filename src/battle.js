@@ -37,6 +37,11 @@ const BTL = {
   START_GRACE_MS: 1000,
   COUNTDOWN_MS: 900,
   GO_FLASH_MS: 500
+    // Feedback à l'impact (comme la chasse)
+  HIT_SHAKE_MAX_S: 0.5,
+  HIT_SHAKE_DECAY_PER_S: 1.8,
+  HIT_SLOW_FACTOR: 0.45,
+  HIT_SLOW_MS: 450,
 };
 
 let state = {
@@ -62,10 +67,12 @@ let state = {
 
   skyline: null,
 
+  shakeT: 0,         // temps restant de secousse
+  slowUntil: 0,      // horodatage jusqu'auquel on ralentit le joueur
   // UI battle
   ui: { root:null, move:null, ab:null, rotateOverlay:null }
 };
-
+  
 // ---------------------------------------------------------
 // API
 // ---------------------------------------------------------
@@ -102,6 +109,8 @@ export function startBattle(foeType='jelly'){
   const now = performance.now();
   state.startAt = now;
   state.goAt = now + BTL.COUNTDOWN_MS;
+    // ✅ AMORÇAGE DU PROCHAIN TIR ENNEMI
+  state.foe.fireAt = state.goAt + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
   state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
   state.foeFireBlockUntil = state.goAt + 1000;
   state.foeJumpReadyAt = state.goAt + 500;
@@ -129,15 +138,19 @@ export function tickBattle(dt){
   const now = performance.now();
   const readyPhase = now < state.goAt;
   const inGrace   = now < state.graceUntil;
-
+  // Gestion du shake
+  if (state.shakeT > 0) {
+    state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
+  }
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
   // Mouvements joueur (bloqués pendant READY…)
+  const slow = (performance.now() < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
   state.player.vx = 0;
   if (!readyPhase){
-    if (state.input.left)  { state.player.vx = -BTL.SPEED; state.player.facing = -1; }
-    if (state.input.right) { state.player.vx =  BTL.SPEED; state.player.facing =  1; }
+    if (state.input.left)  { state.player.vx = -BTL.SPEED * slow; state.player.facing = -1; }
+    if (state.input.right) { state.player.vx =  BTL.SPEED * slow; state.player.facing =  1; }
     if (state.input.up && state.player.onGround){
       state.player.vy = BTL.JUMP_VY; state.player.onGround = false;
     }
@@ -198,6 +211,9 @@ export function tickBattle(dt){
         const dx = s.x - state.player.x, dy = s.y - 0;
         if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
           state.player.hp = Math.max(0, state.player.hp - s.dmg);
+                   // Feedback comme la chasse
+          state.shakeT = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
+          state.slowUntil = performance.now() + BTL.HIT_SLOW_MS;
           state.shots.splice(i,1);
           continue;
         }
@@ -248,6 +264,14 @@ export function renderBattle(ctx, _view, sprites){
 
   const w = dw, h = dh;
   state.w = w; state.h = h;
+    // Effet de shake quand touché
+  if (state.shakeT > 0) {
+    const a = Math.min(1, state.shakeT / BTL.HIT_SHAKE_MAX_S);
+    const mag = 6 * a;
+    const sx = (Math.random()*2 - 1) * mag;
+    const sy = (Math.random()*2 - 1) * mag;
+    ctx.translate(sx, sy);
+  }
 
   // Fond (image cover si dispo)
   if (sprites?.bgImg && sprites.bgImg.complete && sprites.bgImg.naturalWidth) {
