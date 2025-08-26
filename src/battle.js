@@ -6,7 +6,7 @@
 // ---------------------------------------------------------
 
 const BTL = {
-  FLOOR_H: 0,        // ← plus de barre "sol" : on colle en bas de l'arène
+  FLOOR_H: 120,
   GRAV: 1200,
   SPEED: 300,
   JUMP_VY: -620,
@@ -16,11 +16,24 @@ const BTL = {
   SHOT: 760,
   FOE_SHOT: 520,
 
-  FOE_FIRE_MS_MIN: 900,
-  FOE_FIRE_MS_MAX: 1400,
+  // Tir ennemi (plus agressif)
+  FOE_FIRE_MS_MIN: 500,      // ← plus court
+  FOE_FIRE_MS_MAX: 900,      // ← plus court
+  FOE_BURST_COUNT: 2,        // petites rafales
+  FOE_BURST_GAP_MS: 120,
+
+  // “Zap” électrique
+  FOE_ZAP_SPEED: 640,
+  FOE_ZAP_DMG: 14,
+  FOE_ZAP_TAIL: 38,          // longueur de l’éclair à l’écran
+
+  // Sauts de la méduse
+  FOE_JUMP_VY: -520,
+  FOE_JUMP_COOLDOWN_MS: 900,
+  FOE_JUMP_DIST: 320,        // saute si à portée du joueur
+  FOE_JUMP_PROB: 0.5,        // 50% des opportunités
 
   HIT_R: 28,
-
   START_GRACE_MS: 1000,
   COUNTDOWN_MS: 900,
   GO_FLASH_MS: 500
@@ -45,7 +58,7 @@ let state = {
   goAt: 0,
   graceUntil: 0,
   foeFireBlockUntil: 0,
-
+  foeJumpReadyAt: 0, 
   skyline: null,
 
   // UI battle
@@ -136,23 +149,38 @@ export function tickBattle(dt){
     if (_consume('spc'))  _fireSpecial();
   }
 
-  // IA simple
+    // IA simple
   if (!readyPhase){
     const dist = state.foe.x - state.player.x;
     if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
     else state.foe.vx = 0;
     state.foe.x = Math.max(60, Math.min(state.w-60, state.foe.x + state.foe.vx * dt));
 
+    // --- FOE: sauts agressifs ---
+    if (now >= state.foeJumpReadyAt && state.foe.onGround) {
+      const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
+      if (close && Math.random() < BTL.FOE_JUMP_PROB) {
+        state.foe.vy = BTL.FOE_JUMP_VY;
+        state.foe.onGround = false;
+        state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
+      } else {
+        state.foeJumpReadyAt = now + 180; // petit délai avant de re-check
+      }
+    }
+
+    // --- FOE: tirs électriques (visés + rafales) ---
     if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil){
-      _fireFoe();
+      _fireFoeZap(); // nouveau tir “zap” (peut déclencher une rafale)
       state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
     }
   }
-
   // Projectiles
   for (let i = state.shots.length - 1; i >= 0; i--){
     const s = state.shots[i];
-    s.x += s.vx * dt; s.y += s.vy * dt;
+
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    if (s.life != null) s.life -= dt;
 
     if (!inGrace){
       if (s.from === 'player'){
@@ -171,6 +199,12 @@ export function tickBattle(dt){
         }
       }
     }
+
+    // Sortie écran / fin de vie
+    if (s.x < -80 || s.x > state.w+80 || s.life <= 0){
+      state.shots.splice(i,1);
+    }
+  }
 
     if (s.x < -80 || s.x > state.w+80) state.shots.splice(i,1);
   }
@@ -259,12 +293,45 @@ export function renderBattle(ctx, _view, sprites){
   ctx.restore();
 
   // Tirs
+    // Tirs
   for (const s of state.shots){
-    ctx.beginPath();
-    ctx.arc(s.x, h - BTL.FLOOR_H + s.y - 60, 8, 0, Math.PI*2);
-    ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
-    ctx.fill();
-  }
+    if (s.kind === 'zap'){
+      // rendu éclair dentelé
+      const tail = BTL.FOE_ZAP_TAIL;
+      const vx = s.vx, vy = s.vy;
+      const L = Math.max(1, Math.hypot(vx, vy));
+      const nx = vx / L, ny = vy / L;
+      const x2 = s.x;
+      const y2 = h - BTL.FLOOR_H + s.y - 60;
+      const x1 = x2 - nx * tail;
+      const y1 = y2 - ny * tail;
+
+      // segments cassés
+      const segs = 5;
+      const pts = [{x:x1, y:y1}];
+      for (let i=1;i<segs;i++){
+        const t = i / segs;
+        const bx = x1 + (x2 - x1) * t;
+        const by = y1 + (y2 - y1) * t;
+        const perp = (Math.random() * 10 - 5); // déviation
+        pts.push({ x: bx + (-ny)*perp, y: by + (nx)*perp });
+      }
+      pts.push({x:x2, y:y2});
+
+      // lueur
+      ctx.save();
+      ctx.strokeStyle = 'rgba(120,220,255,0.85)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(120,220,255,0.7)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+
+      // cœur d’éclair
+      ctx.strokeStyle = '#bdf';
+      ctx.lineWidth = 1.5;
 
   // HUD
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
@@ -349,6 +416,32 @@ function _fireFoe(){
     from: 'foe',
     dmg: 10
   });
+}
+function _fireFoeZapOnce() {
+  // vecteur vers le joueur
+  const dx = (state.player.x - state.foe.x);
+  const dy = (state.player.y - state.foe.y);
+  const L  = Math.max(1, Math.hypot(dx, dy));
+  const vx = (dx / L) * BTL.FOE_ZAP_SPEED;
+  const vy = (dy / L) * BTL.FOE_ZAP_SPEED;
+
+  state.shots.push({
+    x: state.foe.x - 36,   // bouche à gauche
+    y: state.foe.y,
+    vx, vy,
+    from: 'foe',
+    dmg: BTL.FOE_ZAP_DMG,
+    kind: 'zap',
+    life: 1.2,           // pour un effet de queue/rendu
+  });
+}
+
+function _fireFoeZap(){
+  // 1er tir immédiat + petite rafale
+  _fireFoeZapOnce();
+  for (let i = 1; i < BTL.FOE_BURST_COUNT; i++){
+    setTimeout(_fireFoeZapOnce, i * BTL.FOE_BURST_GAP_MS);
+  }
 }
 
 function _rnd(a,b){ return a + Math.random()*(b-a); }
