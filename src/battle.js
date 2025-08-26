@@ -15,7 +15,10 @@ const BTL = {
 
   SHOT: 760,
   FOE_SHOT: 520,
-
+  // Entrée de l’ennemi
+  FOE_ENTRY_DELAY_MS: 1200,   // temps d’attente avant d’entrer
+  FOE_ENTRY_SPEED: 260,       // vitesse de “glissade” vers l’arène
+  FOE_TARGET_MARGIN_X: 100,   // position cible = bord droit - marge
   // Ennemi plus agressif
   FOE_FIRE_MS_MIN: 1200,
   FOE_FIRE_MS_MAX: 2000,
@@ -64,6 +67,8 @@ let state = {
   graceUntil: 0,
   foeFireBlockUntil: 0,
   foeJumpReadyAt: 0,
+  foeEntryUntil: 0,     // timestamp : fin du délai d’entrée
+  // ...
 
   skyline: null,
 
@@ -102,19 +107,27 @@ export function startBattle(foeType='jelly'){
   state.active = true;
   state.foeType = foeType;
 
+  // joueur
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
-  // foe → à l'extrémité droite
+
+  // foe : démarre hors-écran à droite
   state.foe = { 
-    x: state.w - 100,   // ← placé complètement à droite
-    y: 0, vx: 0, vy: 0, 
-    hp: BTL.FOE_HP, 
-    fireAt: Infinity, 
-    onGround:false
+    x: state.w + 160, y: 0, vx: 0, vy: 0,
+    hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
   };
-  state.shots.length = 0;
 
   const now = performance.now();
   state.startAt = now;
+  state.goAt = now + BTL.COUNTDOWN_MS;
+  state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
+
+  // délai d’entrée + délai de tir
+  state.foeEntryUntil      = state.goAt + BTL.FOE_ENTRY_DELAY_MS;
+  state.foeFireBlockUntil  = state.foeEntryUntil + 300;
+  state.foeJumpReadyAt     = state.foeEntryUntil + 500;
+
+  // quand elle pourra commencer à viser / tirer
+  state.foe.fireAt = state.foeEntryUntil + 600;
   state.goAt = now + BTL.COUNTDOWN_MS;
     // ✅ AMORÇAGE DU PROCHAIN TIR ENNEMI
   
