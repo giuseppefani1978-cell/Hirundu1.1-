@@ -218,19 +218,32 @@ export function renderBattle(ctx, _view, sprites){
   const w = dw, h = dh;
   state.w = w; state.h = h;
 
-  // --- Fond
-  ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
-  ctx.fillStyle = '#1d3b5a';
-  ctx.fillRect(0, h*0.55, w, h*0.45);
-  if (state.skyline){
+  // --- Fond : image "cover" si dispo, sinon fallback uni
+  if (sprites?.bgImg && sprites.bgImg.complete && sprites.bgImg.naturalWidth) {
+    const img = sprites.bgImg;
+    // object-fit: cover
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  } else {
+    // Fallback (ce que tu avais)
+    ctx.fillStyle = '#0f1e2d'; ctx.fillRect(0,0,w,h);
     ctx.fillStyle = '#1d3b5a';
-    for (const b of state.skyline){
-      ctx.fillRect(b.x*w, h*0.55 - b.h, b.w, b.h);
+    ctx.fillRect(0, h*0.55, w, h*0.45);
+    if (state.skyline){
+      ctx.fillStyle = '#1d3b5a';
+      for (const b of state.skyline){
+        ctx.fillRect(b.x*w, h*0.55 - b.h, b.w, b.h);
+      }
     }
   }
+
+  // Sol (par-dessus l’image)
   ctx.fillStyle = '#223d33';
   ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-
   // --- Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
