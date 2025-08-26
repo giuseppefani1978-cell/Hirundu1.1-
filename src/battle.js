@@ -131,10 +131,6 @@ export function startBattle(foeType='jelly'){
   state.goAt = now + BTL.COUNTDOWN_MS;
     // ✅ AMORÇAGE DU PROCHAIN TIR ENNEMI
   
-  state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
-  state.foeFireBlockUntil = state.goAt + 1000;
-  state.foeJumpReadyAt = state.goAt + 500;
-  state.foe.fireAt = state.goAt + 2000; // ← elle commence à tirer 2s après le "GO!"
   if (!state.skyline) state.skyline = _makeSkyline(12);
 
   _ensureBattleUI(true);
@@ -153,67 +149,96 @@ export function isBattleActive(){ return state.active; }
 // ---------------------------------------------------------
 export function tickBattle(dt){
   if (!state.active) return;
+
+  // Sécurité intégrateur
   dt = Math.min(0.05, Math.max(0.001, dt));
 
   const now = performance.now();
   const readyPhase = now < state.goAt;
-  const inGrace   = now < state.graceUntil;
-  // Gestion du shake
+  const inGrace    = now < state.graceUntil;
+
+  // Décroissance du shake (feedback)
   if (state.shakeT > 0) {
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
+
+  // Physique de base (gravité/sol)
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
-  // Mouvements joueur (bloqués pendant READY…)
-  const slow = (performance.now() < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
+  // -----------------------------
+  // Contrôles joueur (bloqués pendant READY…)
+  // -----------------------------
+  const slowMul = (now < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
   state.player.vx = 0;
+
   if (!readyPhase){
-    if (state.input.left)  { state.player.vx = -BTL.SPEED * slow; state.player.facing = -1; }
-    if (state.input.right) { state.player.vx =  BTL.SPEED * slow; state.player.facing =  1; }
+    if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
+    if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
     if (state.input.up && state.player.onGround){
-      state.player.vy = BTL.JUMP_VY; state.player.onGround = false;
+      state.player.vy = BTL.JUMP_VY;
+      state.player.onGround = false;
     }
   } else {
-    state.input.atk = false; state.input.spc = false;
+    // purge pour éviter un buffer d’attaques pendant le READY
+    state.input.atk = false;
+    state.input.spc = false;
   }
-  state.player.x = Math.max(60, Math.min(state.w-60, state.player.x + state.player.vx * dt));
 
+  // Clamp horizontal joueur
+  state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
+
+  // -----------------------------
   // Attaques joueur
+  // -----------------------------
   if (!readyPhase){
-    if (_consume('atk'))  _fireNormal();
-    if (_consume('spc'))  _fireSpecial();
+    if (_consume('atk')) _fireNormal();
+    if (_consume('spc')) _fireSpecial();
   }
 
-  // IA simple + agressivité
+  // -----------------------------
+  // IA ENNEMI
+  // -----------------------------
   if (!readyPhase){
-    const dist = state.foe.x - state.player.x;
-    // déplacement horizontal de base
-    if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
-    else state.foe.vx = 0;
-    state.foe.x = Math.max(60, Math.min(state.w-60, state.foe.x + state.foe.vx * dt));
+    // 1) Phase d’entrée : la méduse vient du bord droit, glisse jusqu’à sa position cible
+    const targetX = state.w - BTL.FOE_TARGET_MARGIN_X;
+    if (now < state.foeEntryUntil) {
+      // Pendant l’entrée : pas de tir (déjà bloqué par foeFireBlockUntil)
+      state.foe.vx = -BTL.FOE_ENTRY_SPEED;
+      state.foe.x  = Math.max(targetX, state.foe.x + state.foe.vx * dt);
+    } else {
+      // 2) IA "normale" une fois entrée
+      const dist = state.foe.x - state.player.x;
 
-    // sauts
-    if (now >= state.foeJumpReadyAt && state.foe.onGround) {
-      const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
-      if (close && Math.random() < BTL.FOE_JUMP_PROB) {
-        state.foe.vy = BTL.FOE_JUMP_VY;
-        state.foe.onGround = false;
-        state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
-      } else {
-        state.foeJumpReadyAt = now + 180;
+      // déplacement horizontal simple
+      if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
+      else                      state.foe.vx = 0;
+      state.foe.x = Math.max(60, Math.min(state.w - 60, state.foe.x + state.foe.vx * dt));
+
+      // sauts opportunistes
+      if (now >= state.foeJumpReadyAt && state.foe.onGround) {
+        const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
+        if (close && Math.random() < BTL.FOE_JUMP_PROB) {
+          state.foe.vy = BTL.FOE_JUMP_VY;
+          state.foe.onGround = false;
+          state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
+        } else {
+          state.foeJumpReadyAt = now + 180; // re-check bientôt
+        }
+      }
+
+      // tirs (zaps) — cadence temporisée
+      if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
+        _fireFoeZap();
+        state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
       }
     }
-
-    // tirs: zaps
-    if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil){
-      _fireFoeZap();
-      state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
-    }
   }
 
-  // Projectiles
-  for (let i = state.shots.length - 1; i >= 0; i--){
+  // -----------------------------
+  // Projectiles (déplacement + collisions + durée de vie)
+  // -----------------------------
+  for (let i = state.shots.length - 1; i >= 0; i--) {
     const s = state.shots[i];
     s.x += s.vx * dt;
     s.y += s.vy * dt;
@@ -221,6 +246,7 @@ export function tickBattle(dt){
 
     if (!inGrace){
       if (s.from === 'player'){
+        // touche l’ennemi ?
         const dx = s.x - state.foe.x, dy = s.y - 0;
         if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
           state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
@@ -228,12 +254,13 @@ export function tickBattle(dt){
           continue;
         }
       } else {
+        // touche le joueur ?
         const dx = s.x - state.player.x, dy = s.y - 0;
         if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
           state.player.hp = Math.max(0, state.player.hp - s.dmg);
-                   // Feedback comme la chasse
-          state.shakeT = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
-          state.slowUntil = performance.now() + BTL.HIT_SLOW_MS;
+          // feedback type "chasse"
+          state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
+          state.slowUntil = now + BTL.HIT_SLOW_MS;
           state.shots.splice(i,1);
           continue;
         }
@@ -241,15 +268,17 @@ export function tickBattle(dt){
     }
 
     // sortie écran / fin de vie
-    const out = (s.x < -80 || s.x > state.w + 80);
+    const out  = (s.x < -80 || s.x > state.w + 80);
     const dead = (s.life != null && s.life <= 0);
     if (out || dead) state.shots.splice(i,1);
   }
 
+  // -----------------------------
   // Fin de manche
+  // -----------------------------
   if (now >= state.graceUntil){
-    if (state.foe.hp <= 0)   { _endBattle(true);  }
-    if (state.player.hp <= 0){ _endBattle(false); }
+    if (state.foe.hp    <= 0) _endBattle(true);
+    if (state.player.hp <= 0) _endBattle(false);
   }
 }
 
