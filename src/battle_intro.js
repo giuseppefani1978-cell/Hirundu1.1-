@@ -1,5 +1,5 @@
 // src/battle_intro.js
-// Écran d’intro pour le mini-jeu "Bataille de Trento"
+// Écran d’intro pour le mini-jeu "Bataille de Otranto"
 // API attendue par game.js : startBattleIntro({ ammo, onProceed })
 //
 // ammo = { pasticciottos?, rustico?, caffe?, stars? } — tous optionnels
@@ -43,7 +43,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
 
   // Titre
   const h = document.createElement('h2');
-  h.textContent = '⚔️ Bataille de Trento';
+  h.textContent = '⚔️ Bataille de Otranto';
   h.style.cssText = `
     margin:0 0 10px 0; font:700 28px/1.2 system-ui;
     letter-spacing:.2px;
