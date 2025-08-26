@@ -1,6 +1,6 @@
 // src/game_battle.js
 // Couche "battle" autonome : inputs, callbacks, tick+render, viewport bas-centré
-
+const BTL_BG_SRC = 'assets/battle_bg_salento.png';
 import {
   setupBattleInputs,
   setBattleCallbacks as setCallbacksRaw,
@@ -101,14 +101,16 @@ function _loadSprites() {
     const spiderImg = new Image();
     const crowImg   = new Image();
     const jellyImg  = new Image();
+    const bgImg     = new Image();   // ✅ ajouté
 
-    let left = 4;
-    const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg }); };
+    let left = 5;  // était 4 → maintenant 5 images à charger
+    const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg, bgImg }); };
 
     birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
     jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
+    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC;  // ✅ ajouté
   });
 }
 
