@@ -401,61 +401,40 @@ export function renderBattle(ctx, _view, sprites){
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
 
-// --- Joueur OU Danse de victoire (Arachne + Tarantula) ---
-const showDance = (state.phase === 'end' && state.victory);
+// --- Danse de la victoire : Arachne + Tarantula ---
+if (state.phase === 'end' && state.victory && state.victoryDance){
+  const t = performance.now() * 0.001;
+  const bob1 = Math.sin(t*6) * 6;  // petit “bounce”
+  const bob2 = Math.sin(t*6 + Math.PI*0.5) * 6;
 
-if (!showDance) {
-  // Rendu normal du joueur
-  ctx.save();
-  ctx.translate(state.player.x, pY);
-  if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
-  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
-  else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
-  ctx.restore();
+  // tailles (Arachne = taille joueur, Tarantula = un peu plus petit/large si tu veux)
+  const A_W = 140, A_H = 152;
+  const T_W = 140, T_H = 152;  // même taille que Arachne (ou ajuste ici)
 
-} else {
-  // --- Danse de victoire : Arachne (bird) + Tarantula (tarantulaImg) ---
-  // oscillations simples
-  const t = state.danceT || 0;
-  const ampX1 = 8, ampY1 = 3;     // Arachne
-  const ampX2 = 8, ampY2 = 3;     // Tarantula
-  const rot   = 0.08;
+  // positions au bas de l’écran, centrées horizontalement
+  const baseY = h - BTL.FLOOR_H - 6;
+  const ax = Math.floor(w*0.5) - Math.round(A_W*1.0);
+  const ay = baseY - A_H + Math.round(bob1);
 
-  const wobX1 = Math.sin(t * 8) * ampX1;
-  const wobY1 = Math.sin(t * 10) * ampY1;
-  const wobX2 = Math.cos(t * 7) * ampX2;        // décalage de phase
-  const wobY2 = Math.sin(t * 10 + 1.2) * ampY2;
+  const tx = Math.floor(w*0.5) + 16;
+  const ty = baseY - T_H + Math.round(bob2);
 
-  // tailles (Tar un poil plus petit)
-  const AR_W = P_W, AR_H = P_H;                             // Arachne ~ taille joueur
-  const TA_W = Math.round(P_W * 0.95), TA_H = Math.round(P_H * 0.95); // Tarantula
+  // Arachne (utilise le sprite du joueur : birdImg)
+  if (sprites?.birdImg?.naturalWidth){
+    ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
+  } else {
+    ctx.fillStyle = '#e63946';
+    ctx.fillRect(ax, ay, A_W, A_H);
+  }
 
-  // Sprites
-  const araImg = sprites?.birdImg;                          // Arachne = sprite joueur
-  const tarImg = sprites?.tarantulaImg                      // Tarantula = sprite dédié
-               || sprites?.crowImg                          // fallback si pas dispo
-               || sprites?.jellyImg;                        // dernier recours
-
-  // Arachne (à la position du joueur)
-  ctx.save();
-  ctx.translate(state.player.x + wobX1, pY + wobY1);
-  ctx.rotate(Math.sin(t * 6) * rot);
-  if (araImg?.naturalWidth) ctx.drawImage(araImg, 0, 0, AR_W, AR_H);
-  else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,AR_W,AR_H); }
-  ctx.restore();
-
-  // Tarantula (à droite d’Arachne)
-  ctx.save();
-  const offsetX = 140; // espace horizontal entre les deux persos — ajuste si besoin
-  ctx.translate(state.player.x + offsetX + wobX2, pY + wobY2);
-  ctx.rotate(-Math.sin(t * 6) * rot);
-  // Option : le faire “regarder” vers Arachne (miroir)
-  // ctx.scale(-1, 1); ctx.translate(-TA_W, 0);
-  if (tarImg?.naturalWidth) ctx.drawImage(tarImg, 0, 0, TA_W, TA_H);
-  else { ctx.fillStyle='#666'; ctx.fillRect(0,0,TA_W,TA_H); }
-  ctx.restore();
+  // Tarantula (réutilise le PNG déjà présent dans assets/tarantula.png)
+  if (sprites?.tarantulaImg?.naturalWidth){
+    ctx.drawImage(sprites.tarantulaImg, tx, ty, T_W, T_H);
+  } else {
+    ctx.fillStyle = '#2b2d42';
+    ctx.fillRect(tx, ty, T_W, T_H);
+  }
 }
-
   // --- Ennemi agrandi (+30%) ---
   const F_W_BASE = Math.round(P_W * 1.5);
   const F_H_BASE = Math.round(P_H * 1.5);
