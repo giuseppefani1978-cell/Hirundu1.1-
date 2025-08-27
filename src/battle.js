@@ -12,7 +12,7 @@ const BTL = {
   JUMP_VY: -620,
   PLAYER_HP: 120,
   FOE_HP: 100,
-
+  danceT: 0,
   SHOT: 760,
   FOE_SHOT: 520,
 
@@ -54,7 +54,7 @@ let state = {
   // phases: 'play' (jeu), 'end' (écran de fin animé)
   phase: 'play',
   victory: null,
-
+  victoryDance: false,
   active: false,
   foeType: 'jelly',
   w: 960, h: 540,
@@ -129,7 +129,7 @@ export function startBattle(foeType='jelly'){
 
   state.active = true;
   state.foeType = foeType;
-
+  state.danceT = 0;
   // joueur
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
 
@@ -181,6 +181,10 @@ export function tickBattle(dt){
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
     if (state.foeDeath && !state.foeDeath.done) _tickFoeDeath(dt);
+    // ⬇️ Ajoutez ceci pour animer la danse à l’écran de victoire
+    if (state.phase === 'end' && state.victory) {
+      state.danceT += dt;
+    }
     return;
   }
 
@@ -397,13 +401,53 @@ export function renderBattle(ctx, _view, sprites){
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
   const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
 
-  // Joueur
+ const showDance = (state.phase === 'end' && state.victory);
+
+if (!showDance) {
+  // --- Rendu normal du joueur (inchangé) ---
   ctx.save();
   ctx.translate(state.player.x, pY);
   if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
   else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
   ctx.restore();
+} else {
+  // --- Danse de victoire : Arachne + Tarantula (mêmes sprites) ---
+  const t = state.danceT || 0;
+  const ampX = 8;           // amplitude latérale
+  const ampY = 3;           // légère oscillation verticale
+  const rot  = 0.08;        // petite rotation (radians)
+  const wobX1 = Math.sin(t * 8) * ampX;
+  const wobY1 = Math.sin(t * 10) * ampY;
+  const wobX2 = Math.cos(t * 7) * ampX;   // léger décalage de phase pour Tarantula
+  const wobY2 = Math.sin(t * 10 + 1.2) * ampY;
+
+  // Arachne (utilise le sprite du joueur : birdImg)
+  ctx.save();
+  ctx.translate(state.player.x + wobX1, pY + wobY1);
+  ctx.rotate(Math.sin(t * 6) * rot);
+  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
+  else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
+  ctx.restore();
+
+  // Tarantula (réutilise un sprite existant : s’il n’y a pas tarantulaImg,
+  // on essaie crowImg, sinon on retombe sur jellyImg, sinon un bloc gris)
+  const tarImg =
+    sprites?.tarantulaImg ||
+    sprites?.crowImg ||
+    sprites?.jellyImg;
+
+  const TAR_W = P_W;  // même taille qu’Arachne (vous pouvez +10% si vous voulez)
+  const TAR_H = P_H;
+
+  ctx.save();
+  // placez Tarantula à droite d’Arachne (ajustez 140 si besoin)
+  ctx.translate(state.player.x + 140 + wobX2, pY + wobY2);
+  ctx.rotate(-Math.sin(t * 6) * rot);
+  if (tarImg?.naturalWidth) ctx.drawImage(tarImg, 0, 0, TAR_W, TAR_H);
+  else { ctx.fillStyle='#666'; ctx.fillRect(0,0,TAR_W,TAR_H); }
+  ctx.restore();
+}
 
   // --- Ennemi agrandi (+30%) ---
   const F_W_BASE = Math.round(P_W * 1.5);
@@ -485,7 +529,40 @@ export function renderBattle(ctx, _view, sprites){
       ctx.fill();
     }
   }
+// --- Danse de la victoire : Arachne + Tarantula ---
+if (state.phase === 'end' && state.victory && state.victoryDance){
+  const t = performance.now() * 0.001;
+  const bob1 = Math.sin(t*6) * 6;  // petit “bounce”
+  const bob2 = Math.sin(t*6 + Math.PI*0.5) * 6;
 
+  // tailles (Arachne = taille joueur, Tarantula = un peu plus petit/large)
+  const A_W = 140, A_H = 152;
+  const T_W = 132, T_H = 148;
+
+  // positions au bas de l’écran, centrées horizontalement
+  const baseY = h - BTL.FLOOR_H - 6;       // sol visuel
+  const ax = Math.floor(w*0.5) - Math.round(A_W*1.0);
+  const ay = baseY - A_H + Math.round(bob1);
+
+  const tx = Math.floor(w*0.5) + 16;
+  const ty = baseY - T_H + Math.round(bob2);
+
+  // Arachne
+  if (sprites?.arachneDanceImg?.naturalWidth){
+    ctx.drawImage(sprites.arachneDanceImg, ax, ay, A_W, A_H);
+  } else {
+    ctx.fillStyle = '#e63946';
+    ctx.fillRect(ax, ay, A_W, A_H);
+  }
+
+  // Tarantula
+  if (sprites?.tarantulaDanceImg?.naturalWidth){
+    ctx.drawImage(sprites.tarantulaDanceImg, tx, ty, T_W, T_H);
+  } else {
+    ctx.fillStyle = '#2b2d42';
+    ctx.fillRect(tx, ty, T_W, T_H);
+  }
+}
   // Effets de victoire
   if (state.phase === 'end' && state.victory) {
     _renderFireworks(ctx, w, h);
@@ -522,6 +599,7 @@ function _endBattle(victory){
   // 1) Passer en phase "end" (on arrête le gameplay, on garde la scène affichée)
   state.phase   = 'end';
   state.victory = !!victory;
+  state.victoryDance = !!victory;
   state.active  = false; // stoppe inputs/IA, mais le rendu continue
 
   // 2) UI en bataille : masquer les pads
