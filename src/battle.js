@@ -149,7 +149,8 @@ export function startBattle(foeType='jelly'){
   state.foe.fireAt         = state.foeEntryUntil + 600;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
-
+// après skyline / shakeT etc.
+foeDeath: null, // { t:0, parts:[], fade:1, done:false }
   // UI
   _ensureBattleUI(true);
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
@@ -170,8 +171,14 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
-  // on continue de ticker si 'end' (pour les feux d’artifice)
-  if (!state.active && state.phase !== 'end') return;
+  // même si la battle est finie, on continue les FX
+  if (!state.active){
+    if (state.ending?.mode === 'win') _tickFireworks(dt);
+    if (state.foeDeath && !state.foeDeath.done) _tickFoeDeath(dt);
+    return;
+  }
+  // … le reste inchangé
+}
 
   // Sécurité intégrateur
   dt = Math.min(0.05, Math.max(0.001, dt));
@@ -395,15 +402,34 @@ export function renderBattle(ctx, _view, sprites){
   else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
   ctx.restore();
 
-  // Ennemi
-  ctx.save();
-  ctx.translate(state.foe.x, fY);
-  ctx.scale(-1,1);
-  const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
-  if (foeImg?.naturalWidth) ctx.drawImage(foeImg, 0, 0, P_W, P_H);
-  else { ctx.fillStyle='#2a9d8f'; ctx.fillRect(0,0,P_W,P_H); }
-  ctx.restore();
+  // Ennemi (agrandi) — disparaît si mort
+ctx.save();
+ctx.translate(state.foe.x, fY);
+ctx.scale(-1,1);
+const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
 
+// Si mort (phase victoire) on applique un fade + shrink
+let foeAlpha = 1, foeScale = 1;
+if (state.foeDeath){
+  foeAlpha = Math.max(0, state.foeDeath.fade);
+  foeScale = Math.max(0.5, 0.8 + 0.2*foeAlpha); // petit “shrink”
+}
+ctx.globalAlpha = foeAlpha;
+
+if (!state.foeDeath?.done && foeImg?.naturalWidth){
+  const sx = Math.round(F_W * foeScale), sy = Math.round(F_H * foeScale);
+  ctx.drawImage(foeImg, 0, 0, sx, sy);
+} else if (!state.foeDeath?.done && !foeImg?.naturalWidth){
+  const sx = Math.round(F_W * foeScale), sy = Math.round(F_H * foeScale);
+  ctx.fillStyle='#2a9d8f'; ctx.fillRect(0,0,sx,sy);
+}
+ctx.globalAlpha = 1;
+ctx.restore();
+
+// Particules d’explosion (au-dessus des sprites)
+if (state.foeDeath && !state.foeDeath.done){
+  _renderFoeDeath(ctx);
+}
   // Tirs
   for (const s of state.shots){
     if (s.kind === 'zap'){
@@ -496,7 +522,13 @@ function _endBattle(victory){
   // masquer les pads, afficher l’overlay fin
   if (state.ui.move) state.ui.move.style.display = 'none';
   if (state.ui.ab)   state.ui.ab.style.display   = 'none';
+// Audio existant…
 
+// Phase fin
+state.ending = { mode: victory ? 'win' : 'lose', t: 0, fw: state.ending?.fw || [] };
+
+// Effet mort de la méduse si victoire
+if (victory) _triggerFoeDeath();
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
     if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
@@ -814,7 +846,52 @@ function _makeSkyline(n){
   }
   return arr;
 }
+function _triggerFoeDeath(){
+  const parts = [];
+  const cx = state.foe.x, cy = (state.h - BTL.FLOOR_H + state.foe.y - Math.round(152*1.3)); // centre à peu près
+  const N = 28;
+  for (let i=0;i<N;i++){
+    const a = Math.random() * Math.PI*2;
+    const sp = 220 + Math.random()*260;
+    parts.push({
+      x: cx, y: cy,
+      vx: Math.cos(a)*sp,
+      vy: Math.sin(a)*sp,
+      life: 0.6 + Math.random()*0.5,
+      r: 2 + Math.random()*3
+    });
+  }
+  state.foeDeath = { t:0, parts, fade:1, done:false };
+}
 
+function _tickFoeDeath(dt){
+  const D = state.foeDeath; if (!D || D.done) return;
+  D.t += dt;
+  D.fade = Math.max(0, 1 - D.t * 1.6); // ~0.6s pour disparaître
+
+  for (let i=D.parts.length-1; i>=0; i--){
+    const p = D.parts[i];
+    p.vy += 700 * dt;      // gravité
+    p.x  += p.vx * dt;
+    p.y  += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) D.parts.splice(i,1);
+  }
+  if (D.fade <= 0 && D.parts.length === 0) D.done = true;
+}
+
+function _renderFoeDeath(ctx){
+  const D = state.foeDeath; if (!D) return;
+  ctx.save();
+  for (const p of D.parts){
+    const a = Math.max(0, Math.min(1, p.life / 0.5));
+    ctx.fillStyle = `rgba(120,220,255,${a})`; // éclats bleutés “électriques”
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
 // ---------- Feux d’artifice (victoire) ----------
 function _spawnFireworks(count=1){
   const w = state.w, h = state.h;
