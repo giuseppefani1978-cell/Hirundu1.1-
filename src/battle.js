@@ -6,7 +6,7 @@
 // ---------------------------------------------------------
 
 const BTL = {
-  FLOOR_H: 120,
+  FLOOR_H: 0,
   GRAV: 1200,
   SPEED: 300,
   JUMP_VY: -620,
@@ -367,9 +367,12 @@ export function renderBattle(ctx, _view, sprites){
   }
 
   // Sol
-  ctx.fillStyle = '#223d33';
-  ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-
+- ctx.fillStyle = '#223d33';
+- ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
++ if (BTL.FLOOR_H > 0) {
++   ctx.fillStyle = '#223d33';
++   ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
++ }
   // Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
@@ -672,8 +675,10 @@ function _ensureBattleUI(show){
 
     root.appendChild(end);
     document.body.appendChild(root);
-// bouton Rejouer
-end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+  end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+  // Quitter la battle et revenir à la carte
+  if (typeof state.onLose === 'function') state.onLose();
+});
   // cacher l’overlay, relancer avec le même type d’ennemi
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
   // réinitialise l’état et relance
