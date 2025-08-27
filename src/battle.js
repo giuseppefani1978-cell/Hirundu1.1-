@@ -366,13 +366,11 @@ export function renderBattle(ctx, _view, sprites){
     }
   }
 
-  // Sol
-- ctx.fillStyle = '#223d33';
-- ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-+ if (BTL.FLOOR_H > 0) {
-+   ctx.fillStyle = '#223d33';
-+   ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-+ }
+ // Sol
+if (BTL.FLOOR_H > 0) {
+  ctx.fillStyle = '#223d33';
+  ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
+}
   // Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
@@ -652,38 +650,37 @@ function _ensureBattleUI(show){
     `;
     rot.innerHTML = `<div>📱 Tourne ton téléphone en mode paysage pour la bataille.</div>`;
 
+    // overlay fin de partie
+    const end = document.createElement('div');
+    end.id = '__battle_end__';
+    end.style.cssText = `
+      position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+      pointer-events:auto; background:rgba(0,0,0,.55);
+    `;
+    end.innerHTML = `
+      <div style="background:#fff; padding:16px 18px; border-radius:14px;
+                  box-shadow:0 8px 30px rgba(0,0,0,.35); text-align:center">
+        <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">Fin de la partie</div>
+        <button id="__battle_replay_btn"
+                style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
+                       background:#06d6a0; color:#083d2b">↻ Rejouer</button>
+      </div>
+    `;
+
+    // structure DOM
     root.appendChild(style);
     root.appendChild(move);
     root.appendChild(ab);
     root.appendChild(rot);
-    // overlay fin de partie
-   const end = document.createElement('div');
-   end.id = '__battle_end__';
-   end.style.cssText = `
-   position:absolute; inset:0; display:none; align-items:center; justify-content:center;
-   pointer-events:auto; background:rgba(0,0,0,.55);
-   `;
-    end.innerHTML = `
-    <div style="background:#fff; padding:16px 18px; border-radius:14px;
-              box-shadow:0 8px 30px rgba(0,0,0,.35); text-align:center">
-    <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">Fin de la partie</div>
-    <button id="__battle_replay_btn"
-            style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
-                   background:#06d6a0; color:#083d2b">↻ Rejouer</button>
-    </div>
-    `;
-
     root.appendChild(end);
     document.body.appendChild(root);
-  end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
-  // Quitter la battle et revenir à la carte
-  if (typeof state.onLose === 'function') state.onLose();
-});
-  // cacher l’overlay, relancer avec le même type d’ennemi
-  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
-  // réinitialise l’état et relance
-  startBattle(state.foeType || 'jelly');
-});
+
+    // bouton Rejouer → retour à la carte (début de la chasse)
+    end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+      const exit = state.onLose || state.onWin;   // prend le callback qui ramène à la carte
+      if (typeof exit === 'function') exit();
+    });
+
     // handlers tactiles
     const press = (act, on)=> {
       if (act === 'left')  state.input.left  = on;
@@ -699,9 +696,10 @@ function _ensureBattleUI(show){
       b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
       b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
       b.addEventListener('mouseleave', e=>{ press(act, false); });
-      b.addEventListener('click',      e=>{ e.preventDefault(); }); // éviter double déclenchement
+      b.addEventListener('click',      e=>{ e.preventDefault(); });
     });
 
+    // références UI
     state.ui.root = root;
     state.ui.move = move;
     state.ui.ab = ab;
