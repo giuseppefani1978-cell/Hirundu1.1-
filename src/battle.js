@@ -178,10 +178,8 @@ export function tickBattle(dt){
     if (state.foeDeath && !state.foeDeath.done) _tickFoeDeath(dt);
     return;
   }
-  // … le reste inchangé
-}
 
-  // Sécurité intégrateur
+  // Sécurité intégrateur (clamp du pas de temps)
   dt = Math.min(0.05, Math.max(0.001, dt));
 
   const now = performance.now();
@@ -193,7 +191,7 @@ export function tickBattle(dt){
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
 
-  // Physique de base (gravité/sol) — pas utile en phase 'end' mais inoffensif
+  // Physique de base (gravité/sol)
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
@@ -236,7 +234,7 @@ export function tickBattle(dt){
       } else {
         const dist = state.foe.x - state.player.x;
 
-        // Patrouille aléatoire : avancer/reculer sur la zone droite
+        // Patrouille aléatoire
         const minX = Math.max(60, state.w - 260);
         const maxX = state.w - 60;
         const SPEED = 160;
@@ -314,14 +312,13 @@ export function tickBattle(dt){
   }
 
   // ---------------------------------------------------------
-  // Effets d'écran de fin (feux d'artifice) — phase 'end'
+  // Effets d'écran de fin — phase 'end' (victoire)
   // ---------------------------------------------------------
   if (state.phase === 'end' && state.victory) {
     if (Math.random() < 0.03) _spawnFireworks(1);
     _tickFireworks(dt);
   }
 }
-
 // ---------------------------------------------------------
 // Rendu
 // ---------------------------------------------------------
