@@ -402,60 +402,38 @@ export function renderBattle(ctx, _view, sprites){
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
   else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
   ctx.restore();
-// Taille de base du joueur
-const P_W = 140, P_H = 152;
-// Taille de base de l’ennemi (30% plus grand)
-const F_W_BASE = Math.round(P_W * 1.3);
-const F_H_BASE = Math.round(P_H * 1.3);
 
-// Ennemi (agrandi) — disparaît si mort
-ctx.save();
-ctx.translate(state.foe.x, fY);
-ctx.scale(-1, 1);
+  // --- Ennemi agrandi (+30%) ---
+  const F_W_BASE = Math.round(P_W * 1.3);
+  const F_H_BASE = Math.round(P_H * 1.3);
 
-const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
+  ctx.save();
+  ctx.translate(state.foe.x, fY);
+  ctx.scale(-1, 1);
+  const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
 
-// Si mort (phase victoire) on applique un fade + shrink
-let foeAlpha = 1, foeScale = 1;
-if (state.foeDeath) {
-  foeAlpha = Math.max(0, state.foeDeath.fade);
-  foeScale = Math.max(0.5, 0.8 + 0.2 * foeAlpha); // petit “shrink”
-}
-ctx.globalAlpha = foeAlpha;
+  // fade + petit shrink si mort
+  let foeAlpha = 1, foeScale = 1;
+  if (state.foeDeath) {
+    foeAlpha = Math.max(0, state.foeDeath.fade);
+    foeScale = Math.max(0.5, 0.8 + 0.2 * foeAlpha);
+  }
+  ctx.globalAlpha = foeAlpha;
 
-// >> remplace F_W/F_H par F_W_BASE/F_H_BASE <<
-const drawW = Math.round(F_W_BASE * foeScale);
-const drawH = Math.round(F_H_BASE * foeScale);
+  if (!state.foeDeath?.done) {
+    const drawW = Math.round(F_W_BASE * foeScale);
+    const drawH = Math.round(F_H_BASE * foeScale);
+    if (foeImg?.naturalWidth) ctx.drawImage(foeImg, 0, 0, drawW, drawH);
+    else { ctx.fillStyle = '#2a9d8f'; ctx.fillRect(0, 0, drawW, drawH); }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
 
-if (!state.foeDeath?.done && foeImg?.naturalWidth) {
-  ctx.drawImage(foeImg, 0, 0, drawW, drawH);
-} else if (!state.foeDeath?.done) {
-  // fallback si l'image n'est pas chargée
-  ctx.fillStyle = '#2a9d8f';
-  ctx.fillRect(0, 0, drawW, drawH);
-}
+  // Particules d’explosion (au-dessus du sprite ennemi)
+  if (state.foeDeath && !state.foeDeath.done){
+    _renderFoeDeath(ctx);
+  }
 
-ctx.globalAlpha = 1;
-ctx.restore();
-
-// Particules d’explosion (au-dessus des sprites)
-if (state.foeDeath && !state.foeDeath.done) {
-  _renderFoeDeath(ctx);
-}
-if (!state.foeDeath?.done && foeImg?.naturalWidth){
-  const sx = Math.round(F_W * foeScale), sy = Math.round(F_H * foeScale);
-  ctx.drawImage(foeImg, 0, 0, sx, sy);
-} else if (!state.foeDeath?.done && !foeImg?.naturalWidth){
-  const sx = Math.round(F_W * foeScale), sy = Math.round(F_H * foeScale);
-  ctx.fillStyle='#2a9d8f'; ctx.fillRect(0,0,sx,sy);
-}
-ctx.globalAlpha = 1;
-ctx.restore();
-
-// Particules d’explosion (au-dessus des sprites)
-if (state.foeDeath && !state.foeDeath.done){
-  _renderFoeDeath(ctx);
-}
   // Tirs
   for (const s of state.shots){
     if (s.kind === 'zap'){
@@ -506,7 +484,7 @@ if (state.foeDeath && !state.foeDeath.done){
     }
   }
 
-  // Effets de victoire au-dessus de la scène
+  // Effets de victoire
   if (state.phase === 'end' && state.victory) {
     _renderFireworks(ctx, w, h);
   }
@@ -535,7 +513,6 @@ if (state.foeDeath && !state.foeDeath.done){
 
   ctx.restore();
 }
-
 // ---------------------------------------------------------
 // Internes
 // ---------------------------------------------------------
