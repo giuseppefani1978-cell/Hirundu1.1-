@@ -697,7 +697,23 @@ end.querySelector('#__battle_replay_btn').addEventListener('click', async ()=>{
   // 5) Secours si aucun callback n'est branché
   window.location.reload();
 });
-
+// handlers tactiles / souris pour les pads
+const press = (act, on)=> {
+  if (act === 'left')  state.input.left  = on;
+  if (act === 'right') state.input.right = on;
+  if (act === 'up')    state.input.up    = on;
+  if (on === true && act === 'atk') state.input.atk = true;
+  if (on === true && act === 'spc') state.input.spc = true;
+};
+root.querySelectorAll('.__padbtn').forEach(b=>{
+  const act = b.dataset.act;
+  b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
+  b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
+  b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
+  b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
+  b.addEventListener('mouseleave', e=>{ press(act, false); });
+  b.addEventListener('click',      e=>{ e.preventDefault(); }); // éviter double déclenchement
+});
     // références UI
     state.ui.root = root;
     state.ui.move = move;
