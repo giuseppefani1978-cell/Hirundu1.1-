@@ -156,6 +156,9 @@ export function startBattle(foeType='jelly'){
 state.foeDeath = null;
 state.ending   = null;
   _stopVictoryMusic();   // au cas où on revient d’une victoire
+  if (window.__STOP_BG_MUSIC) {
+  try { window.__STOP_BG_MUSIC(); } catch {}
+}
   _playBattleTheme();    // lance le thème de combat en boucle
   // UI
   _ensureBattleUI(true);
@@ -396,44 +399,44 @@ export function renderBattle(ctx, _view, sprites){
     ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
   }
 
-  // Personnages
-  const P_W = 140, P_H = 152;
-  const pY = h - BTL.FLOOR_H + state.player.y - P_H;
-  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
+// Personnages
+const P_W = 140, P_H = 152;
+const pY = h - BTL.FLOOR_H + state.player.y - P_H;
+const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
 
-// --- Danse de la victoire : Arachne + Tarantula ---
-if (state.phase === 'end' && state.victory && state.victoryDance){
-  const t = performance.now() * 0.001;
-  const bob1 = Math.sin(t*6) * 6;  // petit “bounce”
+// --- Arachne normal OU Danse de victoire avec Tarantula ---
+const showDance = (state.phase === 'end' && state.victory && state.victoryDance);
+
+if (!showDance) {
+  // >>> Rendu NORMAL du joueur (Arachne) <<<
+  ctx.save();
+  ctx.translate(state.player.x, pY);
+  if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
+  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
+  else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
+  ctx.restore();
+} else {
+  // >>> Danse Arachne + Tarantula (mêmes PNG que le jeu) <<<
+  const t = state.danceT || 0;
+  const bob1 = Math.sin(t*6) * 6;
   const bob2 = Math.sin(t*6 + Math.PI*0.5) * 6;
 
-  // tailles (Arachne = taille joueur, Tarantula = un peu plus petit/large si tu veux)
   const A_W = 140, A_H = 152;
-  const T_W = 140, T_H = 152;  // même taille que Arachne (ou ajuste ici)
+  const T_W = 140, T_H = 152;
 
-  // positions au bas de l’écran, centrées horizontalement
   const baseY = h - BTL.FLOOR_H - 6;
   const ax = Math.floor(w*0.5) - Math.round(A_W*1.0);
   const ay = baseY - A_H + Math.round(bob1);
-
   const tx = Math.floor(w*0.5) + 16;
   const ty = baseY - T_H + Math.round(bob2);
 
-  // Arachne (utilise le sprite du joueur : birdImg)
-  if (sprites?.birdImg?.naturalWidth){
-    ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
-  } else {
-    ctx.fillStyle = '#e63946';
-    ctx.fillRect(ax, ay, A_W, A_H);
-  }
+  // Arachne (sprite joueur)
+  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
+  else { ctx.fillStyle = '#e63946'; ctx.fillRect(ax, ay, A_W, A_H); }
 
-  // Tarantula (réutilise le PNG déjà présent dans assets/tarantula.png)
-  if (sprites?.tarantulaImg?.naturalWidth){
-    ctx.drawImage(sprites.tarantulaImg, tx, ty, T_W, T_H);
-  } else {
-    ctx.fillStyle = '#2b2d42';
-    ctx.fillRect(tx, ty, T_W, T_H);
-  }
+  // Tarantula (sprite existant de la chasse)
+  if (sprites?.tarantulaImg?.naturalWidth) ctx.drawImage(sprites.tarantulaImg, tx, ty, T_W, T_H);
+  else { ctx.fillStyle = '#2b2d42'; ctx.fillRect(tx, ty, T_W, T_H); }
 }
   // --- Ennemi agrandi (+30%) ---
   const F_W_BASE = Math.round(P_W * 1.5);
@@ -591,6 +594,11 @@ function _endBattle(victory){
     _spawnFireworks(6);
    // stoppe le thème de battle, joue la musique de victoire si win
 _stopBattleTheme();
+    // (optionnel) à la fin de l’overlay, quand tu quittes la battle pour la carte,
+// relance la musique de fond si tu veux :
+if (window.__RESUME_BG_MUSIC) {
+  try { window.__RESUME_BG_MUSIC(); } catch {}
+}
 if (victory){
   _spawnFireworks(6);
   _playVictoryMusic();
