@@ -713,25 +713,52 @@ function _ensureBattleUI(show){
     root.appendChild(rot);
     root.appendChild(end);
     document.body.appendChild(root);
+// handlers tactiles / souris pour les pads
+const press = (act, on)=> {
+  if (act === 'left')  state.input.left  = on;
+  if (act === 'right') state.input.right = on;
+  if (act === 'up')    state.input.up    = on;
+  // A / B déclenchent une fois à la pression
+  if (on === true && act === 'atk') state.input.atk = true;
+  if (on === true && act === 'spc') state.input.spc = true;
+};
+
+root.querySelectorAll('.__padbtn').forEach(b=>{
+  const act = b.dataset.act;
+  b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
+  b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
+  b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
+  b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
+  b.addEventListener('mouseleave', e=>{ press(act, false); });
+  b.addEventListener('click',      e=>{ e.preventDefault(); }); // évite double-clic
+}); 
 
     // Option A — Revenir au jeu principal (carte/chasse)
-    end.querySelector('#__battle_replay_btn').addEventListener('click', async ()=>{
-      // Stopper/masquer la battle
-      state.active = false;
-      state.shots.length = 0;
-      state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
+    // Remplace ENTIEREMENT ton listener actuel par ceci (note: plus de 'async')
+end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+  // 1) Stopper/masquer la battle
+  state.active = false;
+  state.shots.length = 0;
+  state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
 
-      if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
-      if (state.ui.root)       state.ui.root.style.display = 'none';
+  // 2) Cacher l'UI de la battle ET l’overlay de fin (sinon il bloque les pads derrière)
+  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
+  if (state.ui.root)       state.ui.root.style.display = 'none';
 
-      try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
-      try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
+  // ⚠️ 3) Ne PAS toucher au fullscreen/orientation ici (ça cause l’écran vide)
+  // (supprime ces deux lignes)
+  // try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
+  // try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
 
-      // Renvoyer le contrôle au jeu principal
-      if (typeof state.onLose === 'function') { state.onLose(); return; }
-      if (typeof state.onWin  === 'function') { state.onWin();  return; }
-      window.location.reload();
-    });
+  // 4) Revenir AU DÉMARRAGE DU JEU
+  // → a) si ton app expose une fonction globale de redémarrage, appelle-la :
+  if (window.game && typeof window.game.restart === 'function') {
+    window.game.restart();               // <-- idéal si dispo (SPA)
+    return;
+  }
+  // → b) sinon, reload “propre” (évite certaines ancres/hash)
+  window.location.href = window.location.href.split('#')[0];
+});
 
     // références UI
     state.ui.root = root;
