@@ -676,8 +676,8 @@ function _ensureBattleUI(show){
     document.body.appendChild(root);
 
    // bouton Rejouer → retour au jeu complet (carte/chasse)
-end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
-  // 1) Nettoyage strict de la battle
+end.querySelector('#__battle_replay_btn').addEventListener('click', async ()=>{
+  // 1) Stopper proprement la battle
   state.active = false;
   state.shots.length = 0;
   state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
@@ -686,30 +686,17 @@ end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
   if (state.ui.root)       state.ui.root.style.display = 'none';
 
-  // 3) Revenir au jeu principal (utilise le callback fourni par la carte)
-  if (typeof state.onLose === 'function')       { state.onLose(); return; }
-  if (typeof state.onWin  === 'function')       { state.onWin();  return; }
+  // 3) Lever les verrous d’affichage (plein écran / orientation paysage)
+  try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
 
-  // 4) Fallback (au cas où aucun callback n’est branché)
+  // 4) Renvoyer le contrôle au jeu principal
+  if (typeof state.onLose === 'function') { state.onLose(); return; }
+  if (typeof state.onWin  === 'function') { state.onWin();  return; }
+
+  // 5) Secours si aucun callback n'est branché
   window.location.reload();
 });
-    // handlers tactiles
-    const press = (act, on)=> {
-      if (act === 'left')  state.input.left  = on;
-      if (act === 'right') state.input.right = on;
-      if (act === 'up')    state.input.up    = on;
-      if (on === true && act === 'atk') state.input.atk = true;
-      if (on === true && act === 'spc') state.input.spc = true;
-    };
-    root.querySelectorAll('.__padbtn').forEach(b=>{
-      const act = b.dataset.act;
-      b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
-      b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
-      b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
-      b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
-      b.addEventListener('mouseleave', e=>{ press(act, false); });
-      b.addEventListener('click',      e=>{ e.preventDefault(); });
-    });
 
     // références UI
     state.ui.root = root;
