@@ -117,26 +117,30 @@ export function startBattle(foeType='jelly'){
     x: state.w + 160, y: 0, vx: 0, vy: 0,
     hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
   };
-  state.foeDir = -1;                     // commence en avançant vers la gauche
+  state.foeDir = -1;                      // avance vers la gauche
   state.foeWanderUntil = performance.now() + 700;
+
   const now = performance.now();
   state.startAt = now;
   state.goAt = now + BTL.COUNTDOWN_MS;
   state.graceUntil = state.goAt + BTL.GO_FLASH_MS + BTL.START_GRACE_MS;
 
-  // délai d’entrée + délai de tir
+  // Entrée + verrous pendant l’entrée
   state.foeEntryUntil      = state.goAt + BTL.FOE_ENTRY_DELAY_MS;
   state.foeFireBlockUntil  = state.foeEntryUntil + 300;
   state.foeJumpReadyAt     = state.foeEntryUntil + 500;
+  state.foe.fireAt         = state.foeEntryUntil + 600; // 1ère fenêtre de tir
 
-  // quand elle pourra commencer à viser / tirer
-  state.foe.fireAt = state.foeEntryUntil + 600;
-  state.goAt = now + BTL.COUNTDOWN_MS;
-    // ✅ AMORÇAGE DU PROCHAIN TIR ENNEMI
-  
   if (!state.skyline) state.skyline = _makeSkyline(12);
 
+  // UI
   _ensureBattleUI(true);
+  // cache l'overlay de fin si déjà affiché
+  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
+  // remonte les pads s’ils avaient été masqués à la fin précédente
+  if (state.ui.move) state.ui.move.style.display = 'flex';
+  if (state.ui.ab)   state.ui.ab.style.display   = 'flex';
+
   _maybeLockLandscape();
   _updateRotateOverlay();
   _maybeLockLandscape();
@@ -470,16 +474,17 @@ export function renderBattle(ctx, _view, sprites){
 // ---------------------------------------------------------
 function _endBattle(victory){
   state.active = false;
-  // on laisse les pads visibles si tu veux tester tout de suite; sinon masque-les :
-  _ensureBattleUI(true);
+
+  // masquer les pads, afficher l’overlay fin
+  if (state.ui.move) state.ui.move.style.display = 'none';
+  if (state.ui.ab)   state.ui.ab.style.display   = 'none';
+
   if (state.ui.endOverlay){
-    // met un titre différent selon victoire/défaite (facultatif)
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
     if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
     state.ui.endOverlay.style.display = 'flex';
   }
-  // IMPORTANT : on NE déclenche pas onWin/onLose, pour rester sur l’écran battle.
-  // (si un jour tu veux revenir automatiquement à la carte, ré-appelle state.onWin()/onLose() ici.)
+  // ne pas appeler onWin/onLose pour rester sur l’écran de fin avec le bouton Rejouer
 }
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
