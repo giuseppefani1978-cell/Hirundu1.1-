@@ -77,7 +77,7 @@ let state = {
   shakeT: 0,         // temps restant de secousse
   slowUntil: 0,      // horodatage jusqu'auquel on ralentit le joueur
   // UI battle
-  ui: { root:null, move:null, ab:null, rotateOverlay:null }
+  ui: { root:null, move:null, ab:null, rotateOverlay:null, endOverlay:null }
 };
   
 // ---------------------------------------------------------
@@ -117,7 +117,8 @@ export function startBattle(foeType='jelly'){
     x: state.w + 160, y: 0, vx: 0, vy: 0,
     hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
   };
-
+  state.foeDir = -1;                     // commence en avançant vers la gauche
+  state.foeWanderUntil = performance.now() + 700;
   const now = performance.now();
   state.startAt = now;
   state.goAt = now + BTL.COUNTDOWN_MS;
@@ -212,11 +213,27 @@ export function tickBattle(dt){
       // 2) IA "normale" une fois entrée
       const dist = state.foe.x - state.player.x;
 
-      // déplacement horizontal simple
-      if (Math.abs(dist) < 220) state.foe.vx = (dist > 0) ? 120 : -120;
-      else                      state.foe.vx = 0;
-      state.foe.x = Math.max(60, Math.min(state.w - 60, state.foe.x + state.foe.vx * dt));
+     // --- Patrouille aléatoire : avancer/reculer sur la zone droite ---
+const minX = Math.max(60, state.w - 260);  // limite gauche de patrouille
+const maxX = state.w - 60;                  // bord droit “jouable”
+const SPEED = 160;
 
+// change de direction toutes les 0.5–1.4s
+if (performance.now() >= state.foeWanderUntil) {
+  // 10% de pause, sinon gauche/droite aléatoire, avec petite tendance à aller vers le joueur
+  const toward = (state.foe.x > state.player.x) ? -1 : 1; // -1 = vers la gauche
+  const r = Math.random();
+  state.foeDir = (r < 0.10) ? 0 : (r < 0.55 ? toward : (Math.random() < 0.5 ? -1 : 1));
+  state.foeWanderUntil = performance.now() + (500 + Math.random()*900);
+}
+
+// avance selon la direction choisie
+state.foe.vx = SPEED * state.foeDir;
+state.foe.x += state.foe.vx * dt;
+
+// si on touche une borne, on repart dans l’autre sens et on “verrouille” un court instant
+if (state.foe.x < minX) { state.foe.x = minX; state.foeDir = 1;  state.foeWanderUntil = performance.now()+600; }
+if (state.foe.x > maxX) { state.foe.x = maxX; state.foeDir = -1; state.foeWanderUntil = performance.now()+600; }
       // sauts opportunistes
       if (now >= state.foeJumpReadyAt && state.foe.onGround) {
         const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
@@ -453,10 +470,17 @@ export function renderBattle(ctx, _view, sprites){
 // ---------------------------------------------------------
 function _endBattle(victory){
   state.active = false;
-  _ensureBattleUI(false);
-  if (victory) state.onWin(); else state.onLose();
+  // on laisse les pads visibles si tu veux tester tout de suite; sinon masque-les :
+  _ensureBattleUI(true);
+  if (state.ui.endOverlay){
+    // met un titre différent selon victoire/défaite (facultatif)
+    const t = state.ui.endOverlay.querySelector('#__battle_end_title');
+    if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
+    state.ui.endOverlay.style.display = 'flex';
+  }
+  // IMPORTANT : on NE déclenche pas onWin/onLose, pour rester sur l’écran battle.
+  // (si un jour tu veux revenir automatiquement à la carte, ré-appelle state.onWin()/onLose() ici.)
 }
-
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
   ent.y  += ent.vy * dt;
@@ -624,8 +648,32 @@ function _ensureBattleUI(show){
     root.appendChild(move);
     root.appendChild(ab);
     root.appendChild(rot);
-    document.body.appendChild(root);
+    // overlay fin de partie
+   const end = document.createElement('div');
+   end.id = '__battle_end__';
+   end.style.cssText = `
+   position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+   pointer-events:auto; background:rgba(0,0,0,.55);
+   `;
+    end.innerHTML = `
+    <div style="background:#fff; padding:16px 18px; border-radius:14px;
+              box-shadow:0 8px 30px rgba(0,0,0,.35); text-align:center">
+    <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">Fin de la partie</div>
+    <button id="__battle_replay_btn"
+            style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
+                   background:#06d6a0; color:#083d2b">↻ Rejouer</button>
+    </div>
+    `;
 
+    root.appendChild(end);
+    document.body.appendChild(root);
+// bouton Rejouer
+end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+  // cacher l’overlay, relancer avec le même type d’ennemi
+  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
+  // réinitialise l’état et relance
+  startBattle(state.foeType || 'jelly');
+});
     // handlers tactiles
     const press = (act, on)=> {
       if (act === 'left')  state.input.left  = on;
