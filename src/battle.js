@@ -1,6 +1,6 @@
 // src/battle.js
 // ---------------------------------------------------------
-// Mini-jeu "Bataille de Trento" — paysage + pads tactiles
+// Mini-jeu "Bataille de Otranto" — paysage + pads tactiles
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
@@ -67,6 +67,8 @@ let state = {
   graceUntil: 0,
   foeFireBlockUntil: 0,
   foeJumpReadyAt: 0,
+  foeWanderUntil: 0,   // timestamp jusqu'à quand on garde la direction courante
+  foeDir: -1,          // -1=vers la gauche (avance), +1=vers la droite (recule), 0=pause
   foeEntryUntil: 0,     // timestamp : fin du délai d’entrée
   // ...
 
