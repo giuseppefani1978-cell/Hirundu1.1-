@@ -696,6 +696,7 @@ end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
     state.ui.move = move;
     state.ui.ab = ab;
     state.ui.rotateOverlay = rot;
+    state.ui.endOverlay = end;
   }
 
   state.ui.root.style.display = show ? 'block' : 'none';
