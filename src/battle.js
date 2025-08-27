@@ -390,7 +390,7 @@ export function renderBattle(ctx, _view, sprites){
   // Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
-  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 20;
+  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
 
   // Joueur
   ctx.save();
@@ -401,8 +401,8 @@ export function renderBattle(ctx, _view, sprites){
   ctx.restore();
 
   // --- Ennemi agrandi (+30%) ---
-  const F_W_BASE = Math.round(P_W * 1.3);
-  const F_H_BASE = Math.round(P_H * 1.3);
+  const F_W_BASE = Math.round(P_W * 1.5);
+  const F_H_BASE = Math.round(P_H * 1.5);
 
   ctx.save();
   ctx.translate(state.foe.x, fY);
