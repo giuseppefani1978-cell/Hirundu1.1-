@@ -675,12 +675,24 @@ function _ensureBattleUI(show){
     root.appendChild(end);
     document.body.appendChild(root);
 
-    // bouton Rejouer → retour à la carte (début de la chasse)
-    end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
-      const exit = state.onLose || state.onWin;   // prend le callback qui ramène à la carte
-      if (typeof exit === 'function') exit();
-    });
+   // bouton Rejouer → retour au jeu complet (carte/chasse)
+end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
+  // 1) Nettoyage strict de la battle
+  state.active = false;
+  state.shots.length = 0;
+  state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
 
+  // 2) Masquer toute l’UI battle pour ne pas recouvrir la carte
+  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
+  if (state.ui.root)       state.ui.root.style.display = 'none';
+
+  // 3) Revenir au jeu principal (utilise le callback fourni par la carte)
+  if (typeof state.onLose === 'function')       { state.onLose(); return; }
+  if (typeof state.onWin  === 'function')       { state.onWin();  return; }
+
+  // 4) Fallback (au cas où aucun callback n’est branché)
+  window.location.reload();
+});
     // handlers tactiles
     const press = (act, on)=> {
       if (act === 'left')  state.input.left  = on;
