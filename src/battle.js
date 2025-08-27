@@ -77,7 +77,8 @@ let state = {
   foeWanderUntil: 0,
   foeDir: -1,
   foeEntryUntil: 0,
-
+  foeDeath: null,      // FX de mort en cours ou null
+  ending: null,        // infos d’écran de fin { mode:'win'|'lose', t:... }
   skyline: null,
 
   // feedback
@@ -149,8 +150,8 @@ export function startBattle(foeType='jelly'){
   state.foe.fireAt         = state.foeEntryUntil + 600;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
-// après skyline / shakeT etc.
-foeDeath: null, // { t:0, parts:[], fade:1, done:false }
+state.foeDeath = null;
+state.ending   = null;
   // UI
   _ensureBattleUI(true);
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
@@ -401,21 +402,46 @@ export function renderBattle(ctx, _view, sprites){
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
   else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
   ctx.restore();
+// Taille de base du joueur
+const P_W = 140, P_H = 152;
+// Taille de base de l’ennemi (30% plus grand)
+const F_W_BASE = Math.round(P_W * 1.3);
+const F_H_BASE = Math.round(P_H * 1.3);
 
-  // Ennemi (agrandi) — disparaît si mort
+// Ennemi (agrandi) — disparaît si mort
 ctx.save();
 ctx.translate(state.foe.x, fY);
-ctx.scale(-1,1);
+ctx.scale(-1, 1);
+
 const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
 
 // Si mort (phase victoire) on applique un fade + shrink
 let foeAlpha = 1, foeScale = 1;
-if (state.foeDeath){
+if (state.foeDeath) {
   foeAlpha = Math.max(0, state.foeDeath.fade);
-  foeScale = Math.max(0.5, 0.8 + 0.2*foeAlpha); // petit “shrink”
+  foeScale = Math.max(0.5, 0.8 + 0.2 * foeAlpha); // petit “shrink”
 }
 ctx.globalAlpha = foeAlpha;
 
+// >> remplace F_W/F_H par F_W_BASE/F_H_BASE <<
+const drawW = Math.round(F_W_BASE * foeScale);
+const drawH = Math.round(F_H_BASE * foeScale);
+
+if (!state.foeDeath?.done && foeImg?.naturalWidth) {
+  ctx.drawImage(foeImg, 0, 0, drawW, drawH);
+} else if (!state.foeDeath?.done) {
+  // fallback si l'image n'est pas chargée
+  ctx.fillStyle = '#2a9d8f';
+  ctx.fillRect(0, 0, drawW, drawH);
+}
+
+ctx.globalAlpha = 1;
+ctx.restore();
+
+// Particules d’explosion (au-dessus des sprites)
+if (state.foeDeath && !state.foeDeath.done) {
+  _renderFoeDeath(ctx);
+}
 if (!state.foeDeath?.done && foeImg?.naturalWidth){
   const sx = Math.round(F_W * foeScale), sy = Math.round(F_H * foeScale);
   ctx.drawImage(foeImg, 0, 0, sx, sy);
@@ -514,50 +540,51 @@ if (state.foeDeath && !state.foeDeath.done){
 // Internes
 // ---------------------------------------------------------
 function _endBattle(victory){
-  // on passe en phase "end" et on garde la scène affichée
-  state.phase = 'end';
+  // 1) Passer en phase "end" (on arrête le gameplay, on garde la scène affichée)
+  state.phase   = 'end';
   state.victory = !!victory;
-  state.active = false; // stoppe gameplay (inputs/IA) mais pas le rendu
+  state.active  = false; // stoppe inputs/IA, mais le rendu continue
 
-  // masquer les pads, afficher l’overlay fin
+  // 2) UI en bataille : masquer les pads
   if (state.ui.move) state.ui.move.style.display = 'none';
   if (state.ui.ab)   state.ui.ab.style.display   = 'none';
-// Audio existant…
 
-// Phase fin
-state.ending = { mode: victory ? 'win' : 'lose', t: 0, fw: state.ending?.fw || [] };
-
-// Effet mort de la méduse si victoire
-if (victory) _triggerFoeDeath();
+  // 3) Écran de fin (overlay) + style du bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
     if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
 
-    // bouton + style : plus gros si défaite
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
       if (victory){
-        btn.style.padding = '10px 14px';
-        btn.style.fontSize = '14px';
+        btn.style.padding   = '10px 14px';
+        btn.style.fontSize  = '14px';
         btn.style.transform = 'none';
       } else {
-        btn.style.padding = '16px 24px';
-        btn.style.fontSize = '18px';
+        btn.style.padding   = '16px 24px';
+        btn.style.fontSize  = '18px';
         btn.style.transform = 'scale(1.05)';
       }
     }
     state.ui.endOverlay.style.display = 'flex';
   }
 
-  // effets & musique côté victoire
+  // 4) Marquer la fin (utile si tu veux d'autres FX)
+  state.ending = { mode: victory ? 'win' : 'lose', t: 0, fw: state.ending?.fw || [] };
+
+  // 5) Effets finaux selon l’issue
   if (victory){
+    // a) Déclenche l’effet “mort de la méduse” (explosion/fade)
+    _triggerFoeDeath();
+
+    // b) Feux d’artifice + musique (si fournie via window.__BATTLE_VICTORY_MUSIC_URL__)
     _spawnFireworks(6);
     _maybePlayVictoryMusic();
   } else {
+    // Défaite : pas de feux d’artifice
     state.fx.fireworks.length = 0;
   }
 }
-
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
   ent.y  += ent.vy * dt;
