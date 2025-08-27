@@ -85,9 +85,12 @@ let state = {
   shakeT: 0,
   slowUntil: 0,
 
-  // effets fin de partie
-  fx: { fireworks: [] },
-  music: null,
+// effets fin de partie
+fx: { fireworks: [] },
+
+// audio
+musicBattle: null,
+musicVictory: null,
 
   // UI battle
   ui: { root:null, move:null, ab:null, rotateOverlay:null, endOverlay:null }
@@ -152,6 +155,8 @@ export function startBattle(foeType='jelly'){
   if (!state.skyline) state.skyline = _makeSkyline(12);
 state.foeDeath = null;
 state.ending   = null;
+  _stopVictoryMusic();   // au cas où on revient d’une victoire
+  _playBattleTheme();    // lance le thème de combat en boucle
   // UI
   _ensureBattleUI(true);
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
@@ -553,7 +558,14 @@ function _endBattle(victory){
 
     // b) Feux d’artifice + musique (si fournie via window.__BATTLE_VICTORY_MUSIC_URL__)
     _spawnFireworks(6);
-    _maybePlayVictoryMusic();
+   // stoppe le thème de battle, joue la musique de victoire si win
+_stopBattleTheme();
+if (victory){
+  _spawnFireworks(6);
+  _playVictoryMusic();
+} else {
+  state.fx.fireworks.length = 0;
+}
   } else {
     // Défaite : pas de feux d’artifice
     state.fx.fireworks.length = 0;
@@ -937,6 +949,35 @@ function _renderFireworks(ctx, w, h){
     ctx.fill();
   }
   ctx.restore();
+}
+function _playBattleTheme(){
+  try{
+    const url = window.__BATTLE_THEME_URL__;      // ← défini globalement (voir plus bas)
+    if (!url) return;
+    if (state.musicBattle){ try{state.musicBattle.pause();}catch{} }
+    state.musicBattle = new Audio(url);
+    state.musicBattle.loop = true;
+    state.musicBattle.volume = 0.60;
+    state.musicBattle.play().catch(()=>{});
+  }catch{}
+}
+function _stopBattleTheme(){
+  try{ if (state.musicBattle){ state.musicBattle.pause(); state.musicBattle = null; } }catch{}
+}
+
+function _playVictoryMusic(){
+  try{
+    const url = window.__BATTLE_VICTORY_MUSIC_URL__; // optionnel
+    if (!url) return;
+    if (state.musicVictory){ try{state.musicVictory.pause();}catch{} }
+    state.musicVictory = new Audio(url);
+    state.musicVictory.loop = false;
+    state.musicVictory.volume = 0.75;
+    state.musicVictory.play().catch(()=>{});
+  }catch{}
+}
+function _stopVictoryMusic(){
+  try{ if (state.musicVictory){ state.musicVictory.pause(); state.musicVictory = null; } }catch{}
 }
 function _maybePlayVictoryMusic(){
   try{
