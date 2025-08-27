@@ -15,10 +15,12 @@ const BTL = {
 
   SHOT: 760,
   FOE_SHOT: 520,
+
   // Entrée de l’ennemi
-  FOE_ENTRY_DELAY_MS: 1200,   // temps d’attente avant d’entrer
-  FOE_ENTRY_SPEED: 260,       // vitesse de “glissade” vers l’arène
-  FOE_TARGET_MARGIN_X: 100,   // position cible = bord droit - marge
+  FOE_ENTRY_DELAY_MS: 1200,
+  FOE_ENTRY_SPEED: 260,
+  FOE_TARGET_MARGIN_X: 100,
+
   // Ennemi plus agressif
   FOE_FIRE_MS_MIN: 1200,
   FOE_FIRE_MS_MAX: 2000,
@@ -36,11 +38,12 @@ const BTL = {
   FOE_JUMP_DIST: 320,
   FOE_JUMP_PROB: 0.5,
 
+  // Collisions & feedback
   HIT_R: 28,
   START_GRACE_MS: 1000,
   COUNTDOWN_MS: 900,
   GO_FLASH_MS: 500,
-    // Feedback à l'impact (comme la chasse)
+
   HIT_SHAKE_MAX_S: 0.5,
   HIT_SHAKE_DECAY_PER_S: 1.8,
   HIT_SLOW_FACTOR: 0.45,
@@ -48,6 +51,10 @@ const BTL = {
 };
 
 let state = {
+  // phases: 'play' (jeu), 'end' (écran de fin animé)
+  phase: 'play',
+  victory: null,
+
   active: false,
   foeType: 'jelly',
   w: 960, h: 540,
@@ -67,19 +74,24 @@ let state = {
   graceUntil: 0,
   foeFireBlockUntil: 0,
   foeJumpReadyAt: 0,
-  foeWanderUntil: 0,   // timestamp jusqu'à quand on garde la direction courante
-  foeDir: -1,          // -1=vers la gauche (avance), +1=vers la droite (recule), 0=pause
-  foeEntryUntil: 0,     // timestamp : fin du délai d’entrée
-  // ...
+  foeWanderUntil: 0,
+  foeDir: -1,
+  foeEntryUntil: 0,
 
   skyline: null,
 
-  shakeT: 0,         // temps restant de secousse
-  slowUntil: 0,      // horodatage jusqu'auquel on ralentit le joueur
+  // feedback
+  shakeT: 0,
+  slowUntil: 0,
+
+  // effets fin de partie
+  fx: { fireworks: [] },
+  music: null,
+
   // UI battle
   ui: { root:null, move:null, ab:null, rotateOverlay:null, endOverlay:null }
 };
-  
+
 // ---------------------------------------------------------
 // API
 // ---------------------------------------------------------
@@ -106,6 +118,11 @@ export function setBattleAmmo(ammo){
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  state.phase = 'play';
+  state.victory = null;
+  state.fx.fireworks.length = 0;
+  if (state.music) { try{ state.music.pause(); }catch{} state.music = null; }
+
   state.active = true;
   state.foeType = foeType;
 
@@ -113,11 +130,11 @@ export function startBattle(foeType='jelly'){
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
 
   // foe : démarre hors-écran à droite
-  state.foe = { 
+  state.foe = {
     x: state.w + 160, y: 0, vx: 0, vy: 0,
     hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
   };
-  state.foeDir = -1;                      // avance vers la gauche
+  state.foeDir = -1;
   state.foeWanderUntil = performance.now() + 700;
 
   const now = performance.now();
@@ -129,15 +146,13 @@ export function startBattle(foeType='jelly'){
   state.foeEntryUntil      = state.goAt + BTL.FOE_ENTRY_DELAY_MS;
   state.foeFireBlockUntil  = state.foeEntryUntil + 300;
   state.foeJumpReadyAt     = state.foeEntryUntil + 500;
-  state.foe.fireAt         = state.foeEntryUntil + 600; // 1ère fenêtre de tir
+  state.foe.fireAt         = state.foeEntryUntil + 600;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
 
   // UI
   _ensureBattleUI(true);
-  // cache l'overlay de fin si déjà affiché
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
-  // remonte les pads s’ils avaient été masqués à la fin précédente
   if (state.ui.move) state.ui.move.style.display = 'flex';
   if (state.ui.ab)   state.ui.ab.style.display   = 'flex';
 
@@ -155,7 +170,8 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
-  if (!state.active) return;
+  // on continue de ticker si 'end' (pour les feux d’artifice)
+  if (!state.active && state.phase !== 'end') return;
 
   // Sécurité intégrateur
   dt = Math.min(0.05, Math.max(0.001, dt));
@@ -164,144 +180,137 @@ export function tickBattle(dt){
   const readyPhase = now < state.goAt;
   const inGrace    = now < state.graceUntil;
 
-  // Décroissance du shake (feedback)
+  // Décroissance du shake
   if (state.shakeT > 0) {
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
 
-  // Physique de base (gravité/sol)
+  // Physique de base (gravité/sol) — pas utile en phase 'end' mais inoffensif
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
-  // -----------------------------
-  // Contrôles joueur (bloqués pendant READY…)
-  // -----------------------------
-  const slowMul = (now < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
-  state.player.vx = 0;
+  // ----------------------------------------------------------------
+  // GAMEPLAY uniquement pendant la phase 'play'
+  // ----------------------------------------------------------------
+  if (state.phase === 'play') {
+    // Contrôles joueur (bloqués pendant READY…)
+    const slowMul = (now < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
+    state.player.vx = 0;
 
-  if (!readyPhase){
-    if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
-    if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
-    if (state.input.up && state.player.onGround){
-      state.player.vy = BTL.JUMP_VY;
-      state.player.onGround = false;
-    }
-  } else {
-    // purge pour éviter un buffer d’attaques pendant le READY
-    state.input.atk = false;
-    state.input.spc = false;
-  }
-
-  // Clamp horizontal joueur
-  state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
-
-  // -----------------------------
-  // Attaques joueur
-  // -----------------------------
-  if (!readyPhase){
-    if (_consume('atk')) _fireNormal();
-    if (_consume('spc')) _fireSpecial();
-  }
-
-  // -----------------------------
-  // IA ENNEMI
-  // -----------------------------
-  if (!readyPhase){
-    // 1) Phase d’entrée : la méduse vient du bord droit, glisse jusqu’à sa position cible
-    const targetX = state.w - BTL.FOE_TARGET_MARGIN_X;
-    if (now < state.foeEntryUntil) {
-      // Pendant l’entrée : pas de tir (déjà bloqué par foeFireBlockUntil)
-      state.foe.vx = -BTL.FOE_ENTRY_SPEED;
-      state.foe.x  = Math.max(targetX, state.foe.x + state.foe.vx * dt);
+    if (!readyPhase){
+      if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
+      if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
+      if (state.input.up && state.player.onGround){
+        state.player.vy = BTL.JUMP_VY;
+        state.player.onGround = false;
+      }
     } else {
-      // 2) IA "normale" une fois entrée
-      const dist = state.foe.x - state.player.x;
-
-     // --- Patrouille aléatoire : avancer/reculer sur la zone droite ---
-const minX = Math.max(60, state.w - 260);  // limite gauche de patrouille
-const maxX = state.w - 60;                  // bord droit “jouable”
-const SPEED = 160;
-
-// change de direction toutes les 0.5–1.4s
-if (performance.now() >= state.foeWanderUntil) {
-  // 10% de pause, sinon gauche/droite aléatoire, avec petite tendance à aller vers le joueur
-  const toward = (state.foe.x > state.player.x) ? -1 : 1; // -1 = vers la gauche
-  const r = Math.random();
-  state.foeDir = (r < 0.10) ? 0 : (r < 0.55 ? toward : (Math.random() < 0.5 ? -1 : 1));
-  state.foeWanderUntil = performance.now() + (500 + Math.random()*900);
-}
-
-// avance selon la direction choisie
-state.foe.vx = SPEED * state.foeDir;
-state.foe.x += state.foe.vx * dt;
-
-// si on touche une borne, on repart dans l’autre sens et on “verrouille” un court instant
-if (state.foe.x < minX) { state.foe.x = minX; state.foeDir = 1;  state.foeWanderUntil = performance.now()+600; }
-if (state.foe.x > maxX) { state.foe.x = maxX; state.foeDir = -1; state.foeWanderUntil = performance.now()+600; }
-      // sauts opportunistes
-      if (now >= state.foeJumpReadyAt && state.foe.onGround) {
-        const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
-        if (close && Math.random() < BTL.FOE_JUMP_PROB) {
-          state.foe.vy = BTL.FOE_JUMP_VY;
-          state.foe.onGround = false;
-          state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
-        } else {
-          state.foeJumpReadyAt = now + 180; // re-check bientôt
-        }
-      }
-
-      // tirs (zaps) — cadence temporisée
-      if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
-        _fireFoeZap();
-        state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
-      }
+      // purge pour éviter un buffer d’attaques pendant le READY
+      state.input.atk = false;
+      state.input.spc = false;
     }
-  }
 
-  // -----------------------------
-  // Projectiles (déplacement + collisions + durée de vie)
-  // -----------------------------
-  for (let i = state.shots.length - 1; i >= 0; i--) {
-    const s = state.shots[i];
-    s.x += s.vx * dt;
-    s.y += s.vy * dt;
-    if (s.life != null) s.life -= dt;
+    // Clamp horizontal joueur
+    state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
 
-    if (!inGrace){
-      if (s.from === 'player'){
-        // touche l’ennemi ?
-        const dx = s.x - state.foe.x, dy = s.y - 0;
-        if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
-          state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
-          state.shots.splice(i,1);
-          continue;
-        }
+    // Attaques joueur
+    if (!readyPhase){
+      if (_consume('atk')) _fireNormal();
+      if (_consume('spc')) _fireSpecial();
+    }
+
+    // IA ENNEMI
+    if (!readyPhase){
+      const targetX = state.w - BTL.FOE_TARGET_MARGIN_X;
+      if (now < state.foeEntryUntil) {
+        state.foe.vx = -BTL.FOE_ENTRY_SPEED;
+        state.foe.x  = Math.max(targetX, state.foe.x + state.foe.vx * dt);
       } else {
-        // touche le joueur ?
-        const dx = s.x - state.player.x, dy = s.y - 0;
-        if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
-          state.player.hp = Math.max(0, state.player.hp - s.dmg);
-          // feedback type "chasse"
-          state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
-          state.slowUntil = now + BTL.HIT_SLOW_MS;
-          state.shots.splice(i,1);
-          continue;
+        const dist = state.foe.x - state.player.x;
+
+        // Patrouille aléatoire : avancer/reculer sur la zone droite
+        const minX = Math.max(60, state.w - 260);
+        const maxX = state.w - 60;
+        const SPEED = 160;
+
+        if (performance.now() >= state.foeWanderUntil) {
+          const toward = (state.foe.x > state.player.x) ? -1 : 1;
+          const r = Math.random();
+          state.foeDir = (r < 0.10) ? 0 : (r < 0.55 ? toward : (Math.random() < 0.5 ? -1 : 1));
+          state.foeWanderUntil = performance.now() + (500 + Math.random()*900);
+        }
+
+        state.foe.vx = SPEED * state.foeDir;
+        state.foe.x += state.foe.vx * dt;
+
+        if (state.foe.x < minX) { state.foe.x = minX; state.foeDir = 1;  state.foeWanderUntil = performance.now()+600; }
+        if (state.foe.x > maxX) { state.foe.x = maxX; state.foeDir = -1; state.foeWanderUntil = performance.now()+600; }
+
+        // sauts opportunistes
+        if (now >= state.foeJumpReadyAt && state.foe.onGround) {
+          const close = Math.abs(dist) <= BTL.FOE_JUMP_DIST;
+          if (close && Math.random() < BTL.FOE_JUMP_PROB) {
+            state.foe.vy = BTL.FOE_JUMP_VY;
+            state.foe.onGround = false;
+            state.foeJumpReadyAt = now + BTL.FOE_JUMP_COOLDOWN_MS;
+          } else {
+            state.foeJumpReadyAt = now + 180;
+          }
+        }
+
+        // tirs (zaps)
+        if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
+          _fireFoeZap();
+          state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
         }
       }
     }
 
-    // sortie écran / fin de vie
-    const out  = (s.x < -80 || s.x > state.w + 80);
-    const dead = (s.life != null && s.life <= 0);
-    if (out || dead) state.shots.splice(i,1);
+    // Projectiles (déplacement + collisions + durée de vie)
+    for (let i = state.shots.length - 1; i >= 0; i--) {
+      const s = state.shots[i];
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      if (s.life != null) s.life -= dt;
+
+      if (!inGrace){
+        if (s.from === 'player'){
+          const dx = s.x - state.foe.x, dy = s.y - 0;
+          if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
+            state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
+            state.shots.splice(i,1);
+            continue;
+          }
+        } else {
+          const dx = s.x - state.player.x, dy = s.y - 0;
+          if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
+            state.player.hp = Math.max(0, state.player.hp - s.dmg);
+            state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
+            state.slowUntil = now + BTL.HIT_SLOW_MS;
+            state.shots.splice(i,1);
+            continue;
+          }
+        }
+      }
+
+      const out  = (s.x < -80 || s.x > state.w + 80);
+      const dead = (s.life != null && s.life <= 0);
+      if (out || dead) state.shots.splice(i,1);
+    }
+
+    // Fin de manche
+    if (now >= state.graceUntil){
+      if (state.foe.hp    <= 0) _endBattle(true);
+      if (state.player.hp <= 0) _endBattle(false);
+    }
   }
 
-  // -----------------------------
-  // Fin de manche
-  // -----------------------------
-  if (now >= state.graceUntil){
-    if (state.foe.hp    <= 0) _endBattle(true);
-    if (state.player.hp <= 0) _endBattle(false);
+  // ---------------------------------------------------------
+  // Effets d'écran de fin (feux d'artifice) — phase 'end'
+  // ---------------------------------------------------------
+  if (state.phase === 'end' && state.victory) {
+    if (Math.random() < 0.03) _spawnFireworks(1);
+    _tickFireworks(dt);
   }
 }
 
@@ -336,7 +345,8 @@ export function renderBattle(ctx, _view, sprites){
 
   const w = dw, h = dh;
   state.w = w; state.h = h;
-    // Effet de shake quand touché
+
+  // Shake hit
   if (state.shakeT > 0) {
     const a = Math.min(1, state.shakeT / BTL.HIT_SHAKE_MAX_S);
     const mag = 6 * a;
@@ -345,7 +355,7 @@ export function renderBattle(ctx, _view, sprites){
     ctx.translate(sx, sy);
   }
 
-  // Fond (image cover si dispo)
+  // Fond
   if (sprites?.bgImg && sprites.bgImg.complete && sprites.bgImg.naturalWidth) {
     const img = sprites.bgImg;
     const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
@@ -366,11 +376,12 @@ export function renderBattle(ctx, _view, sprites){
     }
   }
 
- // Sol
-if (BTL.FLOOR_H > 0) {
-  ctx.fillStyle = '#223d33';
-  ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
-}
+  // Sol
+  if (BTL.FLOOR_H > 0) {
+    ctx.fillStyle = '#223d33';
+    ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
+  }
+
   // Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
@@ -396,7 +407,6 @@ if (BTL.FLOOR_H > 0) {
   // Tirs
   for (const s of state.shots){
     if (s.kind === 'zap'){
-      // rendu éclair dentelé
       const tail = BTL.FOE_ZAP_TAIL;
       const vx = s.vx, vy = s.vy;
       const L = Math.max(1, Math.hypot(vx, vy));
@@ -437,12 +447,16 @@ if (BTL.FLOOR_H > 0) {
       ctx.stroke();
       ctx.restore();
     } else {
-      // projectile rond classique
       ctx.beginPath();
       ctx.arc(s.x, h - BTL.FLOOR_H + s.y - 60, 8, 0, Math.PI*2);
       ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
       ctx.fill();
     }
+  }
+
+  // Effets de victoire au-dessus de la scène
+  if (state.phase === 'end' && state.victory) {
+    _renderFireworks(ctx, w, h);
   }
 
   // HUD
@@ -474,7 +488,10 @@ if (BTL.FLOOR_H > 0) {
 // Internes
 // ---------------------------------------------------------
 function _endBattle(victory){
-  state.active = false;
+  // on passe en phase "end" et on garde la scène affichée
+  state.phase = 'end';
+  state.victory = !!victory;
+  state.active = false; // stoppe gameplay (inputs/IA) mais pas le rendu
 
   // masquer les pads, afficher l’overlay fin
   if (state.ui.move) state.ui.move.style.display = 'none';
@@ -483,10 +500,32 @@ function _endBattle(victory){
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
     if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
+
+    // bouton + style : plus gros si défaite
+    const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
+    if (btn){
+      if (victory){
+        btn.style.padding = '10px 14px';
+        btn.style.fontSize = '14px';
+        btn.style.transform = 'none';
+      } else {
+        btn.style.padding = '16px 24px';
+        btn.style.fontSize = '18px';
+        btn.style.transform = 'scale(1.05)';
+      }
+    }
     state.ui.endOverlay.style.display = 'flex';
   }
-  // ne pas appeler onWin/onLose pour rester sur l’écran de fin avec le bouton Rejouer
+
+  // effets & musique côté victoire
+  if (victory){
+    _spawnFireworks(6);
+    _maybePlayVictoryMusic();
+  } else {
+    state.fx.fireworks.length = 0;
+  }
 }
+
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
   ent.y  += ent.vy * dt;
@@ -528,7 +567,7 @@ function _fireSpecial(){
   else mk();
 }
 
-function _fireFoe(){ // (non utilisé, gardé si besoin)
+function _fireFoe(){ // (non utilisé)
   state.shots.push({
     x: state.foe.x - 36,
     y: state.foe.y,
@@ -675,45 +714,25 @@ function _ensureBattleUI(show){
     root.appendChild(end);
     document.body.appendChild(root);
 
-   // bouton Rejouer → retour au jeu complet (carte/chasse)
-end.querySelector('#__battle_replay_btn').addEventListener('click', async ()=>{
-  // 1) Stopper proprement la battle
-  state.active = false;
-  state.shots.length = 0;
-  state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
+    // Option A — Revenir au jeu principal (carte/chasse)
+    end.querySelector('#__battle_replay_btn').addEventListener('click', async ()=>{
+      // Stopper/masquer la battle
+      state.active = false;
+      state.shots.length = 0;
+      state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
 
-  // 2) Masquer toute l’UI battle pour ne pas recouvrir la carte
-  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
-  if (state.ui.root)       state.ui.root.style.display = 'none';
+      if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
+      if (state.ui.root)       state.ui.root.style.display = 'none';
 
-  // 3) Lever les verrous d’affichage (plein écran / orientation paysage)
-  try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
-  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
+      try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
+      try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
 
-  // 4) Renvoyer le contrôle au jeu principal
-  if (typeof state.onLose === 'function') { state.onLose(); return; }
-  if (typeof state.onWin  === 'function') { state.onWin();  return; }
+      // Renvoyer le contrôle au jeu principal
+      if (typeof state.onLose === 'function') { state.onLose(); return; }
+      if (typeof state.onWin  === 'function') { state.onWin();  return; }
+      window.location.reload();
+    });
 
-  // 5) Secours si aucun callback n'est branché
-  window.location.reload();
-});
-// handlers tactiles / souris pour les pads
-const press = (act, on)=> {
-  if (act === 'left')  state.input.left  = on;
-  if (act === 'right') state.input.right = on;
-  if (act === 'up')    state.input.up    = on;
-  if (on === true && act === 'atk') state.input.atk = true;
-  if (on === true && act === 'spc') state.input.spc = true;
-};
-root.querySelectorAll('.__padbtn').forEach(b=>{
-  const act = b.dataset.act;
-  b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
-  b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
-  b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
-  b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
-  b.addEventListener('mouseleave', e=>{ press(act, false); });
-  b.addEventListener('click',      e=>{ e.preventDefault(); }); // éviter double déclenchement
-});
     // références UI
     state.ui.root = root;
     state.ui.move = move;
@@ -756,7 +775,7 @@ function _updateRotateOverlay(){
 }
 
 // ---------------------------------------------------------
-// Décor
+// Décor & effets
 // ---------------------------------------------------------
 function _makeSkyline(n){
   const arr = [];
@@ -767,4 +786,59 @@ function _makeSkyline(n){
     arr.push({ x, w:bw, h:bh });
   }
   return arr;
+}
+
+// ---------- Feux d’artifice (victoire) ----------
+function _spawnFireworks(count=1){
+  const w = state.w, h = state.h;
+  for (let k=0;k<count;k++){
+    const cx = 80 + Math.random()*(w-160);
+    const cy = 80 + Math.random()*Math.min(240, h*0.45);
+    const n = 36;
+    for (let i=0;i<n;i++){
+      const a = (i/n) * Math.PI*2;
+      const sp = 140 + Math.random()*140;
+      state.fx.fireworks.push({
+        x: cx, y: cy,
+        vx: Math.cos(a)*sp,
+        vy: Math.sin(a)*sp,
+        life: 0.9 + Math.random()*0.6,
+        age: 0
+      });
+    }
+  }
+}
+function _tickFireworks(dt){
+  const g = 260;
+  for (let i = state.fx.fireworks.length-1; i>=0; i--){
+    const p = state.fx.fireworks[i];
+    p.age += dt;
+    p.vy += g*dt*0.25;
+    p.x += p.vx*dt;
+    p.y += p.vy*dt;
+    if (p.age >= p.life) state.fx.fireworks.splice(i,1);
+  }
+}
+function _renderFireworks(ctx, w, h){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of state.fx.fireworks){
+    const t = Math.min(1, p.age / p.life);
+    const alpha = (1 - t) * 0.9;
+    // couleurs douces bleu/violet/rose
+    ctx.fillStyle = `rgba(${200+Math.floor(55*Math.random())},${180+Math.floor(70*Math.random())},255,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.0 + (1.6*(1-t)), 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function _maybePlayVictoryMusic(){
+  try{
+    const url = (window.__BATTLE_VICTORY_MUSIC_URL__) || null;
+    if (!url) return;
+    state.music = new Audio(url);
+    state.music.volume = 0.7;
+    state.music.play().catch(()=>{});
+  }catch{}
 }
