@@ -390,7 +390,7 @@ export function renderBattle(ctx, _view, sprites){
   // Personnages
   const P_W = 140, P_H = 152;
   const pY = h - BTL.FLOOR_H + state.player.y - P_H;
-  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H;
+  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 20;
 
   // Joueur
   ctx.save();
