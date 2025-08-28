@@ -143,5 +143,31 @@ export function resetAudioForNewGame() {
   stopFinaleLoop();
 }
 
+// ---- Hooks battle : pause/reprise de la musique de fond ----
+let _wasPlayingBeforeBattle = false;
+
+/** Coupe la musique de fond (et la finale) pour laisser la place à la musique de battle */
+export function pauseBgForBattle() {
+  // mémorise si la musique de fond tournait
+  _wasPlayingBeforeBattle = musicOn === true;
+  // coupe boucle courte + suspend l'AudioContext
+  stopMusic();
+  // au cas où une "finale longue" tourne encore
+  stopFinaleLoop();
+}
+
+/** Réactive la musique de fond si elle était active avant la battle */
+export async function resumeBgAfterBattle() {
+  if (_wasPlayingBeforeBattle) {
+    try { await startMusic(); } catch {}
+  }
+  _wasPlayingBeforeBattle = false;
+}
+
+// Expose en global pour battle.js (qui appelle window.__STOP_BG_MUSIC / __RESUME_BG_MUSIC)
+if (typeof window !== 'undefined') {
+  window.__STOP_BG_MUSIC   = () => pauseBgForBattle();
+  window.__RESUME_BG_MUSIC = () => resumeBgAfterBattle();
+}
 // ---------- Export bruts si besoin dans d'autres modules ----------
 export { audioCtx, masterGain };
