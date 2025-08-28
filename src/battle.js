@@ -412,8 +412,12 @@ if (!showDance) {
   ctx.save();
   ctx.translate(state.player.x, pY);
   if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
-  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
-  else { ctx.fillStyle='#e63946'; ctx.fillRect(0,0,P_W,P_H); }
+  if (sprites?.birdImg?.naturalWidth) {
+    ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
+  } else {
+    ctx.fillStyle='#e63946';
+    ctx.fillRect(0,0,P_W,P_H);
+  }
   ctx.restore();
 } else {
   // >>> Danse Arachne + Tarantula (mêmes PNG que le jeu) <<<
@@ -431,19 +435,23 @@ if (!showDance) {
   const ty = baseY - T_H + Math.round(bob2);
 
   // Arachne (sprite joueur)
-  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
-  else { ctx.fillStyle = '#e63946'; ctx.fillRect(ax, ay, A_W, A_H); }
-A_H);
-}
+  if (sprites?.birdImg?.naturalWidth) {
+    ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
+  } else {
+    ctx.fillStyle = '#e63946';
+    ctx.fillRect(ax, ay, A_W, A_H);
+  }
 
-// Tarantula = réutilise le sprite de la chasse (spiderImg), fallback éventuel sur tarantulaImg
-const tar = sprites?.spiderImg || sprites?.tarantulaImg;
-if (tar && tar.complete && tar.naturalWidth) {
-  ctx.drawImage(tar, tx, ty, T_W, T_H);
-} else {
-  ctx.fillStyle = '#2b2d42';
-  ctx.fillRect(tx, ty, T_W, T_H);
+  // Tarantula = réutilise le sprite de la chasse (spiderImg), fallback éventuel sur tarantulaImg
+  const tar = sprites?.spiderImg || sprites?.tarantulaImg;
+  if (tar && tar.complete && tar.naturalWidth) {
+    ctx.drawImage(tar, tx, ty, T_W, T_H);
+  } else {
+    ctx.fillStyle = '#2b2d42';
+    ctx.fillRect(tx, ty, T_W, T_H);
+  }
 }
+// --- Ennemi agrandi (+30%) ---
   // --- Ennemi agrandi (+30%) ---
   const F_W_BASE = Math.round(P_W * 1.5);
   const F_H_BASE = Math.round(P_H * 1.5);
