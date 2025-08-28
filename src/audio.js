@@ -18,13 +18,20 @@ export function createAudioOnce() {
   masterGain.gain.value = 0.58;
   masterGain.connect(audioCtx.destination);
 
-  // iOS unlock (zéro buffer)
-// (certaines plateformes yêuent un son "nul" pour débloquer)
+  // iOS unlock (zéro buffer bidon pour débloquer l’AudioContext)
   const b = audioCtx.createBuffer(1, 1, 22050);
   const s = audioCtx.createBufferSource();
   s.buffer = b;
   s.connect(masterGain);
   s.start(0);
+}
+
+// ---------- Ensure Contexte actif ----------
+function ensureCtxActive() {
+  if (!audioCtx) createAudioOnce();
+  if (audioCtx && audioCtx.state === "suspended") {
+    try { audioCtx.resume(); } catch {}
+  }
 }
 
 // ---------- Utils osc carrée ----------
@@ -43,12 +50,14 @@ function scheduleSquare(freq, start, dur = 0.25, amp = 0.30) {
 
 // ---------- SFX publics ----------
 export function ping(freq = 440, amp = 0.2) {
+  ensureCtxActive();
   if (!audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(freq, t, 0.16, amp);
 }
 
 export function starEmphasis() {
+  ensureCtxActive();
   if (!audioCtx || !masterGain) return;
   const base = audioCtx.currentTime;
   [784, 880, 988, 1175].forEach((f, i) =>
@@ -57,6 +66,7 @@ export function starEmphasis() {
 }
 
 export function failSfx() {
+  ensureCtxActive();
   if (!audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(196, t, 0.20, 0.42);
@@ -77,10 +87,7 @@ function playPhrase() {
 }
 
 export async function startMusic() {
-  createAudioOnce();
-  if (audioCtx.state === 'suspended') {
-    try { await audioCtx.resume(); } catch (_) {}
-  }
+  ensureCtxActive();
   // petit bip de feedback
   ping(720, 0.20);
   musicOn = true;
@@ -90,10 +97,7 @@ export async function startMusic() {
 export function stopMusic() {
   musicOn = false;
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  if (audioCtx && audioCtx.state !== 'closed') {
-    // suspendre suffit (économie CPU/batterie)
-    audioCtx.suspend().catch(() => {});
-  }
+  // ⚠️ Ne pas suspendre le contexte : on garde les SFX actifs
 }
 
 export function toggleMusic() {
@@ -104,7 +108,9 @@ export function isMusicOn() { return musicOn; }
 
 // ---------- Finale longue ----------
 export function playFinaleLong() {
+  ensureCtxActive();
   if (!audioCtx || !masterGain) return;
+
   // on coupe la boucle courte si active
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   musicOn = false;
@@ -134,12 +140,10 @@ export function stopFinaleLoop() {
 
 // ---------- Reset global (utile quand on relance une partie) ----------
 export function resetAudioForNewGame() {
-  // si la musique était active, relancer la boucle courte
   if (musicOn) {
     if (loopTimer) clearTimeout(loopTimer);
     playPhrase();
   }
-  // on coupe la boucle de finale si elle tournait
   stopFinaleLoop();
 }
 
@@ -148,11 +152,10 @@ let _wasPlayingBeforeBattle = false;
 
 /** Coupe la musique de fond (et la finale) pour laisser la place à la musique de battle */
 export function pauseBgForBattle() {
-  // mémorise si la musique de fond tournait
   _wasPlayingBeforeBattle = musicOn === true;
-  // coupe boucle courte + suspend l'AudioContext
-  stopMusic();
-  // au cas où une "finale longue" tourne encore
+  // coupe SEULEMENT la boucle (pas le contexte, sinon plus de SFX)
+  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+  musicOn = false;
   stopFinaleLoop();
 }
 
@@ -164,10 +167,11 @@ export async function resumeBgAfterBattle() {
   _wasPlayingBeforeBattle = false;
 }
 
-// Expose en global pour battle.js (qui appelle window.__STOP_BG_MUSIC / __RESUME_BG_MUSIC)
+// Expose en global pour battle.js
 if (typeof window !== 'undefined') {
   window.__STOP_BG_MUSIC   = () => pauseBgForBattle();
   window.__RESUME_BG_MUSIC = () => resumeBgAfterBattle();
 }
+
 // ---------- Export bruts si besoin dans d'autres modules ----------
 export { audioCtx, masterGain };
