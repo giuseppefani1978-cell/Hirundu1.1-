@@ -433,10 +433,16 @@ if (!showDance) {
   // Arachne (sprite joueur)
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
   else { ctx.fillStyle = '#e63946'; ctx.fillRect(ax, ay, A_W, A_H); }
+A_H);
+}
 
-  // Tarantula (sprite existant de la chasse)
-  if (sprites?.tarantulaImg?.naturalWidth) ctx.drawImage(sprites.tarantulaImg, tx, ty, T_W, T_H);
-  else { ctx.fillStyle = '#2b2d42'; ctx.fillRect(tx, ty, T_W, T_H); }
+// Tarantula = réutilise le sprite de la chasse (spiderImg), fallback éventuel sur tarantulaImg
+const tar = sprites?.spiderImg || sprites?.tarantulaImg;
+if (tar && tar.complete && tar.naturalWidth) {
+  ctx.drawImage(tar, tx, ty, T_W, T_H);
+} else {
+  ctx.fillStyle = '#2b2d42';
+  ctx.fillRect(tx, ty, T_W, T_H);
 }
   // --- Ennemi agrandi (+30%) ---
   const F_W_BASE = Math.round(P_W * 1.5);
