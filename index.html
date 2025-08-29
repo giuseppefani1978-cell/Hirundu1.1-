@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne">
 
-  <!-- Apple Touch Icons (fichiers à la racine) -->
+  <!-- Apple Touch Icons -->
   <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
   <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
   <link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
@@ -76,7 +76,7 @@
         </div>
       </div>
 
-      <!-- D-pad (pour la chasse au trésor uniquement ; la Battle a ses propres pads) -->
+      <!-- D-pad -->
       <div class="touch" id="touch">
         <div class="dpad">
           <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
@@ -87,7 +87,7 @@
     </div>
   </div>
 
-  <!-- Petit panneau debug non intrusif (s’affiche seulement en cas d’erreur) -->
+  <!-- Debug Box -->
   <div id="debugBox" style="display:none"></div>
 
   <!-- Force Refresh -->
@@ -97,27 +97,7 @@
     Force Refresh
   </button>
 
-  <!-- Nettoyage SW/caches + badge host + bouton refresh -->
-  <script>
-    (function(){
-      var s=document.getElementById("__host__"); if(s) s.textContent = location.hostname;
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(list=>{
-          list.forEach(r=>r.unregister());
-          if (window.caches && caches.keys) {
-            caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
-          }
-        }).catch(()=>{});
-      }
-      document.getElementById('__force__')?.addEventListener('click', function(){
-        var url = new URL(location.href);
-        url.searchParams.set('t', Date.now());
-        location.replace(url.toString());
-      });
-    })();
-  </script>
-
-  <!-- CHARGEMENT UNIQUE du jeu : game.js importe i18n/ui/audio/battle. AUCUN autre <script type="module"> -->
+  <!-- Boot du jeu -->
   <script type="module">
     import { boot } from './src/game.js';
     window.addEventListener('DOMContentLoaded', () => {
@@ -128,12 +108,55 @@
       }
     });
   </script>
-<script>
-  window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';   // ✅ chemin réel selon ta liste
-  // on ne déclare PAS de fanfare ici, voir point 2
-</script>
 
-  <!-- Debug erreurs JS (affiche un petit bandeau seulement quand ça plante) -->
+  <!-- Musique Battle -->
+  <script>
+    window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';
+  </script>
+
+  <!-- Service Worker (PWA) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    }
+  </script>
+
+  <!-- Bouton d’installation Android -->
+  <script>
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.createElement('button');
+      btn.textContent = '📲 Installer l’app';
+      btn.style.cssText = 'position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);';
+      document.body.appendChild(btn);
+      btn.addEventListener('click', async () => {
+        btn.remove();
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch {}
+        deferredPrompt = null;
+      });
+    });
+  </script>
+
+  <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
+  <script>
+    (function(){
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isIOS && isSafari && !isStandalone) {
+        const tip = document.createElement('div');
+        tip.innerHTML = 'Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>';
+        tip.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);';
+        document.body.appendChild(tip);
+        setTimeout(()=>tip.remove(), 8000);
+      }
+    })();
+  </script>
+
+  <!-- Debug erreurs JS -->
   <script>
     window.addEventListener('error', e => {
       console.error('JS Error:', e.message, e.error);
