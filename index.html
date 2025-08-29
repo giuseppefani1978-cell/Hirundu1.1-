@@ -4,20 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  
-  <!-- iOS (Safari) -->
+
+  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+
+  <!-- Couleurs & PWA -->
+  <meta name="theme-color" content="#a9d6f5">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne">
-  <!-- Icône iOS (mets une vraie image 180x180 / 192x192) -->
-  <link rel="apple-touch-icon" href="assets/icon-192.png">
 
-  <!-- Android (Chrome) -->
-  <meta name="theme-color" content="#0f1e2d">
-  <!-- Optionnel : fournis ce fichier si tu veux l’install PWA -->
-  <link rel="manifest" href="manifest.json">
+  <!-- Apple Touch Icons (fichiers à la racine) -->
+  <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
 
-  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -119,7 +128,6 @@
       }
     });
   </script>
- <script>
 <script>
   window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';   // ✅ chemin réel selon ta liste
   // on ne déclare PAS de fanfare ici, voir point 2
