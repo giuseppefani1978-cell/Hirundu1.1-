@@ -20,7 +20,7 @@ const SPRITES_SRC = {
   bird:   'assets/aracne .PNG',      // (oui, il y a un espace dans le nom)
   spider: 'assets/tarantula .PNG',
   crow:   'assets/crow.PNG',
-  jelly:  'assets/jellyfish.PNG'
+  jelly:  'assets/jellyfish_boss.PNG'
 };
 
 // --- Taille logique (aspect) utilisée par battle.js (16:9 conseillé)
