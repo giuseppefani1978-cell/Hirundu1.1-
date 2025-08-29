@@ -11,7 +11,7 @@ const BTL = {
   SPEED: 300,
   JUMP_VY: -620,
   PLAYER_HP: 120,
-  FOE_HP: 100,
+  FOE_HP: 200,
   danceT: 0,
   SHOT: 760,
   FOE_SHOT: 520,
@@ -637,16 +637,16 @@ function _fireNormal(){
     vx: BTL.SHOT * state.player.facing,
     vy: 0,
     from: 'player',
-    dmg: 12
+    dmg: 9
   });
 }
 
 function _fireSpecial(){
   const order = [
-    ['caffe', { dmg: 26 }],
-    ['rustico', { dmg: 18, burst:2, gap:140 }],
-    ['pasticciotto', { dmg: 22 }],
-    ['stars', { dmg: 14 }]
+    ['caffe', { dmg: 22 }],
+    ['rustico', { dmg: 15, burst:2, gap:140 }],
+    ['pasticciotto', { dmg: 18 }],
+    ['stars', { dmg: 12 }]
   ];
   const pick = order.find(([k]) => (state.ammo[k]|0) > 0);
   if (!pick){ _fireNormal(); return; }
