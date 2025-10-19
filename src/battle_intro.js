@@ -2,8 +2,33 @@
 // Écran d’intro pour le mini-jeu "Bataille de Otranto"
 // API attendue par game.js : startBattleIntro({ ammo, onProceed })
 //
-// ammo = { pasticciottos?, rustico?, caffe?, stars? } — tous optionnels
+// ammo = { pasticciotto?, rustico?, caffe?, stars? } — tous optionnels
 // onProceed = () => {} — appelé quand on quitte l’intro
+
+// Helpers environnement (UA + orientation) + immersion non bloquante
+const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isPortrait = () => window.matchMedia?.('(orientation: portrait)')?.matches;
+
+async function tryEnterImmersive(targetEl = document.documentElement) {
+  // Essais non bloquants (si refusés par le navigateur, on ignore)
+  try {
+    const reqFs = targetEl.requestFullscreen
+      || targetEl.webkitRequestFullscreen
+      || targetEl.msRequestFullscreen;
+    if (reqFs && !document.fullscreenElement) await reqFs.call(targetEl);
+  } catch {}
+  try { await screen.orientation?.lock?.('landscape'); } catch {}
+}
+
+// Injecte du CSS une seule fois (évite doublons si on revient)
+function injectOnceCss(css){
+  const id = '__battle_intro_css__';
+  if (document.getElementById(id)) return;
+  const style = document.createElement('style');
+  style.id = id;
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 
 export function startBattleIntro({ ammo = {}, onProceed } = {}) {
   const {
@@ -13,13 +38,11 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     stars = 0,
   } = ammo;
 
-  // Création overlay
+  // === Overlay racine ===
   const overlay = document.createElement('div');
   overlay.id = '__battle_intro__';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-
-  // Styles de base
   overlay.style.cssText = `
     position:fixed; inset:0; z-index:10005;
     display:flex; align-items:center; justify-content:center;
@@ -29,7 +52,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     animation: __bi_fadeIn 300ms ease-out forwards;
   `;
 
-  // Conteneur carte
+  // Carte
   const card = document.createElement('div');
   card.style.cssText = `
     width:min(720px, 92vw);
@@ -49,7 +72,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     letter-spacing:.2px;
   `;
 
-  // Sous-titre (orientation paysage)
+  // Hint orientation
   const hint = document.createElement('div');
   hint.innerHTML = `
     <div style="opacity:.9;font:600 14px system-ui;margin-bottom:12px">
@@ -79,6 +102,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
 
   // CTA
   const cta = document.createElement('button');
+  cta.id = '__battle_start_btn'; // ← nécessaire pour les règles CSS
   cta.type = 'button';
   cta.textContent = 'Commencer';
   cta.disabled = true;
@@ -88,7 +112,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     box-shadow:0 6px 20px rgba(0,0,0,.25); cursor:not-allowed; opacity:.7;
   `;
 
-  // Tipp “tap” (affiché après déblocage)
+  // Tap hint
   const tap = document.createElement('div');
   tap.textContent = '…ou tape n’importe où pour continuer';
   tap.style.cssText = `
@@ -96,7 +120,7 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     transition:opacity .25s ease;
   `;
 
-  // Credo
+  // Footer
   const foot = document.createElement('div');
   foot.innerHTML = `
     <div style="margin-top:12px; font:600 12px/1.3 system-ui; opacity:.7">
@@ -115,42 +139,90 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  // Empêche le scroll en arrière-plan
-  const prevOverflow = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
+  // Mode "intro" pour piloter le CSS (désactive #c, etc.)
+  try { document.body.classList.add('mode-battle-intro'); } catch {}
 
-  // Keyframes minimalistes
-  injectOnceCss(`
-    @keyframes __bi_fadeIn { from{opacity:0} to{opacity:1} }
-  `);
+// Overlay “tourne le téléphone”
+let rotate = document.getElementById('__battle_rotate__');
+if (!rotate) {
+  rotate = document.createElement('div');
+  rotate.id = '__battle_rotate__';
+  rotate.innerHTML =
+    '<div style="padding:12px 16px;background:rgba(0,0,0,.7);border-radius:12px">📱 Tourne ton téléphone en mode paysage pour démarrer.</div>';
+  document.body.appendChild(rotate);
+}
 
-  // Débloque le CTA après 1.2s (laisser respirer la transition)
-  let canProceed = false;
-  const unlockDelay = setTimeout(() => {
-    canProceed = true;
-    cta.disabled = false;
-    cta.style.cursor = 'pointer';
-    cta.style.opacity = '1';
-    tap.style.opacity = '.85';
-  }, 1200);
+// ⚠️ Déclare canProceed AVANT updateEnvFlags pour éviter la ReferenceError
+let canProceed = false;
 
-  // Auto-continue après 4s si l’utilisateur ne fait rien
-  const autoTimer = setTimeout(continueNow, 4000);
+// Flag mobile-portrait pour le blocage via CSS
+const updateEnvFlags = () => {
+  const mobilePortrait = isMobileUA() && isPortrait();
+  document.body.classList.toggle('mobile-portrait', !!mobilePortrait);
+  // ajuste le CTA si le délai de déblocage est passé
+  if (canProceed) {
+    cta.disabled = mobilePortrait;
+    cta.style.cursor = mobilePortrait ? 'not-allowed' : 'pointer';
+    cta.style.opacity = mobilePortrait ? '.7' : '1';
+    tap.style.opacity = mobilePortrait ? '0' : '.85';
+  }
+};
+updateEnvFlags();
+// Écouteurs pour mise à jour des flags
+const onResize = () => updateEnvFlags();
+const onOrient = () => updateEnvFlags();
+window.addEventListener('resize', onResize, { passive:true });
+window.addEventListener('orientationchange', onOrient, { passive:true });
 
-  // Écoutes
-  cta.addEventListener('click', () => { if (canProceed) continueNow(); });
-  overlay.addEventListener('click', () => { if (canProceed) continueNow(); });
+// Empêche le scroll en arrière-plan
+const prevOverflow = document.body.style.overflow;
+document.body.style.overflow = 'hidden';
+
+// Keyframes minimalistes
+injectOnceCss(`@keyframes __bi_fadeIn { from{opacity:0} to{opacity:1} }`);
+
+// Débloque le CTA après 1.2s (mais seulement si pas mobile-portrait)
+const unlockDelay = setTimeout(() => {
+  canProceed = true;
+  const mp = document.body.classList.contains('mobile-portrait');
+  cta.disabled = mp;
+  cta.style.cursor = mp ? 'not-allowed' : 'pointer';
+  cta.style.opacity = mp ? '.7' : '1';
+  tap.style.opacity = mp ? '0' : '.85';
+}, 1200);
+
+  // Auto-continue après 4s seulement si pas mobile-portrait
+  const autoTimer = setTimeout(() => {
+    const mp = document.body.classList.contains('mobile-portrait');
+    if (!mp && canProceed) continueNow();
+  }, 4000);
+
+  // Handlers
+  const tryProceed = () => {
+    if (!canProceed) return;
+    if (document.body.classList.contains('mobile-portrait')) {
+      try { navigator.vibrate?.(60); } catch {}
+      return; // bloque tant que portrait
+    }
+    continueNow();
+  };
+
+  const onKey = (e) => {
+    if (!canProceed) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tryProceed();
+    }
+  };
+
+  cta.addEventListener('click', tryProceed);
+  overlay.addEventListener('click', tryProceed);
   window.addEventListener('keydown', onKey);
 
-  function onKey(e){
-    if (!canProceed) return;
-    if (e.key === 'Enter' || e.key === ' '){
-      e.preventDefault();
-      continueNow();
-    }
-  }
-
   function continueNow(){
+    // Essais d’immersion non bloquants
+    tryEnterImmersive(document.documentElement).catch(()=>{});
+    try { document.body.classList.remove('mode-battle-intro'); } catch {}
     cleanup();
     onProceed && onProceed();
   }
@@ -159,17 +231,11 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     clearTimeout(unlockDelay);
     clearTimeout(autoTimer);
     window.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('orientationchange', onOrient);
+    cta.removeEventListener('click', tryProceed);
+    overlay.removeEventListener('click', tryProceed);
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     document.body.style.overflow = prevOverflow;
   }
-}
-
-// Injecte du CSS une seule fois (évite doublons si on revient)
-function injectOnceCss(css){
-  const id = '__battle_intro_css__';
-  if (document.getElementById(id)) return;
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = css;
-  document.head.appendChild(style);
 }

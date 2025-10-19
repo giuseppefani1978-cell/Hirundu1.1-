@@ -1,1 +1,103 @@
+[
+  {
+    "id": "otranto_castle",
+    "name": "Castello Aragonese",
+    "type": "monument",
+    "lat": 40.1487,
+    "lng": 18.4855,
+    "reward": { "type": "stars", "value": 1 },
+    "qr_id": "QR_CASTLE_OTRANTO",
+    "description": "Forteresse emblématique d’Otranto, témoin des batailles historiques du XVe siècle."
+  },
+  {
+    "id": "otranto_cathedral",
+    "name": "Cattedrale di Otranto",
+    "type": "monument",
+    "lat": 40.1479,
+    "lng": 18.4844,
+    "reward": { "type": "bonus", "item": "caffe", "value": 1 },
+    "qr_id": "QR_CATHEDRAL_OTRANTO",
+    "description": "Célèbre pour sa mosaïque médiévale représentant l’arbre de la vie."
+  },
+  {
+    "id": "otranto_beach",
+    "name": "Spiaggia degli Alimini",
+    "type": "beach",
+    "lat": 40.2069,
+    "lng": 18.4593,
+    "reward": { "type": "bonus", "item": "pasticciotto", "value": 1 },
+    "qr_id": "QR_ALIMINI_BEACH",
+    "description": "Plage dorée bordée de pinèdes, parfaite pour la baignade et la détente."
+  },
+  {
+    "id": "bar_laltro_baffo",
+    "name": "L’Altro Baffo",
+    "type": "restaurant",
+    "lat": 40.1473,
+    "lng": 18.4861,
+    "reward": { "type": "score", "value": 50 },
+    "qr_id": "QR_ALTRO_BAFFO",
+    "description": "Restaurant familial réputé pour sa cuisine traditionnelle du Salento."
+  },
+  {
+    "id": "bar_caffe_mengoli",
+    "name": "Caffè Mengoli",
+    "type": "bar",
+    "lat": 40.1490,
+    "lng": 18.4849,
+    "reward": { "type": "bonus", "item": "caffe", "value": 2 },
+    "qr_id": "QR_CAFFE_MENGOLI",
+    "description": "Institution locale pour déguster un vrai caffè leccese glacé."
+  },
+  {
+    "id": "hotel_palazzo_papaleo",
+    "name": "Hotel Palazzo Papaleo",
+    "type": "hotel",
+    "lat": 40.1476,
+    "lng": 18.4858,
+    "reward": { "type": "score", "value": 100 },
+    "qr_id": "QR_PALAZZO_PAPALEO",
+    "description": "Hôtel de charme face à la mer, parfait pour une pause entre deux batailles."
+  },
+  {
+    "id": "shop_artigiani",
+    "name": "Bottega degli Artigiani",
+    "type": "shop",
+    "lat": 40.1484,
+    "lng": 18.4868,
+    "reward": { "type": "bonus", "item": "rustico", "value": 1 },
+    "qr_id": "QR_ARTIGIANI_SHOP",
+    "description": "Atelier artisanal vendant des céramiques et objets traditionnels du Salento."
+  },
+  {
+    "id": "ristorante_hydro",
+    "name": "Hydruntum Ristorante",
+    "type": "restaurant",
+    "lat": 40.1493,
+    "lng": 18.4872,
+    "reward": { "type": "score", "value": 80 },
+    "qr_id": "QR_HYDRUNTUM",
+    "description": "Terrasse panoramique sur la baie, spécialités de poissons et vins locaux."
+  },
+  {
+    "id": "bar_porta_terra",
+    "name": "Bar Porta Terra",
+    "type": "bar",
+    "lat": 40.1480,
+    "lng": 18.4848,
+    "reward": { "type": "bonus", "item": "pasticciotto", "value": 1 },
+    "qr_id": "QR_PORTA_TERRA",
+    "description": "Petit café typique à l’entrée des remparts, parfait pour un apéro salentino."
+  },
+  {
+    "id": "beach_grotte",
+    "name": "Grotta della Poesia",
+    "type": "beach",
+    "lat": 40.2883,
+    "lng": 18.4317,
+    "reward": { "type": "stars", "value": 2 },
+    "qr_id": "QR_GROTTA_POESIA",
+    "description": "Piscine naturelle spectaculaire à quelques kilomètres au nord d’Otranto."
+  }
+]
 

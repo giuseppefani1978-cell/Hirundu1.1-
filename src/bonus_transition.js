@@ -20,7 +20,7 @@ function openBonusMap() {
 
 function findBestParent() {
   const selectors = [
-    '.ui-overlay', '.overlay', '.modal', '.bd', '#overlay', '.ui-success', '.dialog', '#bd', '#tarTop'
+    '.ui-success', '.ui-overlay', '.overlay', '.modal', '.bd', '#overlay', '.dialog', '#bd', '#tarTop'
   ];
   for (const s of selectors) {
     try {
@@ -60,6 +60,8 @@ function createCTAElement() {
   return btn;
 }
 
+let __ctaAttachedForCurrentSuccess = false;
+
 function showBonusCTA() {
   if (document.getElementById('__bonus_cta')) {
     console.log('[bonus_transition] showBonusCTA: already present');
@@ -70,15 +72,15 @@ function showBonusCTA() {
   const btn = createCTAElement();
   const parent = findBestParent() || document.body;
 
-  // Append after a short delay to avoid races with modals/overlays
   setTimeout(() => {
     try {
       parent.appendChild(btn);
+      __ctaAttachedForCurrentSuccess = true;
       console.log('[bonus_transition] __bonus_cta appended to', parent.tagName || parent.id || parent.className);
 
       // Watchdog: if removed or hidden by other scripts, re-append / force visibility
       let attempts = 0;
-      const maxAttempts = 8;
+      const maxAttempts = 10;
       const watchdog = setInterval(() => {
         attempts++;
         const existing = document.getElementById('__bonus_cta');
@@ -96,8 +98,7 @@ function showBonusCTA() {
               existing.style.zIndex = '20010';
               console.warn('[bonus_transition] __bonus_cta visibility/z-index enforced');
             }
-          } catch (e) { /* ignore compute errors */ }
-
+          } catch (e) { /* ignore */ }
           const curParent = existing.parentElement;
           if (curParent !== parent) {
             try { parent.appendChild(existing); console.warn('[bonus_transition] moved __bonus_cta back to preferred parent'); } catch {}
@@ -111,14 +112,29 @@ function showBonusCTA() {
   }, 260);
 }
 
-// Si déjà débloqué au chargement, afficher CTA
-if (isUnlocked()) {
-  console.log('[bonus_transition] isUnlocked -> showing CTA on load');
-  showBonusCTA();
-}
+// MutationObserver : si la bulle / overlay "ui-success" apparaît (ou est rafraîchie), on attache le CTA
+const successSelector = '.ui-success, .ui-overlay, .overlay, .modal, .bd';
+const mo = new MutationObserver((mutations) => {
+  // si CTA déjà attaché pour la bulle courante, on ne ré-attache pas
+  if (document.getElementById('__bonus_cta') && __ctaAttachedForCurrentSuccess) return;
 
-// Écoute l'événement déclenché par game.js lors de la victoire
-document.addEventListener('otranto:unlocked', () => {
-  console.log('[bonus_transition] otranto:unlocked received — showing CTA');
-  showBonusCTA();
+  // check présence d'un conteneur de succès
+  const container = document.querySelector('.ui-success') || document.querySelector('.ui-overlay') || document.querySelector('.overlay') || document.querySelector('.modal') || document.querySelector('.bd');
+  if (container) {
+    try {
+      // if bonus unlocked and not yet seen for the user, show CTA
+      if (isUnlocked()) {
+        const seenRaw = localStorage.getItem(LS.OTRANTO_BONUS_SEEN);
+        const seen = seenRaw === 'true' || (seenRaw !== null && JSON.parse(seenRaw) === true);
+        if (!seen) {
+          showBonusCTA();
+        }
+      }
+    } catch (e) {
+      // ignore errors reading localStorage / JSON but log for debugging
+      console.error('[bonus_transition] observer error', e);
+    }
+  }
 });
+
+mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
