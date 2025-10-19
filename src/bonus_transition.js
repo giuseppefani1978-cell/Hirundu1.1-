@@ -115,26 +115,41 @@ function showBonusCTA() {
 // MutationObserver : si la bulle / overlay "ui-success" apparaît (ou est rafraîchie), on attache le CTA
 const successSelector = '.ui-success, .ui-overlay, .overlay, .modal, .bd';
 const mo = new MutationObserver((mutations) => {
-  // si CTA déjà attaché pour la bulle courante, on ne ré-attache pas
-  if (document.getElementById('__bonus_cta') && __ctaAttachedForCurrentSuccess) return;
-
   // check présence d'un conteneur de succès
-  const container = document.querySelector('.ui-success') || document.querySelector('.ui-overlay') || document.querySelector('.overlay') || document.querySelector('.modal') || document.querySelector('.bd');
+  const container = document.querySelector('.ui-success') ||
+                    document.querySelector('.ui-overlay') ||
+                    document.querySelector('.overlay') ||
+                    document.querySelector('.modal') ||
+                    document.querySelector('.bd');
+
   if (container) {
-    try {
-      // if bonus unlocked and not yet seen for the user, show CTA
-      if (isUnlocked()) {
-        const seenRaw = localStorage.getItem(LS.OTRANTO_BONUS_SEEN);
-        const seen = seenRaw === 'true' || (seenRaw !== null && JSON.parse(seenRaw) === true);
-        if (!seen) {
-          showBonusCTA();
+    console.log('[bonus_transition] MutationObserver: success container detected -> ensure CTA is inside it');
+
+    // si le CTA existe déjà mais n'est pas dans la bulle, on le déplace
+    const existing = document.getElementById('__bonus_cta');
+    if (existing) {
+      try {
+        if (existing.parentElement !== container) {
+          container.appendChild(existing);
+          console.warn('[bonus_transition] moved existing __bonus_cta into the success container');
         }
+        // marque que pour cette bulle on a attaché le CTA
+        __ctaAttachedForCurrentSuccess = true;
+      } catch (e) {
+        console.error('[bonus_transition] failed to move existing __bonus_cta into container', e);
       }
-    } catch (e) {
-      // ignore errors reading localStorage / JSON but log for debugging
-      console.error('[bonus_transition] observer error', e);
+      return;
     }
+
+    // sinon on affiche/insère le CTA neuf
+    showBonusCTA();
+    return;
+  }
+
+  // si la bulle a été retirée, reset flag pour la suivante
+  if (!document.querySelector('.ui-success')) {
+    __ctaAttachedForCurrentSuccess = false;
   }
 });
-
+// observe body (ou documentElement si body pas encore présent)
 mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
