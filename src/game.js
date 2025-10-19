@@ -4,7 +4,10 @@
 // (aucune dépendance vers battle.js)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
-import { startMusic, stopMusic, toggleMusic, isMusicOn, ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong } from './audio.js';
+import {
+  startMusic, stopMusic, toggleMusic, isMusicOn,
+  ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
+} from './audio.js';
 import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
 
@@ -17,6 +20,13 @@ function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
+
+const LS = {
+  OTRANTO_BONUS_UNLOCKED: 'otranto_bonus_unlocked',
+  OTRANTO_BONUS_SEEN:     'otranto_bonus_seen',
+};
+const lsGet = (k, d=null) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
 // ⚠️ Les noms doivent correspondre exactement aux fichiers dans /assets
 const ASSETS = {
@@ -96,7 +106,11 @@ function addToHof(entry){
   const hof = loadHof(); hof.push(entry); hof.sort((a,b)=> b.score - a.score);
   const trimmed = hof.slice(0, HOF_SIZE); saveHof(trimmed); return trimmed;
 }
-function fmtTime(ms){ const s = Math.max(0, Math.round(ms/1000)); const m = Math.floor(s/60), r = s%60; return `${m}m${String(r).padStart(2,'0')}s`; }
+function fmtTime(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(s/60), r = s%60;
+  return `${m}m${String(r).padStart(2,'0')}s`;
+}
 function getCountry(){
   try{
     const lang = navigator.language || (Intl.DateTimeFormat().resolvedOptions().locale);
@@ -106,7 +120,11 @@ function getCountry(){
     return { code:region, flag, label:region };
   }catch{ return { code:'??', flag:'🏳️', label:'??' }; }
 }
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[m]);
+}
 
 // ------- UI HOF PANEL -------
 function formatBonusBreakdown(bb){
@@ -140,7 +158,10 @@ function ensureHofPanel(){
     </div>
   `;
   document.body.appendChild(panel);
-  panel.querySelector('#__hof_close').addEventListener('click', ()=> { panel.style.display='none'; history.replaceState(null, '', location.pathname); });
+  panel.querySelector('#__hof_close').addEventListener('click', ()=> {
+    panel.style.display='none';
+    history.replaceState(null, '', location.pathname);
+  });
   return panel;
 }
 function renderHofTable(list){
@@ -217,6 +238,9 @@ export function boot(){
 
   // Score live (top-right)
   ensureScoreLive();
+
+  // Si le bonus Otranto est débloqué, montrer un lien rapide HUD
+  ensureBonusQuickLinkInHud();
 
   // Images
   const mapImg   = new Image();
@@ -350,8 +374,43 @@ export function boot(){
   // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
 
+  // ----- A button visibility state -----
+  let padAEl = null;
+  function setPadAVisible(v){
+    if (!padAEl) return;
+    padAEl.style.display = v ? '' : 'none';
+  }
+  function updatePadAVisibilityForMode(){
+    // visible en 'play' et 'win', caché pendant 'battle_intro'/'battle' et 'dead'
+    setPadAVisible(mode === 'play' || mode === 'win');
+  }
+
   // D-pad (actif seulement en mode 'play')
   setupDpad(player, () => getSpeed(), () => mode === 'play');
+  padAEl = ensurePadA(); // crée le bouton A s'il n'existe pas et branche les handlers
+  updatePadAVisibilityForMode();
+
+  // --- Raccourci clavier: double-press "A" ---
+  (function(){
+    let lastKeyA = 0;
+    const GAP = 420;
+    window.addEventListener('keydown', (e)=>{
+      if (e.code !== 'KeyA') return;
+      const now = performance.now();
+      const isDouble = (now - lastKeyA) < GAP;
+      lastKeyA = now;
+
+      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) {
+        ui.showSuccess('🔒 Gagne la bataille pour débloquer la carte bonus.');
+        return;
+      }
+      if (isDouble && isPlayerOnPoiKey('otranto')) {
+        openBonusMap();
+      } else {
+        ui.showSuccess('Astuce: double “A” près d’Otranto pour ouvrir la carte bonus.');
+      }
+    });
+  })();
 
   // Start button
   const startBtn = document.getElementById('startBtn');
@@ -435,6 +494,12 @@ export function boot(){
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
+
+    if (won) {
+      unlockOtrantoBonus(); // émet déjà 'otranto:unlocked'
+      // le CTA est géré par bonus_transition.js
+    }
+
   }
 
   // ---------- Game loop (chasse) ----------
@@ -460,32 +525,32 @@ export function boot(){
     const mh = mapImg.naturalHeight || 1080;
     const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
 
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,W,H);
+    const ctx2 = canvas.getContext('2d');
+    ctx2.clearRect(0,0,W,H);
 
     // Fond carte
     if (mapImg.complete && mapImg.naturalWidth){
-      ctx.drawImage(mapImg, ox, oy, dw, dh);
+      ctx2.drawImage(mapImg, ox, oy, dw, dh);
     } else {
-      ctx.fillStyle = '#bfe2f8';
-      ctx.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
-      ctx.fillStyle = '#0e2b4a'; ctx.font = '14px system-ui';
-      ctx.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+      ctx2.fillStyle = '#bfe2f8';
+      ctx2.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
+      ctx2.fillStyle = '#0e2b4a'; ctx2.font = '14px system-ui';
+      ctx2.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
     }
 
     // POIs
     for (const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
       if (collected.has(p.key)){
-        drawStarfish(ctx, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+        drawStarfish(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
-        ctx.save();
-        ctx.strokeStyle = '#b04123'; ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x-6,y-6); ctx.lineTo(x+6,y+6);
-        ctx.moveTo(x-6,y+6); ctx.lineTo(x+6,y-6);
-        ctx.stroke();
-        ctx.restore();
+        ctx2.save();
+        ctx2.strokeStyle = '#b04123'; ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        ctx2.moveTo(x-6,y-6); ctx2.lineTo(x+6,y+6);
+        ctx2.moveTo(x-6,y+6); ctx2.lineTo(x+6,y-6);
+        ctx2.stroke();
+        ctx2.restore();
       }
     }
 
@@ -499,8 +564,8 @@ export function boot(){
       if (collided) setEnergy(energy - 18);
       if (energy <= 0) { return triggerGameOver(); }
 
-      drawBonuses(ctx, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
-      drawEnemies(ctx, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
+      drawBonuses(ctx2, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
+      drawEnemies(ctx2, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
     }
 
     let sx=0, sy=0;
@@ -513,10 +578,10 @@ export function boot(){
 
     if (mode === 'play') {
       if (birdImg.complete && birdImg.naturalWidth){
-        ctx.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
+        ctx2.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
       } else {
-        ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx.fill();
+        ctx2.fillStyle = '#333';
+        ctx2.beginPath(); ctx2.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx2.fill();
       }
     }
 
@@ -551,7 +616,7 @@ export function boot(){
     }
 
     if (mode === 'win') {
-      renderWin(ctx, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
+      renderWin(ctx2, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
     }
 
     requestAnimationFrame(draw);
@@ -561,6 +626,7 @@ export function boot(){
   function enterBattleFlow(){
     mode = 'battle_intro';
     ui.showTouch(false);
+    updatePadAVisibilityForMode(); // cache pendant intro/battle
 
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
 
@@ -577,67 +643,69 @@ export function boot(){
       }
     } catch {}
 
-    const ammo = {
-      pasticciotto: pickedCounts.pasticciotto|0,
-      rustico:      pickedCounts.rustico|0,
-      caffe:        pickedCounts.caffe|0,
-      stars:        starsPicked|0
-    };
+    startBattleIntro({
+      ammo: {
+        pasticciotto: pickedCounts.pasticciotto|0,
+        rustico:      pickedCounts.rustico|0,
+        caffe:        pickedCounts.caffe|0,
+        stars:        starsPicked|0
+      },
+      onProceed: async () => {
+        try {
+          // 1) stop la boucle de game.js pour ne plus redessiner la carte
+          running = false;
+          mode = 'battle';
 
-  // Lance l’intro puis, au clic "Commencer", on passe la main à game_battle.js
-startBattleIntro({
-  ammo: {
-    pasticciotto: pickedCounts.pasticciotto|0,
-    rustico:      pickedCounts.rustico|0,
-    caffe:        pickedCounts.caffe|0,
-    stars:        starsPicked|0
-  },
-  onProceed: async () => {
-    try {
-      // 1) stop la boucle de game.js pour ne plus redessiner la carte
-      running = false;
-      mode = 'battle';
+          // 2) lazy-load robuste (Vite dev vs prod)
+          const isDev =
+            (import.meta?.env && import.meta.env.DEV) ||
+            location.hostname.endsWith('.app.github.dev');
 
-      // 2) lazy-load la couche battle et démarre le flux battle
-      const { startBattleFlow } = await import(`./game_battle.js?v=${APP_VERSION}`);
+          const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
 
-      await startBattleFlow(
-        {
-          pasticciotto: pickedCounts.pasticciotto|0,
-          rustico:      pickedCounts.rustico|0,
-          caffe:        pickedCounts.caffe|0,
-          stars:        starsPicked|0
-        },
-        {
-          bottomExtra: 0, // ajuste si tu veux coller pile au bouton "Force Refresh"
-          onWin: () => {
-            // nettoyage + retour au jeu principal (écran win)
-            document.body.classList.remove('mode-battle');
-            mode = 'win';
-            running = true;
-            requestAnimationFrame(draw);
-            // triggerWin() si tu veux le cérémonial + Hall of Fame
-            try { triggerWin(); } catch {}
-          },
-          onLose: () => {
-            document.body.classList.remove('mode-battle');
-            mode = 'dead';
-            running = false;
-            try { triggerGameOver(); } catch {}
-          }
+          // @vite-ignore pour laisser le chemin dynamique tel quel
+          const mod = await import(/* @vite-ignore */ modUrl);
+          const { startBattleFlow } = mod;
+
+          await startBattleFlow(
+            {
+              pasticciotto: pickedCounts.pasticciotto | 0,
+              rustico:      pickedCounts.rustico | 0,
+              caffe:        pickedCounts.caffe | 0,
+              stars:        starsPicked | 0,
+            },
+            {
+              bottomExtra: 0,
+              onWin: () => {
+                document.body.classList.remove('mode-battle');
+                mode = 'win';
+                updatePadAVisibilityForMode(); // re-montre en win
+                running = true;
+                requestAnimationFrame(draw);
+                try { triggerWin(); } catch {}
+              },
+              onLose: () => {
+                document.body.classList.remove('mode-battle');
+                mode = 'dead';
+                updatePadAVisibilityForMode(); // cache en game over
+                running = false;
+                try { triggerGameOver(); } catch {}
+              },
+            }
+          );
+
+        } catch (err) {
+          console.error('Battle module load error:', err);
+          alert('Impossible de charger la battle. Retour à la carte.');
+          document.body.classList.remove('mode-battle');
+          mode = 'play';
+          updatePadAVisibilityForMode();
+          running = true;
+          requestAnimationFrame(draw);
         }
-      );
-    } catch (err) {
-      console.error('Battle module load error:', err);
-      alert('Impossible de charger la battle. Retour à la carte.');
-      document.body.classList.remove('mode-battle');
-      mode = 'play';
-      running = true;
-      requestAnimationFrame(draw);
-    }
+      }
+    });
   }
-});
-}
 
   // ---------- ticks ----------
   function tickEnemies(dt){
@@ -744,6 +812,7 @@ startBattleIntro({
   // ---------- modes ----------
   function triggerWin(){
     mode = 'win';
+    updatePadAVisibilityForMode();
     finalizeRun({won:true});
     stopMusic();
     playFinaleLong();
@@ -752,6 +821,7 @@ startBattleIntro({
   function triggerGameOver(){
     mode = 'dead';
     running = false;
+    updatePadAVisibilityForMode();
     finalizeRun({won:false});
   }
 
@@ -770,6 +840,7 @@ startBattleIntro({
       resetGame();
       gameStartAt = performance.now();
       mode = 'play';
+      updatePadAVisibilityForMode(); // montre pendant la chasse
       if (!running){ running = true; requestAnimationFrame(draw); }
     }catch(e){
       alert('Chargement du jeu impossible : ' + (e?.message || e));
@@ -799,9 +870,40 @@ startBattleIntro({
     askQuestionAt(0);
   }
 
-  // hash #hof → ouvrir panel
-  window.addEventListener('hashchange', ()=>{ if (location.hash === '#hof') openHofPanel(); });
-  if (location.hash === '#hof') openHofPanel();
+  // hash → actions : #hof | #unlock-otranto | #bonus-otranto
+  window.addEventListener('hashchange', ()=>{
+    if (location.hash === '#hof') return openHofPanel();
+    if (location.hash === '#unlock-otranto'){
+      unlockOtrantoBonus();
+      document.dispatchEvent(new Event('otranto:unlocked'));
+      ensureBonusQuickLinkInHud();
+      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
+    }
+    if (location.hash === '#bonus-otranto'){
+      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
+        unlockOtrantoBonus();
+        document.dispatchEvent(new Event('otranto:unlocked'));
+      }
+      openBonusMap();
+    }
+  });
+  // check initial si on arrive déjà avec un hash
+  (function(){
+    if (location.hash === '#hof') openHofPanel();
+    if (location.hash === '#unlock-otranto'){
+      unlockOtrantoBonus();
+      document.dispatchEvent(new Event('otranto:unlocked'));
+      ensureBonusQuickLinkInHud();
+      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
+    }
+    if (location.hash === '#bonus-otranto'){
+      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
+        unlockOtrantoBonus();
+        document.dispatchEvent(new Event('otranto:unlocked'));
+      }
+      openBonusMap();
+    }
+  })();
 
   // helpers UI
   function ensureScoreLive(){
@@ -842,6 +944,134 @@ startBattleIntro({
       hud.appendChild(link);
       link.addEventListener('click', openHofPanel);
     }
+  }
+
+  function ensureBonusQuickLinkInHud(){
+    const hud = document.getElementById('hud');
+    if (!hud) return;
+    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) return;
+    let link = document.getElementById('__otranto_bonus_link');
+    if (!link){
+      link = document.createElement('button');
+      link.id='__otranto_bonus_link';
+      link.type='button';
+      link.textContent = '🗺️ Carte Otranto (bonus)';
+      link.style.cssText = `
+        margin-top:8px; width:100%;
+        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
+        font:700 12px system-ui; cursor:pointer;
+      `;
+      hud.appendChild(link);
+      link.addEventListener('click', openBonusMap);
+    }
+  }
+
+  function showBonusCta(){
+    // évite de spam si déjà affichée
+    if (document.getElementById('__bonus_cta')) return;
+
+    const btn = document.createElement('button');
+    btn.id = '__bonus_cta';
+    btn.type = 'button';
+    btn.textContent = '🌟 Victoire ! Carte bonus débloquée — Ouvrir';
+    btn.style.cssText = `
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:86px; z-index:10003;
+      background:linear-gradient(180deg, #34d399, #10b981);
+      color:white; border:0; border-radius:999px;
+      padding:12px 18px; font:700 14px system-ui; box-shadow:0 8px 18px rgba(0,0,0,.2);
+    `;
+    document.body.appendChild(btn);
+    btn.addEventListener('click', () => {
+      lsSet(LS.OTRANTO_BONUS_SEEN, true);
+      openBonusMap();
+    });
+
+    // Ajoute en HUD pour les sessions suivantes
+    ensureBonusQuickLinkInHud();
+  }
+
+  function unlockOtrantoBonus(){
+    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
+      lsSet(LS.OTRANTO_BONUS_UNLOCKED, true);
+      document.dispatchEvent(new Event('otranto:unlocked'));
+      ensureBonusQuickLinkInHud();
+    }
+  }
+
+  function openBonusMap(){
+    // base = dossier courant (…/), qu’on concatène avec app.html
+    const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    location.assign(`${base}app.html?embed=1#/poi/otranto/realmap`);
+  }
+
+  // ---- Bouton central "A" et double-tap près d’Otranto ----
+  function ensurePadA(){
+    if (padAEl && document.getElementById('btnA')) return padAEl;
+
+    let a = document.getElementById('btnA');
+    if (!a){
+      // Essaie d’insérer au centre du D-pad s’il existe
+      const dpad = document.getElementById('dpad') || document.body;
+      a = document.createElement('button');
+      a.id = 'btnA';
+      a.type = 'button';
+      a.textContent = 'A';
+      a.style.cssText = `
+        position:${dpad === document.body ? 'fixed' : 'absolute'};
+        ${dpad === document.body ? 'right:22px; bottom:110px;' : 'left:50%; top:50%; transform:translate(-50%,-50%);'}
+        width:56px; height:56px; border-radius:50%;
+        background:#2563eb; color:#fff; font:800 18px system-ui; border:0;
+        box-shadow:0 6px 14px rgba(0,0,0,.25); z-index:10002; touch-action:manipulation;
+        transition:filter .15s ease, opacity .15s ease;
+      `;
+      dpad.appendChild(a);
+    }
+    padAEl = a;
+
+    // État visuel "lock" si non débloqué
+    const updateLockUi = () => {
+      const unlocked = !!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false);
+      if (unlocked) { a.style.filter = 'none'; a.style.opacity = '1'; }
+      else { a.style.filter = 'grayscale(1)'; a.style.opacity = '0.7'; }
+    };
+    updateLockUi();
+
+    let lastTap = 0;
+    const TAP_GAP = 420; // ms
+    const onA = () => {
+      const now = performance.now();
+      const isDouble = (now - lastTap) < TAP_GAP;
+      lastTap = now;
+
+      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) {
+        ui.showSuccess('🔒 Gagne la bataille pour débloquer la carte bonus.');
+        ping(360, 0.07);
+        return;
+      }
+      if (isDouble && isPlayerOnPoiKey('otranto')) {
+        openBonusMap();
+      } else {
+        // Petit feedback sonore
+        ping(660, 0.08);
+        ui.showSuccess('Astuce: double-tap “A” près d’Otranto pour ouvrir la carte bonus.');
+      }
+    };
+    a.addEventListener('click', onA);
+    a.addEventListener('touchend', (e)=>{ e.preventDefault(); onA(); }, { passive:false });
+
+    // réagit quand on débloque après victoire
+    document.addEventListener('otranto:unlocked', updateLockUi);
+
+    return a;
+  }
+
+  function isPlayerOnPoiKey(key){
+    const p = POIS.find(p=>p.key===key);
+    if (!p) return false;
+    // Rayon en coordonnées normalisées de la carte
+    const R = 0.035;
+    return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
 }
 
@@ -1004,6 +1234,7 @@ function setupDpad(player, getSpeed, canMove){
   document.querySelectorAll('.btn').forEach((el) => {
     const dx = parseFloat(el.dataset.dx);
     const dy = parseFloat(el.dataset.dy);
+    if (isNaN(dx) || isNaN(dy)) return;
     let press = false, rafId = null;
 
     const step = () => {
@@ -1021,3 +1252,18 @@ function setupDpad(player, getSpeed, canMove){
     window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
   });
 }
+
+// =====================================================
+// DEBUG HELPERS (optionnel pendant le dev)
+// =====================================================
+window.__unlockOtranto = () => {
+  try {
+    localStorage.setItem('otranto_bonus_unlocked', 'true');
+    document.dispatchEvent(new Event('otranto:unlocked'));
+    console.log('✅ Bonus Otranto débloqué manuellement');
+  } catch {}
+};
+window.__openBonusMap = () => {
+  location.assign('app.html#/poi/otranto/realmap');
+  console.log('🗺️ Carte bonus Otranto ouverte');
+};
