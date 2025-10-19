@@ -496,10 +496,28 @@ export function boot(){
     ui.showReplay(true);
 
     if (won) {
-      unlockOtrantoBonus(); // émet déjà 'otranto:unlocked'
-      // le CTA est géré par bonus_transition.js
-    }
+      // Message clair pour la victoire + indication bonus
+      const winExtra = `🌟 Carte bonus débloquée — utilise le bouton ci-dessous pour l'ouvrir.`;
+      ui.showSuccess([...baseLines, winExtra].join('\n'));
+      // débloque le bonus dans le LS
+      console.log('[GAME] finalizeRun: won=true — unlocking Otranto bonus');
+      unlockOtrantoBonus();
 
+      // Dispatch retardé pour que le modal HUD ait le temps d'être créé
+      setTimeout(() => {
+        try {
+          console.log('[GAME] finalizeRun: dispatching otranto:unlocked (delayed)');
+          document.dispatchEvent(new Event('otranto:unlocked'));
+        } catch (e) { console.error('[GAME] finalizeRun delayed dispatch error', e); }
+      }, 360); // 300-500 ms selon perf, ajuste si nécessaire
+
+      // Essai immédiat d'affichage local (s'il fonctionne)
+      try { showBonusCta(); } catch (e) { console.error('[GAME] showBonusCta error', e); }
+      ui.showReplay(true);
+    } else {
+      ui.showSuccess(baseLines.join('\n'));
+      ui.showReplay(true);
+    }
   }
 
   // ---------- Game loop (chasse) ----------
