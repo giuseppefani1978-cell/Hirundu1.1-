@@ -425,7 +425,7 @@ export function boot(){
     addToHof(entry);
 
     const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
-    const lines = [
+    const baseLines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
@@ -433,7 +433,12 @@ export function boot(){
       ``,
       `👉 check le Hall of Fame en bas du HUD.`
     ];
-    ui.showSuccess(lines.join('\n'));
+    if (won) {
+      const winExtra = `🌟 Carte bonus débloquée — utilise le bouton ci-dessous pour l'ouvrir.`;
+      ui.showSuccess([...baseLines, winExtra].join('\n'));
+    } else {
+      ui.showSuccess(baseLines.join('\n'));
+    }
     ui.showReplay(true);
   }
 
