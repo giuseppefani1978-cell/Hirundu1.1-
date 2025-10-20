@@ -245,3 +245,50 @@ body.mode-battle #__ver__,
 body.mode-battle #__score_live {
   display: none !important;
 }
+/* ===== BATTLE INTRO — layering & blocage portrait mobile ===== */
+
+/* Intro au-dessus de tout */
+#__battle_intro__ {
+  position: fixed;
+  inset: 0;
+  z-index: 10005; /* > 10003 (#__battle_ui__) et > 10001/10002 déjà présents */
+  pointer-events: auto;
+}
+
+/* Bouton "Commencer" au-dessus de l'intro */
+#__battle_start_btn {
+  position: relative;
+  z-index: 10006;
+  pointer-events: auto;
+}
+
+/* Overlay "tourne le téléphone". Par défaut (desktop/paysage), il n'intercepte rien */
+#__battle_rotate__ {
+  position: fixed;
+  inset: 0;
+  display: none; /* visible seulement en mobile portrait */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font: 600 14px system-ui;
+  z-index: 10004;    /* sous le bouton, au-dessus du jeu */
+  pointer-events: none; /* ⚠️ modifié par la classe .mobile-portrait ci-dessous */
+}
+
+/* Pendant l’intro, évite que le canvas/secrets absorbent les clics
+   (sera relâché quand on clique "Commencer") */
+body.mode-battle-intro #c { pointer-events: none; }
+
+/* ===== RÈGLE CLÉ : en MOBILE PORTRAIT, l’overlay DOIT BLOQUER les clics ===== */
+body.mode-battle-intro.mobile-portrait #__battle_rotate__ {
+  display: flex;
+  pointer-events: auto; /* ← bloque les clics tant que portrait */
+}
+
+/* En mobile portrait, on grise et désactive le bouton */
+body.mode-battle-intro.mobile-portrait #__battle_start_btn {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}

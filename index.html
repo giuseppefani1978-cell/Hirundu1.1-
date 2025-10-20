@@ -114,12 +114,27 @@
     window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';
   </script>
 
-  <!-- Service Worker (PWA) -->
-  <script>
+ <script type="module">
+  (async () => {
+    const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      if (isProd) {
+        try { await navigator.serviceWorker.register('/sw.js'); } catch {}
+      } else {
+        // DEV: désactive tout SW + vide les caches
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) await r.unregister();
+          if (window.caches) {
+            const keys = await caches.keys();
+            for (const k of keys) await caches.delete(k);
+          }
+          console.log('[DEV] SW désactivé, caches vidés');
+        } catch {}
+      }
     }
-  </script>
+  })();
+</script>
 
   <!-- Bouton d’installation Android -->
   <script>
@@ -181,5 +196,19 @@
       alert('Erreur async: ' + (e.reason?.message || e.reason));
     });
   </script>
+  <!-- Désactivation du Service Worker en environnement de développement -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (const reg of regs) reg.unregister();
+      });
+      if (window.caches) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+      console.log('🧩 SW désactivé pour Codespaces (dev)');
+    }
+  </script>
+<script type="module" src="/src/bonus_transition.js"></script>
+
 </body>
 </html>
