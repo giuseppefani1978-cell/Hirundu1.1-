@@ -100,9 +100,7 @@ function bonusLabel(bonus) {
 
 function ensureScoreLiveElement() {
   let el = document.getElementById('__score_live');
-  if (el) {
-    return el;
-  }
+  if (el) return el;
   el = document.createElement('div');
   el.id = '__score_live';
   el.style.cssText = `
@@ -119,12 +117,8 @@ function ensureScoreLiveElement() {
 
 function chooseBonusType() {
   const r = Math.random();
-  if (r < BONUS_TYPES.PASTICCIOTTO.prob) {
-    return BONUS_TYPES.PASTICCIOTTO;
-  }
-  if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) {
-    return BONUS_TYPES.RUSTICO;
-  }
+  if (r < BONUS_TYPES.PASTICCIOTTO.prob) return BONUS_TYPES.PASTICCIOTTO;
+  if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) return BONUS_TYPES.RUSTICO;
   return BONUS_TYPES.CAFFE;
 }
 
@@ -203,16 +197,7 @@ export function boot() {
     crowImg.src = ASSETS.CROW_URL;
     jellyImg.src = ASSETS.JELLY_URL;
 
-    return {
-      mapImg,
-      birdImg,
-      spiderImg,
-      crowImg,
-      jellyImg,
-      imgPasticciotto,
-      imgRustico,
-      imgCaffe,
-    };
+    return { mapImg, birdImg, spiderImg, crowImg, jellyImg, imgPasticciotto, imgRustico, imgCaffe };
   }
 
   function resizeCanvasHard() {
@@ -224,11 +209,11 @@ export function boot() {
 
   function resizeCanvas() {
     const vp = window.visualViewport;
-    state.width = Math.round(vp?.width || window.innerWidth || document.documentElement.clientWidth || 360);
-    state.height = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+    state.width = Math.round(vp?.width || window.innerWidth || 360);
+    state.height = Math.round(vp?.height || window.innerHeight || 640);
     state.dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    canvas.width = Math.max(1, Math.floor(state.width * state.dpr));
-    canvas.height = Math.max(1, Math.floor(state.height * state.dpr));
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
     canvas.style.width = `${state.width}px`;
     canvas.style.height = `${state.height}px`;
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
@@ -242,28 +227,18 @@ export function boot() {
       resizeCanvasHard();
     }, { passive: true });
   }
-  window.addEventListener('orientationchange', () => {
-    setTimeout(resizeCanvas, 60);
-    setTimeout(() => {
-      resizeCanvas();
-      resizeCanvasHard();
-    }, 220);
-  }, { passive: true });
 
   setupDpad(state.player, () => getSpeed(), () => state.mode === 'play');
 
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) {
-    startBtn.addEventListener('click', startGame);
-  }
+  if (startBtn) startBtn.addEventListener('click', startGame);
 
   askQuestionAt(0);
   updateScoreLive();
 
   function updateScoreLive() {
-    if (scoreLive) {
+    if (scoreLive)
       scoreLive.textContent = String(Math.max(0, state.score.value)).padStart(6, '0');
-    }
   }
 
   function setEnergy(value) {
@@ -285,9 +260,7 @@ export function boot() {
   }
 
   function askQuestionAt(index) {
-    if (index < 0 || index >= state.quest.length) {
-      return;
-    }
+    if (index < 0 || index >= state.quest.length) return;
     const key = state.quest[index].key;
     ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
   }
@@ -295,9 +268,8 @@ export function boot() {
   function queueNextAsk(delay = 1200) {
     clearAskTimer();
     state.askTimer = setTimeout(() => {
-      if (state.mode === 'play' && state.currentTarget < state.quest.length) {
+      if (state.mode === 'play' && state.currentTarget < state.quest.length)
         askQuestionAt(state.currentTarget);
-      }
     }, delay);
   }
 
@@ -315,9 +287,7 @@ export function boot() {
   }
 
   function spawnEnemy(current) {
-    if (state.enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) {
-      return;
-    }
+    if (state.enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) return;
     const type = Math.random() < 0.5 ? ENEMY.JELLY : ENEMY.CROW;
     const angle = Math.random() * TWO_PI;
     const speed = ENEMY_CONFIG.SPEED[type];
@@ -430,9 +400,7 @@ export function boot() {
     const current = now();
 
     state.enemies.forEach((enemy) => {
-      if (enemy.state === 'flee') {
-        return;
-      }
+      if (enemy.state === 'flee') return;
       const ex = ox + enemy.x * dw;
       const ey = oy + enemy.y * dh;
       if (Math.hypot(px - ex, py - ey) < playerHitRadius) {
@@ -474,16 +442,12 @@ export function boot() {
       }
     }
 
-    if (collided) {
-      updateScoreLive();
-    }
+    if (collided) updateScoreLive();
     return collided;
   }
 
   function finalizeRun({ won }) {
-    if (state.score.finalized) {
-      return;
-    }
+    if (state.score.finalized) return;
     state.score.finalized = true;
 
     const total = state.score.value + (won ? SCORE.WIN : SCORE.GAMEOVER);
@@ -514,7 +478,7 @@ export function boot() {
       ``,
       `👉 check le Hall of Fame en bas du HUD.`,
     ];
-ui.showSuccess(`${lines.join('\n')}`);
+    ui.showSuccess(`${lines.join('\n')}`);
     ui.showReplay(true);
   }
 
@@ -568,9 +532,7 @@ ui.showSuccess(`${lines.join('\n')}`);
       state.score.country = getCountry();
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) {
-        startMusic();
-      }
+      if (!isMusicOn()) startMusic();
       ui.setMusicLabel(isMusicOn());
       resetGame();
       state.score.startAt = now();
@@ -618,34 +580,38 @@ ui.showSuccess(`${lines.join('\n')}`);
         try {
           state.running = false;
           state.mode = 'battle';
-          const module = await import(`../../game_battle.js?v=${APP_VERSION}`);
-          await module.startBattleFlow(battleAmmo, {
+
+          const modUrl = new URL('../../game_battle.js', import.meta.url).href;
+          const module = await import(modUrl + `?v=${APP_VERSION}`);
+
+          const start =
+            module.startBattleFlow ||
+            module.startBattleIntro ||
+            module.startBattleRaw;
+
+          if (typeof start !== 'function') {
+            throw new Error('Battle module loaded but no start* function exported');
+          }
+
+          await start(battleAmmo, {
             bottomExtra: 0,
             onWin: () => {
               document.body.classList.remove('mode-battle');
               state.mode = 'win';
               state.running = true;
               requestAnimationFrame(draw);
-              try {
-                triggerWin();
-              } catch (err) {
-                if (DEBUG) console.error(err);
-              }
+              try { triggerWin(); } catch (err) { if (DEBUG) console.error(err); }
             },
             onLose: () => {
               document.body.classList.remove('mode-battle');
               state.mode = 'dead';
               state.running = false;
-              try {
-                triggerGameOver();
-              } catch (err) {
-                if (DEBUG) console.error(err);
-              }
+              try { triggerGameOver(); } catch (err) { if (DEBUG) console.error(err); }
             },
           });
         } catch (err) {
           console.error('Battle module load error:', err);
-          alert('Impossible de charger la battle. Retour à la carte.');
+          alert('Impossible de charger la battle : ' + (err?.message || err) + '. Retour à la carte.');
           document.body.classList.remove('mode-battle');
           state.mode = 'play';
           state.running = true;
@@ -656,24 +622,16 @@ ui.showSuccess(`${lines.join('\n')}`);
   }
 
   function draw(timestamp) {
-    if (!state.running) {
-      return;
-    }
+    if (!state.running) return;
 
     if (timestamp) {
-      if (!state.lastFrame) {
-        state.lastFrame = timestamp;
-      }
+      if (!state.lastFrame) state.lastFrame = timestamp;
       const dt = Math.min(0.05, (timestamp - state.lastFrame) / 1000);
       state.lastFrame = timestamp;
       if (state.mode === 'play') {
         tickEnemies(dt);
-        if (state.hitShake > 0) {
-          state.hitShake = Math.max(0, state.hitShake - dt * SHAKE.DECAY_PER_S);
-        }
-        if (state.playerSlowTimer > 0) {
-          state.playerSlowTimer = Math.max(0, state.playerSlowTimer - dt);
-        }
+        if (state.hitShake > 0) state.hitShake = Math.max(0, state.hitShake - dt * SHAKE.DECAY_PER_S);
+        if (state.playerSlowTimer > 0) state.playerSlowTimer = Math.max(0, state.playerSlowTimer - dt);
       } else if (state.mode === 'win') {
         tickWin(dt);
       }
@@ -683,10 +641,13 @@ ui.showSuccess(`${lines.join('\n')}`);
     const mapHeight = images.mapImg.naturalHeight || 1080;
     const view = computeMapViewport(state.width, state.height, mapWidth, mapHeight);
 
+    const { mapImg, birdImg } = images;
+
+    const ctx = document.getElementById('c').getContext('2d', { alpha: true });
     ctx.clearRect(0, 0, state.width, state.height);
 
-    if (images.mapImg.complete && images.mapImg.naturalWidth) {
-      ctx.drawImage(images.mapImg, view.ox, view.oy, view.dw, view.dh);
+    if (mapImg.complete && mapImg.naturalWidth) {
+      ctx.drawImage(mapImg, view.ox, view.oy, view.dw, view.dh);
     } else {
       ctx.fillStyle = '#bfe2f8';
       ctx.fillRect(view.ox, view.oy, view.dw || state.width, view.dh || (state.height - UI_CONST.TOP - UI_CONST.BOTTOM));
@@ -731,8 +692,8 @@ ui.showSuccess(`${lines.join('\n')}`);
     const shake = applyShake({ mode: state.mode, hitShake: state.hitShake });
 
     if (state.mode === 'play') {
-      if (images.birdImg.complete && images.birdImg.naturalWidth) {
-        ctx.drawImage(images.birdImg, px - playerSize / 2 + shake.x, py - playerSize / 2 + shake.y, playerSize, playerSize);
+      if (birdImg.complete && birdImg.naturalWidth) {
+        ctx.drawImage(birdImg, px - playerSize / 2 + shake.x, py - playerSize / 2 + shake.y, playerSize, playerSize);
       } else {
         ctx.fillStyle = '#333';
         ctx.beginPath();
