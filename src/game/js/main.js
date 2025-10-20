@@ -514,8 +514,7 @@ export function boot() {
       ``,
       `👉 check le Hall of Fame en bas du HUD.`,
     ];
-    ui.showSuccess(lines.join('
-'));
+ui.showSuccess(`${lines.join('\n')}`);
     ui.showReplay(true);
   }
 
