@@ -1,6 +1,17 @@
-node_modules
+# crée/complète .gitignore
+cat >> .gitignore <<'EOF'
+# Node / Vite
 node_modules/
 dist/
+build/
+.vite/
 .vscode/
-.env
-*.local
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+EOF
+
