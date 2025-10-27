@@ -1,9 +1,10 @@
 // src/battle_intro.js
-// Écran d’intro pour le mini-jeu "Bataille de Otranto"
-// API attendue par game.js : startBattleIntro({ ammo, onProceed })
+// Écran d’intro pour le mini-jeu "Bataille"
+// API: startBattleIntro({ ammo, onProceed, title?, subtitle?, startLabel? })
 //
 // ammo = { pasticciotto?, rustico?, caffe?, stars? } — tous optionnels
 // onProceed = () => {} — appelé quand on quitte l’intro
+// title/subtitle/startLabel — optionnels, pour surcharger l’affichage (ex. "Bataille de Gallipoli")
 
 // Helpers environnement (UA + orientation) + immersion non bloquante
 const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -30,7 +31,19 @@ function injectOnceCss(css){
   document.head.appendChild(style);
 }
 
-export function startBattleIntro({ ammo = {}, onProceed } = {}) {
+// utilitaire pour gérer les \n -> <br> proprement
+function setTextWithNewlines(el, text){
+  const safe = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML = safe.replace(/\n/g, '<br>');
+}
+
+export function startBattleIntro({
+  ammo = {},
+  onProceed,
+  title = '⚔️ Bataille de Otranto',
+  subtitle = "Prépare-toi : Aracne vs. Monstres méduses\n(les commandes apparaîtront en mode paysage)",
+  startLabel = 'Commencer'
+} = {}) {
   const {
     pasticciotto = 0,
     rustico = 0,
@@ -64,13 +77,14 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     box-shadow: 0 30px 60px rgba(0,0,0,.45);
   `;
 
-  // Titre
+  // Titre (compat: id "bdTitle")
   const h = document.createElement('h2');
-  h.textContent = '⚔️ Bataille de Otranto';
+  h.id = 'bdTitle';
   h.style.cssText = `
     margin:0 0 10px 0; font:700 28px/1.2 system-ui;
     letter-spacing:.2px;
   `;
+  h.textContent = title;
 
   // Hint orientation
   const hint = document.createElement('div');
@@ -100,11 +114,11 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
   ammoBox.appendChild(chip('🥟 Rustico', rustico));
   ammoBox.appendChild(chip('☕ Caffè', caffe));
 
-  // CTA
+  // CTA (compat: id "__battle_start_btn")
   const cta = document.createElement('button');
-  cta.id = '__battle_start_btn'; // ← nécessaire pour les règles CSS
+  cta.id = '__battle_start_btn';
   cta.type = 'button';
-  cta.textContent = 'Commencer';
+  cta.textContent = startLabel;
   cta.disabled = true;
   cta.style.cssText = `
     margin-top:12px; padding:12px 16px; border-radius:12px; border:0;
@@ -120,14 +134,11 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
     transition:opacity .25s ease;
   `;
 
-  // Footer
+  // Footer (compat: id "bdText")
   const foot = document.createElement('div');
-  foot.innerHTML = `
-    <div style="margin-top:12px; font:600 12px/1.3 system-ui; opacity:.7">
-      Prépare-toi&nbsp;: Aracne vs. Monstres méduses<br>
-      (les commandes apparaîtront en mode paysage)
-    </div>
-  `;
+  foot.id = 'bdText';
+  foot.style.cssText = `margin-top:12px; font:600 12px/1.3 system-ui; opacity:.7`;
+  setTextWithNewlines(foot, subtitle);
 
   // Assemble
   card.appendChild(h);
@@ -142,54 +153,55 @@ export function startBattleIntro({ ammo = {}, onProceed } = {}) {
   // Mode "intro" pour piloter le CSS (désactive #c, etc.)
   try { document.body.classList.add('mode-battle-intro'); } catch {}
 
-// Overlay “tourne le téléphone”
-let rotate = document.getElementById('__battle_rotate__');
-if (!rotate) {
-  rotate = document.createElement('div');
-  rotate.id = '__battle_rotate__';
-  rotate.innerHTML =
-    '<div style="padding:12px 16px;background:rgba(0,0,0,.7);border-radius:12px">📱 Tourne ton téléphone en mode paysage pour démarrer.</div>';
-  document.body.appendChild(rotate);
-}
-
-// ⚠️ Déclare canProceed AVANT updateEnvFlags pour éviter la ReferenceError
-let canProceed = false;
-
-// Flag mobile-portrait pour le blocage via CSS
-const updateEnvFlags = () => {
-  const mobilePortrait = isMobileUA() && isPortrait();
-  document.body.classList.toggle('mobile-portrait', !!mobilePortrait);
-  // ajuste le CTA si le délai de déblocage est passé
-  if (canProceed) {
-    cta.disabled = mobilePortrait;
-    cta.style.cursor = mobilePortrait ? 'not-allowed' : 'pointer';
-    cta.style.opacity = mobilePortrait ? '.7' : '1';
-    tap.style.opacity = mobilePortrait ? '0' : '.85';
+  // Overlay “tourne le téléphone”
+  let rotate = document.getElementById('__battle_rotate__');
+  if (!rotate) {
+    rotate = document.createElement('div');
+    rotate.id = '__battle_rotate__';
+    rotate.innerHTML =
+      '<div style="padding:12px 16px;background:rgba(0,0,0,.7);border-radius:12px">📱 Tourne ton téléphone en mode paysage pour démarrer.</div>';
+    document.body.appendChild(rotate);
   }
-};
-updateEnvFlags();
-// Écouteurs pour mise à jour des flags
-const onResize = () => updateEnvFlags();
-const onOrient = () => updateEnvFlags();
-window.addEventListener('resize', onResize, { passive:true });
-window.addEventListener('orientationchange', onOrient, { passive:true });
 
-// Empêche le scroll en arrière-plan
-const prevOverflow = document.body.style.overflow;
-document.body.style.overflow = 'hidden';
+  // ⚠️ Déclare canProceed AVANT updateEnvFlags pour éviter la ReferenceError
+  let canProceed = false;
 
-// Keyframes minimalistes
-injectOnceCss(`@keyframes __bi_fadeIn { from{opacity:0} to{opacity:1} }`);
+  // Flag mobile-portrait pour le blocage via CSS
+  const updateEnvFlags = () => {
+    const mobilePortrait = isMobileUA() && isPortrait();
+    document.body.classList.toggle('mobile-portrait', !!mobilePortrait);
+    // ajuste le CTA si le délai de déblocage est passé
+    if (canProceed) {
+      cta.disabled = mobilePortrait;
+      cta.style.cursor = mobilePortrait ? 'not-allowed' : 'pointer';
+      cta.style.opacity = mobilePortrait ? '.7' : '1';
+      tap.style.opacity = mobilePortrait ? '0' : '.85';
+    }
+  };
+  updateEnvFlags();
 
-// Débloque le CTA après 1.2s (mais seulement si pas mobile-portrait)
-const unlockDelay = setTimeout(() => {
-  canProceed = true;
-  const mp = document.body.classList.contains('mobile-portrait');
-  cta.disabled = mp;
-  cta.style.cursor = mp ? 'not-allowed' : 'pointer';
-  cta.style.opacity = mp ? '.7' : '1';
-  tap.style.opacity = mp ? '0' : '.85';
-}, 1200);
+  // Écouteurs pour mise à jour des flags
+  const onResize = () => updateEnvFlags();
+  const onOrient = () => updateEnvFlags();
+  window.addEventListener('resize', onResize, { passive:true });
+  window.addEventListener('orientationchange', onOrient, { passive:true });
+
+  // Empêche le scroll en arrière-plan
+  const prevOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+
+  // Keyframes minimalistes
+  injectOnceCss(`@keyframes __bi_fadeIn { from{opacity:0} to{opacity:1} }`);
+
+  // Débloque le CTA après 1.2s (mais seulement si pas mobile-portrait)
+  const unlockDelay = setTimeout(() => {
+    canProceed = true;
+    const mp = document.body.classList.contains('mobile-portrait');
+    cta.disabled = mp;
+    cta.style.cursor = mp ? 'not-allowed' : 'pointer';
+    cta.style.opacity = mp ? '.7' : '1';
+    tap.style.opacity = mp ? '0' : '.85';
+  }, 1200);
 
   // Auto-continue après 4s seulement si pas mobile-portrait
   const autoTimer = setTimeout(() => {

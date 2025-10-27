@@ -29,6 +29,7 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <!-- Badge version + host (debug) -->
   <div id="__ver__"
@@ -97,17 +98,6 @@
     Force Refresh
   </button>
 
-  <!-- Boot du jeu -->
-  <script type="module">
-    import { boot } from './src/game.js';
-    window.addEventListener('DOMContentLoaded', () => {
-      try { boot(); }
-      catch(e){
-        console.error(e);
-        alert('Chargement du jeu impossible : ' + (e?.message || e));
-      }
-    });
-  </script>
 
   <!-- Musique Battle -->
   <script>
@@ -209,6 +199,35 @@
     }
   </script>
 <script type="module" src="/src/bonus_transition.js"></script>
+<!-- index.html -->
+<script type="module">
+  const url = new URL(location.href);
+  const isL2 = (location.hash === '#l2') || (url.searchParams.get('level') === '2');
+  const level = isL2 ? '2' : '1';
 
+  // Map d'import statique analysable par Vite/Rollup
+  const BOOTS = {
+    '1': () => import('/src/game.js'),
+    '2': () => import('/src/levels/level2/level2_game.js'),
+  };
+
+  try { localStorage.setItem('otranto_bonus_unlocked', 'true'); } catch {}
+
+  // Charge le module du niveau
+  const mod = await (BOOTS[level] ?? BOOTS['1'])();
+  mod?.boot?.();
+
+  // Mini transition conservée pour L2
+  if (level === '2') {
+    const splash = document.createElement('div');
+    splash.style.cssText = `
+      position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
+      font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
+    splash.textContent = '✨ Transition — Niveau 2';
+    document.body.appendChild(splash);
+    setTimeout(() => splash.remove(), 900);
+  }
+</script>
 </body>
 </html>

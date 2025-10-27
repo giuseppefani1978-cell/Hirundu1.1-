@@ -1,4 +1,5 @@
 import { t, poiName, poiInfo } from '../../i18n.js';
+import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import {
   startMusic,
   stopMusic,
@@ -131,64 +132,6 @@ function chooseBonusType() {
   return BONUS_TYPES.CAFFE;
 }
 
-// ====== PATCH: CTA victoire + activation bouton A quand bonus débloqué ======
-function showVictoryBonusCTA() {
-  // Garder une seule instance
-  if (document.getElementById('__victory_bonus_btn')) return;
-
-  const btn = document.createElement('button');
-  btn.id = '__victory_bonus_btn';
-  btn.type = 'button';
-  btn.textContent = '🌟 Victoire : Bonus débloqué → Carte';
-  btn.style.cssText = `
-    position:fixed;
-    left:50%; bottom:88px;
-    transform:translateX(-50%);
-    z-index:10003;
-    background:#34d399;
-    color:#0b3c2f;
-    border:0;
-    border-radius:14px;
-    padding:12px 16px;
-    font:700 14px/1 system-ui;
-    box-shadow:0 6px 18px rgba(0,0,0,.25);
-    cursor:pointer;
-  `;
-  btn.addEventListener('click', () => {
-    try {
-      // Compat : deux clés possibles utilisées ailleurs dans l’app
-      localStorage.setItem('bonus_unlocked', '1');
-      localStorage.setItem('bonus_otranto_unlocked', '1');
-    } catch {}
-    window.location.href = MAP_PAGE_URL;
-  });
-  document.body.appendChild(btn);
-}
-
-function activateBonusButtonIfUnlocked() {
-  const unlocked =
-    localStorage.getItem('bonus_unlocked') === '1' ||
-    localStorage.getItem('bonus_otranto_unlocked') === '1';
-
-  // Différents sélecteurs possibles pour le “bouton A” selon l’UI
-  const btnA =
-    document.querySelector('[data-action="bonus"]') ||
-    document.getElementById('btnA') ||
-    document.querySelector('.btn[data-key="A"]');
-
-  if (!btnA) return;
-
-  btnA.disabled = !unlocked;
-  if (unlocked) {
-    btnA.classList.add('bonus-active');
-    btnA.addEventListener('click', () => (window.location.href = MAP_PAGE_URL), {
-      once: true,
-    });
-  } else {
-    btnA.classList.remove('bonus-active');
-  }
-}
-
 export function boot() {
   const canvas = document.getElementById('c');
   if (!canvas) {
@@ -198,6 +141,9 @@ export function boot() {
   const ctx = canvas.getContext('2d', { alpha: true });
 
   ui.initUI();
+  removeVictoryCTA();  
+  setupVictoryCTAHandlers();         // nettoie toute trace précédente (ex: refresh)
+activateBonusButtonIfUnlocked();
   activateBonusButtonIfUnlocked(); // PATCH: rend le bouton A actif si bonus dispo
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
@@ -583,9 +529,17 @@ export function boot() {
   function triggerWin() {
     state.mode = 'win';
     finalizeRun({ won: true });
+    try {
+  localStorage.setItem('bonus_unlocked', '1');
+  localStorage.setItem('bonus_otranto_unlocked', '1');
+  // Informe bonus_transition.js d'attacher le CTA à l’overlay de victoire
+  window.dispatchEvent(new CustomEvent('otranto:unlocked', { detail: { city: 'otranto' } }));
+} catch {}
+
+activateBonusButtonIfUnlocked();
+
     stopMusic();
     playFinaleLong();
-    showVictoryBonusCTA(); // PATCH: CTA après victoire
     state.winFx.t = 0;
     state.winFx.fireworks.length = 0;
     state.winFx.timer = 0;
@@ -598,6 +552,7 @@ export function boot() {
   }
 
   function resetGame() {
+    removeVictoryCTA();
     state.collected = new Set();
     state.quest = shuffle(POIS);
     state.currentTarget = 0;
@@ -629,6 +584,9 @@ export function boot() {
       const name = prompt('Ton nom/pseudo ?') || 'Joueur';
       state.score.playerName = (name || 'Joueur').trim() || 'Joueur';
       state.score.country = getCountry();
+      localStorage.setItem('player_name', name);
+try { lsSet && lsSet('player_name', name); } catch {}
+
       ui.hideOverlay();
       ui.showTouch(true);
       if (!isMusicOn()) {

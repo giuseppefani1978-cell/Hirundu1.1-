@@ -1,18 +1,19 @@
-// src/game.js
+// src/levels/level2/level2_game.js
 // =====================================================
-// CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
-// (aucune dépendance vers battle.js)
+// NIVEAU 2 — CHASSE DES 10 SOLEILS DU SALENTO
+// (code de base = src/game.js, avec POI L2 + HUD "Soleils" + HOF séparé)
 // =====================================================
-import { t, poiName, poiInfo } from './i18n.js';
+import { t, poiName, poiInfo } from '../../i18n.js';
+import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
   startMusic, stopMusic, toggleMusic, isMusicOn,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
-} from './audio.js';
-import * as ui from './ui.js';
-import { startBattleIntro } from './battle_intro.js';
+} from '../../audio.js';
+import * as ui from '../../ui.js';
+import { startBattleIntro } from '../../battle_intro.js';
 
 const DEBUG = false;
-function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
+function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
 
 // ------------------------
 // Config
@@ -22,8 +23,8 @@ const APP_Q = `?v=${APP_VERSION}`;
 const asset = (p) => `${p}${APP_Q}`;
 
 const LS = {
-  OTRANTO_BONUS_UNLOCKED: 'otranto_bonus_unlocked',
-  OTRANTO_BONUS_SEEN:     'otranto_bonus_seen',
+  GALLIPOLI_BONUS_UNLOCKED: 'gallipoli_bonus_unlocked',
+  GALLIPOLI_BONUS_SEEN:     'gallipoli_bonus_seen',
 };
 const lsGet = (k, d=null) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -42,7 +43,6 @@ const ASSETS = {
 
 // UI carte
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
-
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
   const availW = canvasW;
   const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
@@ -55,21 +55,19 @@ function computeMapViewport(canvasW, canvasH, mapW, mapH){
 }
 
 // ------------------------
-// Données chasse
+// Données chasse — L2 : 10 SOLEILS
 // ------------------------
-const SHIFT_COAST = { x:0.045, y:0.026 };
-const SHIFT_EAST  = 0.04;
 const POIS = [
-  { key:"otranto",       x:0.86+SHIFT_EAST+SHIFT_COAST.x,       y:0.48+SHIFT_COAST.y },
-  { key:"portobadisco",  x:0.80+SHIFT_EAST+SHIFT_COAST.x,       y:0.56+SHIFT_COAST.y },
-  { key:"santacesarea",  x:0.74+SHIFT_EAST+SHIFT_COAST.x+0.010, y:0.60+SHIFT_COAST.y+0.008 },
-  { key:"castro",        x:0.72+SHIFT_EAST+SHIFT_COAST.x+0.012, y:0.65+SHIFT_COAST.y+0.008 },
-  { key:"ciolo",         x:0.66+SHIFT_EAST+SHIFT_COAST.x+0.070, y:0.78+SHIFT_COAST.y+0.006 },
-  { key:"leuca",         x:0.64+SHIFT_COAST.x+0.10,             y:0.90+SHIFT_COAST.y },
-  { key:"gallipoli",     x:0.27,                                y:0.62 },
-  { key:"portocesareo",  x:0.22,                                y:0.46 },
-  { key:"nardo",         x:0.38,                                y:0.50 },
-  { key:"lecce",         x:0.53,                                y:0.28 },
+  { key: "lecce",          x: 0.53, y: 0.28 },
+  { key: "galatina",       x: 0.50, y: 0.42 },
+  { key: "ugento",         x: 0.40, y: 0.72 },
+  { key: "santacaterina",  x: 0.25, y: 0.52 },
+  { key: "maglie",         x: 0.66, y: 0.56 },
+  { key: "melpignano",     x: 0.65, y: 0.45 },
+  { key: "tricase",        x: 0.83, y: 0.70 },
+  { key: "torredellorso",  x: 0.93, y: 0.45 },
+  { key: "soleto",         x: 0.54, y: 0.36 },
+  { key: "copertino",      x: 0.44, y: 0.44 },
 ];
 const STARS_TARGET = POIS.length;
 
@@ -78,13 +76,13 @@ const ENERGY = { MAX:100, START:100 };
 
 const ENEMY  = { JELLY:'jelly', CROW:'crow' };
 const ENEMY_CONFIG = {
-  MAX_ON_SCREEN: 4,
-  LIFETIME_S: 14,
-  BASE_SPAWN_MS: 4200,
+  MAX_ON_SCREEN: 3,
+  LIFETIME_S: 16,
+  BASE_SPAWN_MS: 4800,
   SPAWN_JITTER_MS: 2600,
   COLLIDE_RADIUS_PX: 36,
-  SPEED: { [ENEMY.JELLY]: 0.06, [ENEMY.CROW]: 0.10 },
-  FLEE:  { SPEED: 0.38, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
+  SPEED: { [ENEMY.JELLY]: 0.05, [ENEMY.CROW]: 0.08 },
+  FLEE:  { SPEED: 0.36, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
   SPRITE_PX: { [ENEMY.JELLY]: 42, [ENEMY.CROW]: 42 },
 };
 const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
@@ -97,8 +95,8 @@ const BONUS_TYPES = {
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 const SCORE = { STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0 };
 
-// ----- HOF local -----
-const HOF_KEY = 'salento_hof_v1';
+// ----- HOF local (clé dédiée L2) -----
+const HOF_KEY = 'salento_hof_v2';
 const HOF_SIZE = 10;
 function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
 function saveHof(list){ try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {} }
@@ -145,7 +143,7 @@ function ensureHofPanel(){
   panel.innerHTML = `
     <div style="height:100%;max-width:900px;margin:0 auto;display:flex;flex-direction:column;padding:16px">
       <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
-        <h2 style="margin:0;font:600 22px system-ui">🏆 Hall of Fame</h2>
+        <h2 style="margin:0;font:600 22px system-ui">🏆 Hall of Fame — Niveau 2</h2>
         <button id="__hof_close" type="button"
           style="background:#fff;color:#000;border:0;border-radius:10px;padding:10px 14px;cursor:pointer">Fermer</button>
       </div>
@@ -167,13 +165,13 @@ function ensureHofPanel(){
 function renderHofTable(list){
   const host = ensureHofPanel();
   const box = host.querySelector('#__hof_table');
-  const rows = list.map((e,i)=>`
+  const rows = (list||[]).map((e,i)=>`
     <tr>
       <td>${i+1}</td>
       <td>${e.country?.flag||'🏳️'}</td>
       <td>${escapeHtml(e.name)}</td>
       <td class="score">${e.score}</td>
-      <td>${e.stars}★</td>
+      <td>${e.stars}☀️</td>
       <td>${e.bonuses}</td>
       <td>${formatBonusBreakdown(e.bonusBreakdown)}</td>
       <td>${e.hits}</td>
@@ -194,7 +192,7 @@ function renderHofTable(list){
     <table>
       <thead>
         <tr>
-          <th>#</th><th>Pays</th><th>Joueur</th><th>Score</th><th>Étoiles</th>
+          <th>#</th><th>Pays</th><th>Joueur</th><th>Score</th><th>Soleils</th>
           <th>Bonus</th><th>Détail bonus</th><th>Coups</th><th>Temps</th><th>Date</th>
         </tr>
       </thead>
@@ -215,6 +213,15 @@ export function boot(){
 
   // UI init
   ui.initUI();
+
+  // Titres L2 + HUD "Soleils"
+  const hudLabel = document.getElementById('hudLabel');
+  if (hudLabel) hudLabel.textContent = 'Soleils';
+  const titleH1 = document.getElementById('titleH1');
+  if (titleH1) titleH1.textContent = 'Les Soleils du Salento';
+  const subtitleP = document.getElementById('subtitleP');
+  if (subtitleP) subtitleP.textContent = 'Collecte les 10 soleils et découvre 10 nouveaux lieux du Salento.';
+
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -239,13 +246,13 @@ export function boot(){
   // Score live (top-right)
   ensureScoreLive();
 
-  // Si le bonus Otranto est débloqué, montrer un lien rapide HUD
+  // Si le bonus Gallipoli est débloqué, montrer un lien rapide HUD
   ensureBonusQuickLinkInHud();
 
   // Images
   const mapImg   = new Image();
   const birdImg  = new Image();
-  const spiderImg= new Image();
+  const spiderImg= new Image(); // victoire
   const crowImg  = new Image();
   const jellyImg = new Image();
   const imgPasticciotto = new Image();
@@ -278,9 +285,8 @@ export function boot(){
   crowImg.src   = ASSETS.CROW_URL;
   jellyImg.src  = ASSETS.JELLY_URL;
 
-  // ===== Canvas sizing (mobile robuste) =====
+  // ===== Canvas sizing =====
   let W = 0, H = 0, dpr = 1;
-
   function resizeCanvasHard() {
     try {
       window.scrollTo(0,0);
@@ -299,10 +305,7 @@ export function boot(){
     canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-
-  // 1er resize
   resize();
-
   window.addEventListener('resize', resize, { passive:true });
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
@@ -312,7 +315,7 @@ export function boot(){
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
 
-  // ------- Game state (chasse) -------
+  // ------- Game state -------
   // modes: 'splash' | 'play' | 'battle_intro' | 'win' | 'dead'
   let mode = 'splash';
   let running = false;
@@ -341,8 +344,8 @@ export function boot(){
 
   let enemies = [];
   let bonuses = [];
-  let enemySpawnAt = performance.now() + 800;
-  let bonusSpawnAt = performance.now() + 1400;
+  let enemySpawnAt = performance.now() + 900;
+  let bonusSpawnAt = performance.now() + 1500;
 
   let playerSlowTimer = 0;
   let hitShake = 0;
@@ -374,20 +377,12 @@ export function boot(){
   // Win animation state
   const winFx = { t:0, fw:[], fwTimer:0 };
 
-  // ----- A button visibility state -----
-  let padAEl = null;
-  function setPadAVisible(v){
-    if (!padAEl) return;
-    padAEl.style.display = v ? '' : 'none';
-  }
-  function updatePadAVisibilityForMode(){
-    // visible en 'play' et 'win', caché pendant 'battle_intro'/'battle' et 'dead'
-    setPadAVisible(mode === 'play' || mode === 'win');
-  }
+  // (Bouton A supprimé — compat)
+  function updatePadAVisibilityForMode() {}
 
   // D-pad (actif seulement en mode 'play')
   setupDpad(player, () => getSpeed(), () => mode === 'play');
-  
+
   // Start button
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startGame);
@@ -404,6 +399,11 @@ export function boot(){
     const slowFactor = (playerSlowTimer > 0) ? 0.45 : 1.0;
     return PLAYER_BASE.speed * slowFactor;
   }
+  function getStoredPlayerName(){
+    const v = lsGet('player_name', null) ?? localStorage.getItem('player_name');
+    return (v || '').toString().trim();
+  }
+
   function spawnEnemy(now){
     if (enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) return;
     const type = (Math.random() < 0.5) ? ENEMY.JELLY : ENEMY.CROW;
@@ -460,43 +460,29 @@ export function boot(){
     addToHof(entry);
 
     const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
-    const lines = [
+    const baseLines = [
       `${title}`,
-      `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
+      `Score: ${total} (Soleils: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
       `👉 check le Hall of Fame en bas du HUD.`
     ];
-    ui.showSuccess(lines.join('\n'));
+    ui.showSuccess(baseLines.join('\n'));
     ui.showReplay(true);
 
     if (won) {
-      // Message clair pour la victoire + indication bonus
       const winExtra = `🌟 Carte bonus débloquée — utilise le bouton ci-dessous pour l'ouvrir.`;
       ui.showSuccess([...baseLines, winExtra].join('\n'));
-      // débloque le bonus dans le LS
-      console.log('[GAME] finalizeRun: won=true — unlocking Otranto bonus');
-      unlockOtrantoBonus();
-
-      // Dispatch retardé pour que le modal HUD ait le temps d'être créé
+      try { unlockGallipoliBonus(); } catch {}
+      try { showBonusCta(); } catch {}
       setTimeout(() => {
-        try {
-          console.log('[GAME] finalizeRun: dispatching otranto:unlocked (delayed)');
-          document.dispatchEvent(new Event('otranto:unlocked'));
-        } catch (e) { console.error('[GAME] finalizeRun delayed dispatch error', e); }
-      }, 360); // 300-500 ms selon perf, ajuste si nécessaire
-
-      // Essai immédiat d'affichage local (s'il fonctionne)
-      try { showBonusCta(); } catch (e) { console.error('[GAME] showBonusCta error', e); }
-      ui.showReplay(true);
-    } else {
-      ui.showSuccess(baseLines.join('\n'));
-      ui.showReplay(true);
+        try { document.dispatchEvent(new Event('otranto:unlocked')); } catch {}
+      }, 360);
     }
   }
 
-  // ---------- Game loop (chasse) ----------
+  // ---------- Game loop ----------
   function draw(ts){
     if(!running) return;
 
@@ -514,7 +500,6 @@ export function boot(){
       }
     }
 
-    // viewport + fond carte
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
     const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
@@ -536,7 +521,7 @@ export function boot(){
     for (const p of POIS){
       const x = ox + p.x*dw, y = oy + p.y*dh;
       if (collected.has(p.key)){
-        drawStarfish(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+        drawSun(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
         ctx2.save();
         ctx2.strokeStyle = '#b04123'; ctx2.lineWidth = 2;
@@ -579,7 +564,7 @@ export function boot(){
       }
     }
 
-    // progression vers prochaine étoile
+    // progression
     if (mode === 'play' && currentIdx < QUEST.length){
       const now = performance.now();
       if (now >= collectLockUntil){
@@ -593,6 +578,7 @@ export function boot(){
           ui.renderStars(collected.size, STARS_TARGET);
           starEmphasis();
           ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+
           score += SCORE.STAR; starsPicked++; updateScoreLive();
 
           const nameShort = poiName(p.key);
@@ -600,7 +586,6 @@ export function boot(){
 
           currentIdx++;
           if (currentIdx === QUEST.length){
-            // Transition vers l’intro de la bataille
             enterBattleFlow();
           } else {
             queueNextAsk(1200);
@@ -616,21 +601,20 @@ export function boot(){
     requestAnimationFrame(draw);
   }
 
-  // ---------- Battle flow (handoff only) ----------
+  // ---------- Battle flow ----------
   function enterBattleFlow(){
     mode = 'battle_intro';
     ui.showTouch(false);
-    updatePadAVisibilityForMode(); // cache pendant intro/battle
+    updatePadAVisibilityForMode();
 
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
 
-    // Petit tip dans la bulle, puis intro
     try {
       const bdText  = document.getElementById('bdText');
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Tarantula';
+        bdTitle.textContent = 'Gallipoli — Corbeaux';
         bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
@@ -638,6 +622,9 @@ export function boot(){
     } catch {}
 
     startBattleIntro({
+      title: '⚔️ Bataille de Gallipoli',
+      subtitle: "Prépare-toi : Aracne vs. Corbeaux\n(les commandes apparaîtront en mode paysage)",
+      startLabel: 'Commencer',
       ammo: {
         pasticciotto: pickedCounts.pasticciotto|0,
         rustico:      pickedCounts.rustico|0,
@@ -646,19 +633,21 @@ export function boot(){
       },
       onProceed: async () => {
         try {
-          // 1) stop la boucle de game.js pour ne plus redessiner la carte
           running = false;
           mode = 'battle';
 
-          // 2) lazy-load robuste (Vite dev vs prod)
           const isDev =
             (import.meta?.env && import.meta.env.DEV) ||
             location.hostname.endsWith('.app.github.dev');
 
-          const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
-
-          // @vite-ignore pour laisser le chemin dynamique tel quel
-          const mod = await import(/* @vite-ignore */ modUrl);
+          let modUrl = isDev ? './game_battle_gallipoli.js' : `./game_battle_gallipoli.js?v=${APP_VERSION}`;
+          let mod;
+          try {
+            mod = await import(/* @vite-ignore */ modUrl);
+          } catch {
+            modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
+            mod = await import(/* @vite-ignore */ modUrl);
+          }
           const { startBattleFlow } = mod;
 
           await startBattleFlow(
@@ -667,21 +656,23 @@ export function boot(){
               rustico:      pickedCounts.rustico | 0,
               caffe:        pickedCounts.caffe | 0,
               stars:        starsPicked | 0,
+              boss:        'double_crow',
+              backdrop:    'gallipoli',
             },
             {
               bottomExtra: 0,
               onWin: () => {
+                try { unlockGallipoliBonus(); } catch {}
                 document.body.classList.remove('mode-battle');
                 mode = 'win';
-                updatePadAVisibilityForMode(); // re-montre en win
                 running = true;
                 requestAnimationFrame(draw);
-                try { triggerWin(); } catch {}
+                try { triggerWin(); } catch (err) { console.error(err); }
               },
               onLose: () => {
                 document.body.classList.remove('mode-battle');
                 mode = 'dead';
-                updatePadAVisibilityForMode(); // cache en game over
+                updatePadAVisibilityForMode();
                 running = false;
                 try { triggerGameOver(); } catch {}
               },
@@ -804,14 +795,18 @@ export function boot(){
   }
 
   // ---------- modes ----------
-  function triggerWin(){
+  function triggerWin() {
     mode = 'win';
     updatePadAVisibilityForMode();
-    finalizeRun({won:true});
+    finalizeRun({ won: true });
     stopMusic();
     playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
+
+    try { unlockGallipoliBonus(); } catch {}
+    try { showBonusCta(); } catch {}
   }
+
   function triggerGameOver(){
     mode = 'dead';
     running = false;
@@ -820,16 +815,12 @@ export function boot(){
   }
 
   // ---------- controls ----------
-  function startGame(){
-    try{
-      document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
-      const name = prompt("Ton nom/pseudo ?") || "Joueur";
-      playerName = (name||'').trim() || "Joueur";
+  function startGame() {
+    try {
+      document.body.classList.remove('mode-battle');
+      playerName = getStoredPlayerName() || 'Joueur';
       country = getCountry();
-      localStorage.setItem('player_name', name);
-try { lsSet && lsSet('player_name', name); } catch {}
-
-
+      lsSet('player_name', playerName);
       ui.hideOverlay();
       ui.showTouch(true);
       if (!isMusicOn()) startMusic();
@@ -837,13 +828,13 @@ try { lsSet && lsSet('player_name', name); } catch {}
       resetGame();
       gameStartAt = performance.now();
       mode = 'play';
-      updatePadAVisibilityForMode(); // montre pendant la chasse
-      if (!running){ running = true; requestAnimationFrame(draw); }
-    }catch(e){
-      alert('Chargement du jeu impossible : ' + (e?.message || e));
+      running = true;
+      lastTS = 0;
+      requestAnimationFrame(draw);
+    } catch (err) {
+      alert('Chargement du jeu impossible : ' + (err?.message || err));
     }
   }
-
   function resetGame(){
     collected = new Set();
     QUEST = shuffle(POIS);
@@ -855,8 +846,8 @@ try { lsSet && lsSet('player_name', name); } catch {}
     setEnergy(ENERGY.START);
 
     enemies.length = 0; bonuses.length = 0;
-    enemySpawnAt = performance.now() + 800;
-    bonusSpawnAt = performance.now() + 1400;
+    enemySpawnAt = performance.now() + 900;
+    bonusSpawnAt = performance.now() + 1500;
     playerSlowTimer = 0; hitShake = 0;
 
     ui.updateScore(0, STARS_TARGET);
@@ -867,38 +858,20 @@ try { lsSet && lsSet('player_name', name); } catch {}
     askQuestionAt(0);
   }
 
-  // hash → actions : #hof | #unlock-otranto | #bonus-otranto
-  window.addEventListener('hashchange', ()=>{
-    if (location.hash === '#hof') return openHofPanel();
-    if (location.hash === '#unlock-otranto'){
-      unlockOtrantoBonus();
-      document.dispatchEvent(new Event('otranto:unlocked'));
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#hof') { openHofPanel(); return; }
+    if (location.hash === '#bonus-gallipoli') {
+      unlockGallipoliBonus();
       ensureBonusQuickLinkInHud();
-      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
-    }
-    if (location.hash === '#bonus-otranto'){
-      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
-        unlockOtrantoBonus();
-        document.dispatchEvent(new Event('otranto:unlocked'));
-      }
-      openBonusMap();
+      openBonusMap('gallipoli');
     }
   });
-  // check initial si on arrive déjà avec un hash
   (function(){
     if (location.hash === '#hof') openHofPanel();
-    if (location.hash === '#unlock-otranto'){
-      unlockOtrantoBonus();
-      document.dispatchEvent(new Event('otranto:unlocked'));
+    if (location.hash === '#bonus-gallipoli') {
+      unlockGallipoliBonus();
       ensureBonusQuickLinkInHud();
-      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
-    }
-    if (location.hash === '#bonus-otranto'){
-      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
-        unlockOtrantoBonus();
-        document.dispatchEvent(new Event('otranto:unlocked'));
-      }
-      openBonusMap();
+      openBonusMap('gallipoli');
     }
   })();
 
@@ -946,67 +919,71 @@ try { lsSet && lsSet('player_name', name); } catch {}
   function ensureBonusQuickLinkInHud(){
     const hud = document.getElementById('hud');
     if (!hud) return;
-    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) return;
-    let link = document.getElementById('__otranto_bonus_link');
+    if (!isBonusUnlocked('gallipoli')) return;
+    let link = document.getElementById('__gallipoli_bonus_link');
     if (!link){
       link = document.createElement('button');
-      link.id='__otranto_bonus_link';
+      link.id='__gallipoli_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ Carte Otranto (bonus)';
+      link.textContent = '🗺️ Carte Gallipoli (bonus)';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
         font:700 12px system-ui; cursor:pointer;
       `;
       hud.appendChild(link);
-      link.addEventListener('click', openBonusMap);
+      link.addEventListener('click', () => openBonusMap('gallipoli'));
     }
   }
 
-  function showBonusCta(){
-    // évite de spam si déjà affichée
+  function showBonusCta() {
     if (document.getElementById('__bonus_cta')) return;
 
     const btn = document.createElement('button');
     btn.id = '__bonus_cta';
     btn.type = 'button';
-    btn.textContent = '🌟 Victoire ! Carte bonus débloquée — Ouvrir';
+    btn.textContent = '🌞 Victoire ! Carte bonus débloquée — Gallipoli';
     btn.style.cssText = `
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:86px; z-index:10003;
       background:linear-gradient(180deg, #34d399, #10b981);
       color:white; border:0; border-radius:999px;
-      padding:12px 18px; font:700 14px system-ui; box-shadow:0 8px 18px rgba(0,0,0,.2);
+      padding:12px 18px; font:700 14px system-ui;
+      box-shadow:0 8px 18px rgba(0,0,0,.2);
     `;
     document.body.appendChild(btn);
-    btn.addEventListener('click', () => {
-      lsSet(LS.OTRANTO_BONUS_SEEN, true);
-      openBonusMap();
-    });
 
-    // Ajoute en HUD pour les sessions suivantes
-    ensureBonusQuickLinkInHud();
+    btn.addEventListener('click', () => {
+      openBonusMap('gallipoli');
+    });
   }
 
-  function unlockOtrantoBonus(){
-    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
-      lsSet(LS.OTRANTO_BONUS_UNLOCKED, true);
-      document.dispatchEvent(new Event('otranto:unlocked'));
-      ensureBonusQuickLinkInHud();
+  // ✅ Déblocage robuste : nouveau format + legacy + events + HUD
+  function unlockGallipoliBonus(){
+    try { unlockBonus('gallipoli'); } catch {}
+    try {
+      const KEY = 'bonus_unlocked_v1';
+      let obj;
+      try { obj = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { obj = {}; }
+      if (!obj || typeof obj !== 'object') obj = {};
+      if (obj.gallipoli !== true) {
+        obj.gallipoli = true;
+        localStorage.setItem(KEY, JSON.stringify(obj));
+      }
+      localStorage.setItem('gallipoli_bonus_unlocked', 'true');
+      try { window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: JSON.stringify(obj) })); } catch {}
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'gallipoli_bonus_unlocked', newValue: 'true' })); } catch {}
+      try { document.dispatchEvent(new Event('gallipoli:unlocked')); } catch {}
+      try { ensureBonusQuickLinkInHud(); } catch {}
+      console.log('[L2] ✅ Gallipoli débloqué ->', localStorage.getItem(KEY));
+    } catch (e) {
+      console.warn('⚠️ unlockGallipoliBonus() failed', e);
     }
   }
-
-  function openBonusMap(){
-    // base = dossier courant (…/), qu’on concatène avec app.html
-    const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-    location.assign(`${base}app.html?embed=1#/poi/otranto/realmap`);
-  }
-
 
   function isPlayerOnPoiKey(key){
     const p = POIS.find(p=>p.key===key);
     if (!p) return false;
-    // Rayon en coordonnées normalisées de la carte
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
@@ -1015,6 +992,37 @@ try { lsSet && lsSet('player_name', name); } catch {}
 // ------------------------
 // Rendu utilitaires
 // ------------------------
+function drawSun(ctx, cx, cy, R){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,.18)'; ctx.shadowBlur=4; ctx.shadowOffsetY=2;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, R*0.55, 0, Math.PI*2);
+  ctx.fillStyle='#ffd34d';
+  ctx.fill();
+
+  const rays = 12;
+  for (let i=0;i<rays;i++){
+    const a = (i/rays)*Math.PI*2;
+    const r1 = R*0.7, r2 = R*1.05;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a)*r1, cy + Math.sin(a)*r1);
+    ctx.lineTo(cx + Math.cos(a)*r2, cy + Math.sin(a)*r2);
+    ctx.strokeStyle='#ffb300';
+    ctx.lineWidth = Math.max(2, R*0.12);
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, R*0.55, 0, Math.PI*2);
+  ctx.strokeStyle='#e09a00';
+  ctx.lineWidth=Math.max(1.5, R*0.12);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function drawStarfish(ctx, cx, cy, R){
   ctx.save(); ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=6; ctx.shadowOffsetY=3;
   ctx.beginPath(); const pts=5, inner=R*0.45;
@@ -1026,6 +1034,7 @@ function drawStarfish(ctx, cx, cy, R){
   }
   ctx.closePath(); ctx.fillStyle='#d26f45'; ctx.strokeStyle='#8c3f28'; ctx.lineWidth=3; ctx.fill(); ctx.stroke(); ctx.restore();
 }
+
 function drawEnemies(ctx, enemies, bounds, sprites){
   const { ox, oy, dw, dh } = bounds;
   const { crowImg, jellyImg } = sprites;
@@ -1052,7 +1061,7 @@ function drawEnemies(ctx, enemies, bounds, sprites){
           ctx.strokeStyle='rgba(80,150,220,0.9)'; ctx.lineWidth=2; ctx.stroke();
         }
       }
-    } else { // crow
+    } else {
       const ang = Math.atan2(e.vy, e.vx);
       ctx.translate(x,y); ctx.rotate(ang);
       if (crowImg.complete && crowImg.naturalWidth){
@@ -1131,7 +1140,6 @@ function renderWin(ctx, view, sprites, winFx){
     ctx.restore();
   }
 }
-
 function spawnFirework(store){
   const COLORS = ['#ffd166','#ef476f','#06d6a0','#118ab2','#f78c6b'];
   const cx = (Math.random()*0.5 + 0.25) * (window.innerWidth  || 800);
@@ -1204,3 +1212,19 @@ window.__openBonusMap = () => {
   location.assign('app.html#/poi/otranto/realmap');
   console.log('🗺️ Carte bonus Otranto ouverte');
 };
+
+// Migration/compat : écrit bonus_unlocked_v1.gallipoli = true + legacy
+function __markGallipoliUnlockedCompat() {
+  try {
+    const key = 'bonus_unlocked_v1';
+    let obj;
+    try { obj = JSON.parse(localStorage.getItem(key)) || {}; } catch { obj = {}; }
+    if (obj && typeof obj === 'object') {
+      if (!obj.gallipoli) {
+        obj.gallipoli = true;
+        localStorage.setItem(key, JSON.stringify(obj));
+      }
+    }
+    localStorage.setItem('gallipoli_bonus_unlocked', 'true');
+  } catch {}
+}

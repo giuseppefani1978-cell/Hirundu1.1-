@@ -12,7 +12,6 @@ const BTL = {
   JUMP_VY: -620,
   PLAYER_HP: 120,
   FOE_HP: 200,
-  danceT: 0,
   SHOT: 760,
   FOE_SHOT: 520,
 
@@ -21,13 +20,13 @@ const BTL = {
   FOE_ENTRY_SPEED: 260,
   FOE_TARGET_MARGIN_X: 100,
 
-  // Ennemi plus agressif
+  // Ennemi agressif
   FOE_FIRE_MS_MIN: 1200,
   FOE_FIRE_MS_MAX: 2000,
   FOE_BURST_COUNT: 2,
   FOE_BURST_GAP_MS: 120,
 
-  // Zap électrique
+  // Zap
   FOE_ZAP_SPEED: 640,
   FOE_ZAP_DMG: 14,
   FOE_ZAP_TAIL: 38,
@@ -77,22 +76,22 @@ let state = {
   foeWanderUntil: 0,
   foeDir: -1,
   foeEntryUntil: 0,
-  foeDeath: null,      // FX de mort en cours ou null
-  ending: null,        // infos d’écran de fin { mode:'win'|'lose', t:... }
+  foeDeath: null,
+  ending: null,
   skyline: null,
 
   // feedback
   shakeT: 0,
   slowUntil: 0,
 
-// effets fin de partie
-fx: { fireworks: [] },
+  // FX fin de partie
+  fx: { fireworks: [] },
 
-// audio
-musicBattle: null,
-musicVictory: null,
+  // audio
+  musicBattle: null,
+  musicVictory: null,
 
-  // UI battle
+  // UI
   ui: { root:null, move:null, ab:null, rotateOverlay:null, endOverlay:null }
 };
 
@@ -125,15 +124,15 @@ export function startBattle(foeType='jelly'){
   state.phase = 'play';
   state.victory = null;
   state.fx.fireworks.length = 0;
-  if (state.music) { try{ state.music.pause(); }catch{} state.music = null; }
 
   state.active = true;
   state.foeType = foeType;
-  state.danceT = 0;
+  state.victoryDance = false;
+
   // joueur
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
 
-  // foe : démarre hors-écran à droite
+  // ennemi : hors-écran à droite
   state.foe = {
     x: state.w + 160, y: 0, vx: 0, vy: 0,
     hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
@@ -153,13 +152,13 @@ export function startBattle(foeType='jelly'){
   state.foe.fireAt         = state.foeEntryUntil + 600;
 
   if (!state.skyline) state.skyline = _makeSkyline(12);
-state.foeDeath = null;
-state.ending   = null;
-  _stopVictoryMusic();   // au cas où on revient d’une victoire
-  if (window.__STOP_BG_MUSIC) {
-  try { window.__STOP_BG_MUSIC(); } catch {}
-}
-  _playBattleTheme();    // lance le thème de combat en boucle
+  state.foeDeath = null;
+  state.ending   = null;
+
+  _stopVictoryMusic();   // si on revenait d’une win précédente
+  if (window.__STOP_BG_MUSIC) { try { window.__STOP_BG_MUSIC(); } catch {} }
+  _playBattleTheme();
+
   // UI
   _ensureBattleUI(true);
   if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
@@ -168,7 +167,6 @@ state.ending   = null;
 
   _maybeLockLandscape();
   _updateRotateOverlay();
-  _maybeLockLandscape();
 
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 100);
   setTimeout(()=>window.dispatchEvent(new Event('resize')), 350);
@@ -180,18 +178,18 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
-  // même si la battle est finie, on continue les FX
+  // même si la battle est finie, on continue certains FX
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
     if (state.foeDeath && !state.foeDeath.done) _tickFoeDeath(dt);
-    // ⬇️ Ajoutez ceci pour animer la danse à l’écran de victoire
+    // danse à l’écran de victoire
     if (state.phase === 'end' && state.victory) {
-      state.danceT += dt;
+      // petite animation verticale
     }
     return;
   }
 
-  // Sécurité intégrateur (clamp du pas de temps)
+  // clamp dt
   dt = Math.min(0.05, Math.max(0.001, dt));
 
   const now = performance.now();
@@ -203,12 +201,12 @@ export function tickBattle(dt){
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
 
-  // Physique de base (gravité/sol)
+  // Physique de base
   _applyPhysics(state.player, dt);
   _applyPhysics(state.foe, dt);
 
   // ----------------------------------------------------------------
-  // GAMEPLAY uniquement pendant la phase 'play'
+  // GAMEPLAY — uniquement pendant 'play'
   // ----------------------------------------------------------------
   if (state.phase === 'play') {
     // Contrôles joueur (bloqués pendant READY…)
@@ -223,12 +221,12 @@ export function tickBattle(dt){
         state.player.onGround = false;
       }
     } else {
-      // purge pour éviter un buffer d’attaques pendant le READY
+      // purge pour éviter un buffer d’attaques pendant READY
       state.input.atk = false;
       state.input.spc = false;
     }
 
-    // Clamp horizontal joueur
+    // Clamp horizontal
     state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
 
     // Attaques joueur
@@ -331,6 +329,7 @@ export function tickBattle(dt){
     _tickFireworks(dt);
   }
 }
+
 // ---------------------------------------------------------
 // Rendu
 // ---------------------------------------------------------
@@ -399,16 +398,12 @@ export function renderBattle(ctx, _view, sprites){
     ctx.fillRect(0, h - BTL.FLOOR_H, w, BTL.FLOOR_H);
   }
 
-// Personnages
-const P_W = 140, P_H = 152;
-const pY = h - BTL.FLOOR_H + state.player.y - P_H;
-const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
+  // Personnages
+  const P_W = 140, P_H = 152;
+  const pY = h - BTL.FLOOR_H + state.player.y - P_H;
+  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
 
-// --- Arachne normal OU Danse de victoire avec Tarantula ---
-const showDance = (state.phase === 'end' && state.victory && state.victoryDance);
-
-if (!showDance) {
-  // >>> Rendu NORMAL du joueur (Arachne) <<<
+  // Joueur
   ctx.save();
   ctx.translate(state.player.x, pY);
   if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
@@ -419,49 +414,15 @@ if (!showDance) {
     ctx.fillRect(0,0,P_W,P_H);
   }
   ctx.restore();
-} else {
-  // >>> Danse Arachne + Tarantula (mêmes PNG que le jeu) <<<
-  const t = state.danceT || 0;
-  const bob1 = Math.sin(t*6) * 6;
-  const bob2 = Math.sin(t*6 + Math.PI*0.5) * 6;
 
-  const A_W = 140, A_H = 152;
-  const T_W = 140, T_H = 152;
-
-  const baseY = h - BTL.FLOOR_H - 6;
-  const ax = Math.floor(w*0.5) - Math.round(A_W*1.0);
-  const ay = baseY - A_H + Math.round(bob1);
-  const tx = Math.floor(w*0.5) + 16;
-  const ty = baseY - T_H + Math.round(bob2);
-
-  // Arachne (sprite joueur)
-  if (sprites?.birdImg?.naturalWidth) {
-    ctx.drawImage(sprites.birdImg, ax, ay, A_W, A_H);
-  } else {
-    ctx.fillStyle = '#e63946';
-    ctx.fillRect(ax, ay, A_W, A_H);
-  }
-
-  // Tarantula = réutilise le sprite de la chasse (spiderImg), fallback éventuel sur tarantulaImg
-  const tar = sprites?.spiderImg || sprites?.tarantulaImg;
-  if (tar && tar.complete && tar.naturalWidth) {
-    ctx.drawImage(tar, tx, ty, T_W, T_H);
-  } else {
-    ctx.fillStyle = '#2b2d42';
-    ctx.fillRect(tx, ty, T_W, T_H);
-  }
-}
-// --- Ennemi agrandi (+30%) ---
-  // --- Ennemi agrandi (+30%) ---
+  // Ennemi (agrandi + fade si mort)
   const F_W_BASE = Math.round(P_W * 1.5);
   const F_H_BASE = Math.round(P_H * 1.5);
-
   ctx.save();
   ctx.translate(state.foe.x, fY);
   ctx.scale(-1, 1);
   const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
 
-  // fade + petit shrink si mort
   let foeAlpha = 1, foeScale = 1;
   if (state.foeDeath) {
     foeAlpha = Math.max(0, state.foeDeath.fade);
@@ -478,7 +439,7 @@ if (!showDance) {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // Particules d’explosion (au-dessus du sprite ennemi)
+  // Explosion ennemi
   if (state.foeDeath && !state.foeDeath.done){
     _renderFoeDeath(ctx);
   }
@@ -562,21 +523,22 @@ if (!showDance) {
 
   ctx.restore();
 }
+
 // ---------------------------------------------------------
 // Internes
 // ---------------------------------------------------------
 function _endBattle(victory){
-  // 1) Passer en phase "end" (on arrête le gameplay, on garde la scène affichée)
+  // 1) Phase fin
   state.phase   = 'end';
   state.victory = !!victory;
   state.victoryDance = !!victory;
-  state.active  = false; // stoppe inputs/IA, mais le rendu continue
+  state.active  = false;
 
-  // 2) UI en bataille : masquer les pads
+  // 2) Masquer pads
   if (state.ui.move) state.ui.move.style.display = 'none';
   if (state.ui.ab)   state.ui.ab.style.display   = 'none';
 
-  // 3) Écran de fin (overlay) + style du bouton
+  // 3) Overlay de fin + bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
     if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
@@ -584,46 +546,60 @@ function _endBattle(victory){
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
       if (victory){
-        btn.style.padding   = '10px 14px';
-        btn.style.fontSize  = '14px';
+        btn.textContent   = '🌟 Bonus débloqué → Carte';
+        btn.style.padding = '12px 16px';
+        btn.style.fontSize = '16px';
         btn.style.transform = 'none';
+        btn.onclick = () => {
+          try {
+            localStorage.setItem('bonus_unlocked', '1');
+            localStorage.setItem('bonus_otranto_unlocked', '1');
+            localStorage.setItem('level2_unlocked', 'true');
+localStorage.setItem('level2_unlocked_at', String(Date.now()));
+            window.dispatchEvent(new CustomEvent('otranto:unlocked', { detail: { city: 'otranto' } }));
+          } catch {}
+          // Redirection vers la carte Leaflet d’Otranto
+          window.location.href = '/app.html#otranto';
+        };
       } else {
-        btn.style.padding   = '16px 24px';
-        btn.style.fontSize  = '18px';
+        btn.textContent   = '↻ Rejouer';
+        btn.style.padding = '16px 24px';
+        btn.style.fontSize = '18px';
         btn.style.transform = 'scale(1.05)';
+        btn.onclick = () => {
+          // relance directement la battle (même ennemi)
+          startBattle(state.foeType);
+        };
       }
     }
     state.ui.endOverlay.style.display = 'flex';
   }
 
-  // 4) Marquer la fin (utile si tu veux d'autres FX)
+  // 4) Marquer la fin
   state.ending = { mode: victory ? 'win' : 'lose', t: 0, fw: state.ending?.fw || [] };
 
-  // 5) Effets finaux selon l’issue
+  // 5) Effets finaux
   if (victory){
-    // a) Déclenche l’effet “mort de la méduse” (explosion/fade)
     _triggerFoeDeath();
-
-    // b) Feux d’artifice + musique (si fournie via window.__BATTLE_VICTORY_MUSIC_URL__)
     _spawnFireworks(6);
-   // stoppe le thème de battle, joue la musique de victoire si win
-_stopBattleTheme();
-    // (optionnel) à la fin de l’overlay, quand tu quittes la battle pour la carte,
-// relance la musique de fond si tu veux :
-if (window.__RESUME_BG_MUSIC) {
-  try { window.__RESUME_BG_MUSIC(); } catch {}
-}
-if (victory){
-  _spawnFireworks(6);
-  _playVictoryMusic();
-} else {
-  state.fx.fireworks.length = 0;
-}
+    _stopBattleTheme();
+    if (window.__RESUME_BG_MUSIC) { try { window.__RESUME_BG_MUSIC(); } catch {} }
+    _playVictoryMusic();
   } else {
-    // Défaite : pas de feux d’artifice
     state.fx.fireworks.length = 0;
   }
+
+  // 6) Callbacks — on ne **redirige** plus via onWin :
+  //    on garde l’overlay et on attend le clic sur le CTA.
+  try {
+    if (!victory && typeof state.onLose === 'function') {
+      setTimeout(() => state.onLose(), 0);
+    }
+  } catch (e) {
+    console.error('Battle callback error', e);
+  }
 }
+
 function _applyPhysics(ent, dt){
   ent.vy += BTL.GRAV * dt;
   ent.y  += ent.vy * dt;
@@ -663,17 +639,6 @@ function _fireSpecial(){
 
   if (spec.burst){ for (let i=0;i<spec.burst;i++) setTimeout(mk, i*(spec.gap||120)); }
   else mk();
-}
-
-function _fireFoe(){ // (non utilisé)
-  state.shots.push({
-    x: state.foe.x - 36,
-    y: state.foe.y,
-    vx: -BTL.FOE_SHOT,
-    vy: 0,
-    from: 'foe',
-    dmg: 10
-  });
 }
 
 function _fireFoeZapOnce() {
@@ -811,52 +776,26 @@ function _ensureBattleUI(show){
     root.appendChild(rot);
     root.appendChild(end);
     document.body.appendChild(root);
-// handlers tactiles / souris pour les pads
-const press = (act, on)=> {
-  if (act === 'left')  state.input.left  = on;
-  if (act === 'right') state.input.right = on;
-  if (act === 'up')    state.input.up    = on;
-  // A / B déclenchent une fois à la pression
-  if (on === true && act === 'atk') state.input.atk = true;
-  if (on === true && act === 'spc') state.input.spc = true;
-};
 
-root.querySelectorAll('.__padbtn').forEach(b=>{
-  const act = b.dataset.act;
-  b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
-  b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
-  b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
-  b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
-  b.addEventListener('mouseleave', e=>{ press(act, false); });
-  b.addEventListener('click',      e=>{ e.preventDefault(); }); // évite double-clic
-}); 
+    // handlers pads
+    const press = (act, on)=> {
+      if (act === 'left')  state.input.left  = on;
+      if (act === 'right') state.input.right = on;
+      if (act === 'up')    state.input.up    = on;
+      // A / B déclenchent une fois à la pression
+      if (on === true && act === 'atk') state.input.atk = true;
+      if (on === true && act === 'spc') state.input.spc = true;
+    };
 
-    // Option A — Revenir au jeu principal (carte/chasse)
-    // Remplace ENTIEREMENT ton listener actuel par ceci (note: plus de 'async')
-end.querySelector('#__battle_replay_btn').addEventListener('click', ()=>{
-  // 1) Stopper/masquer la battle
-  state.active = false;
-  state.shots.length = 0;
-  state.input.left = state.input.right = state.input.up = state.input.atk = state.input.spc = false;
-
-  // 2) Cacher l'UI de la battle ET l’overlay de fin (sinon il bloque les pads derrière)
-  if (state.ui.endOverlay) state.ui.endOverlay.style.display = 'none';
-  if (state.ui.root)       state.ui.root.style.display = 'none';
-
-  // ⚠️ 3) Ne PAS toucher au fullscreen/orientation ici (ça cause l’écran vide)
-  // (supprime ces deux lignes)
-  // try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
-  // try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
-
-  // 4) Revenir AU DÉMARRAGE DU JEU
-  // → a) si ton app expose une fonction globale de redémarrage, appelle-la :
-  if (window.game && typeof window.game.restart === 'function') {
-    window.game.restart();               // <-- idéal si dispo (SPA)
-    return;
-  }
-  // → b) sinon, reload “propre” (évite certaines ancres/hash)
-  window.location.href = window.location.href.split('#')[0];
-});
+    root.querySelectorAll('.__padbtn').forEach(b=>{
+      const act = b.dataset.act;
+      b.addEventListener('touchstart', e=>{ e.preventDefault(); press(act, true); }, {passive:false});
+      b.addEventListener('touchend',   e=>{ e.preventDefault(); press(act, false); }, {passive:false});
+      b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
+      b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
+      b.addEventListener('mouseleave', ()=>{ press(act, false); });
+      b.addEventListener('click',      e=>{ e.preventDefault(); }); // évite double-clic
+    });
 
     // références UI
     state.ui.root = root;
@@ -873,13 +812,11 @@ function _installOrientationWatch(){
   window.addEventListener('orientationchange', _updateRotateOverlay, {passive:true});
   window.addEventListener('resize', _updateRotateOverlay, {passive:true});
 }
-
 function _isLandscape(){
   const o = screen.orientation;
   if (o && o.type) return o.type.startsWith('landscape');
   return window.innerWidth >= window.innerHeight;
 }
-
 async function _maybeLockLandscape(){
   try {
     if (document.fullscreenElement == null && document.documentElement.requestFullscreen) {
@@ -892,7 +829,6 @@ async function _maybeLockLandscape(){
     }
   } catch {}
 }
-
 function _updateRotateOverlay(){
   if (!state.ui.rotateOverlay) return;
   const need = state.active && !_isLandscape();
@@ -914,7 +850,7 @@ function _makeSkyline(n){
 }
 function _triggerFoeDeath(){
   const parts = [];
-  const cx = state.foe.x, cy = (state.h - BTL.FLOOR_H + state.foe.y - Math.round(152*1.3)); // centre à peu près
+  const cx = state.foe.x, cy = (state.h - BTL.FLOOR_H + state.foe.y - Math.round(152*1.3));
   const N = 28;
   for (let i=0;i<N;i++){
     const a = Math.random() * Math.PI*2;
@@ -929,15 +865,13 @@ function _triggerFoeDeath(){
   }
   state.foeDeath = { t:0, parts, fade:1, done:false };
 }
-
 function _tickFoeDeath(dt){
   const D = state.foeDeath; if (!D || D.done) return;
   D.t += dt;
-  D.fade = Math.max(0, 1 - D.t * 1.6); // ~0.6s pour disparaître
-
+  D.fade = Math.max(0, 1 - D.t * 1.6);
   for (let i=D.parts.length-1; i>=0; i--){
     const p = D.parts[i];
-    p.vy += 700 * dt;      // gravité
+    p.vy += 700 * dt;
     p.x  += p.vx * dt;
     p.y  += p.vy * dt;
     p.life -= dt;
@@ -945,19 +879,19 @@ function _tickFoeDeath(dt){
   }
   if (D.fade <= 0 && D.parts.length === 0) D.done = true;
 }
-
 function _renderFoeDeath(ctx){
   const D = state.foeDeath; if (!D) return;
   ctx.save();
   for (const p of D.parts){
     const a = Math.max(0, Math.min(1, p.life / 0.5));
-    ctx.fillStyle = `rgba(120,220,255,${a})`; // éclats bleutés “électriques”
+    ctx.fillStyle = `rgba(120,220,255,${a})`;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
     ctx.fill();
   }
   ctx.restore();
 }
+
 // ---------- Feux d’artifice (victoire) ----------
 function _spawnFireworks(count=1){
   const w = state.w, h = state.h;
@@ -995,7 +929,6 @@ function _renderFireworks(ctx, w, h){
   for (const p of state.fx.fireworks){
     const t = Math.min(1, p.age / p.life);
     const alpha = (1 - t) * 0.9;
-    // couleurs douces bleu/violet/rose
     ctx.fillStyle = `rgba(${200+Math.floor(55*Math.random())},${180+Math.floor(70*Math.random())},255,${alpha})`;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 2.0 + (1.6*(1-t)), 0, Math.PI*2);
@@ -1003,6 +936,8 @@ function _renderFireworks(ctx, w, h){
   }
   ctx.restore();
 }
+
+// ---------- Audio ----------
 function _playBattleTheme(){
   try{
     const url = window.__BATTLE_THEME_URL__ || 'assets/battle_loop.mp3';
@@ -1017,7 +952,6 @@ function _playBattleTheme(){
 function _stopBattleTheme(){
   try{ if (state.musicBattle){ state.musicBattle.pause(); state.musicBattle = null; } }catch{}
 }
-
 function _playVictoryMusic(){
   try{
     const url = window.__BATTLE_VICTORY_MUSIC_URL__; // optionnel
@@ -1031,13 +965,4 @@ function _playVictoryMusic(){
 }
 function _stopVictoryMusic(){
   try{ if (state.musicVictory){ state.musicVictory.pause(); state.musicVictory = null; } }catch{}
-}
-function _maybePlayVictoryMusic(){
-  try{
-    const url = (window.__BATTLE_VICTORY_MUSIC_URL__) || null;
-    if (!url) return;
-    state.music = new Audio(url);
-    state.music.volume = 0.7;
-    state.music.play().catch(()=>{});
-  }catch{}
 }
