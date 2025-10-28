@@ -138,3 +138,68 @@ export function openBonusHub() {
     </body></html>
   `);
 }
+// -------------------------------------------------------------
+// PROGRESSION — niveaux (1=Otranto, 2=Gallipoli, 3=Lecce)
+// -------------------------------------------------------------
+
+export function markLevelWin(levelId) {
+  try {
+    localStorage.setItem(`level${levelId}_won`, 'true');
+    localStorage.setItem(`level${levelId}_won_at`, String(Date.now()));
+
+    // déblocage du suivant
+    if (levelId === 1) localStorage.setItem('bonus_gallipoli_unlocked', 'true');
+    if (levelId === 2) localStorage.setItem('bonus_lecce_unlocked', 'true');
+  } catch (e) {
+    console.warn('markLevelWin failed', e);
+  }
+}
+
+export function getProgressList() {
+  return [
+    {
+      id: 1,
+      name: 'Otranto',
+      key: 'otranto',
+      done: localStorage.getItem('level1_won') === 'true',
+      unlocked: true,
+      href: '/app.html#otranto',
+    },
+    {
+      id: 2,
+      name: 'Gallipoli',
+      key: 'gallipoli',
+      done: localStorage.getItem('level2_won') === 'true',
+      unlocked: localStorage.getItem('bonus_gallipoli_unlocked') === 'true',
+      href: '/app.html#gallipoli',
+    },
+    {
+      id: 3,
+      name: 'Lecce',
+      key: 'lecce',
+      done: localStorage.getItem('level3_won') === 'true',
+      unlocked: localStorage.getItem('bonus_lecce_unlocked') === 'true',
+      href: '/app.html#lecce',
+    },
+  ];
+}
+
+export function getNextLevel() {
+  const list = getProgressList();
+  const next = list.find(l => !l.done && l.unlocked);
+  return next || list.find(l => !l.done); // fallback
+}
+// Propose la prochaine "chasse" à jouer pour le gros bouton noir.
+// Règle souhaitée :
+// - s'il existe un niveau *non terminé* ET *déverrouillé* → on le propose
+// - sinon, on boucle sur le niveau 1 (rejouer le jeu depuis le début)
+export function getResumeTarget() {
+  const list = getProgressList();
+
+  // 1) premier niveau non fait ET déverrouillé
+  const next = list.find(l => !l.done && l.unlocked);
+  if (next) return next;
+
+  // 2) tout est terminé → boucle sur le 1
+  return list[0];
+}

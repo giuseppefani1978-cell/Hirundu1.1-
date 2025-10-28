@@ -20,9 +20,9 @@ import {
 // Config assets (sprites)
 // ---------------------------
 const SPRITES_SRC = {
-  bird:       'assets/aracne.PNG',            // héros (Hirundu)
-  spider:     'assets/tarantula.PNG',         // guide
-  sputacchina:'assets/sputacchina_boss.PNG',  // 🐞 boss insecte
+  bird:       'assets/aracne .PNG',            // héros (Hirundu)
+  spider:     'assets/tarantula .PNG',         // guide
+  sputacchina:'assets/sputacchina_boss.png',  // 🐞 boss insecte
   dust:       'assets/xylella_spores.PNG'     // spores ou gouttelettes (attaques)
 };
 

@@ -12,105 +12,103 @@
     <!-- Your app entry (React/Leaflet) -->
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Smart back-to-game handling ( Level 2 routing ) -->
     <script type="module">
-      (() => {
-        // Read Level 2 status once
-        const L2 = (() => {
-          try { return localStorage.getItem('level2_unlocked') === 'true'; }
-          catch { return false; }
-        })();
+(() => {
+  // util: lecture LS
+  const LS = (k, d = null) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 
-        function showBanner() {
-          if (!L2) return;
-          if (document.getElementById('level2-banner')) return;
-          const banner = document.createElement('div');
-          banner.id = 'level2-banner';
-          banner.textContent = '✅ Niveau 2 débloqué ! Vous pouvez reprendre le jeu.';
-          banner.style.cssText =
-            'position:fixed;left:12px;bottom:12px;z-index:9999;'+
-            'background:#008b2f;color:#fff;font:700 13px system-ui;'+
-            'padding:8px 12px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);';
-          document.body.appendChild(banner);
-        }
+  // détermine la prochaine chasse jouable (niv. 3 prioritaire)
+  const nextLevelHref = () => {
+    const L3 = LS('level3_unlocked') === 'true';
+    const L2 = LS('level2_unlocked') === 'true';
+    if (L3) return '/index.html?level=3';
+    if (L2) return '/index.html?level=2';
+    return '/index.html';
+  };
 
-        function findBackBtn() {
-          // Add here your exact selector if you have one (id/class)
-          return document.querySelector(
-            '#back-to-game, #back-to-map, .leaflet-control a, ' +
-            'a[href="/index.html"], a[href="./"], a[href="#"], button.back-to-game'
-          );
-        }
+  // --- TOAST éphémère (consomme __toast_next__)
+  const toastKey = '__toast_next__';
+  const toastVal = LS(toastKey);
+  if (toastVal) {
+    const map = {
+      otranto:   'Niveau 1 terminé ! Bonus Otranto débloqué 🎉',
+      gallipoli: 'Niveau 2 terminé ! Bonus Gallipoli débloqué 🎉',
+      lecce:     'Niveau 3 terminé ! Bonus Lecce débloqué 🎉',
+    };
+    const msg = map[toastVal] || 'Bonus débloqué 🎉';
 
-        function setupBackBtn(btn) {
-          if (!btn) return;
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText =
+      'position:fixed;left:12px;bottom:12px;z-index:9999;'+
+      'background:#0e7a2b;color:#fff;font:700 13px system-ui;'+
+      'padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);';
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(t));
+    setTimeout(() => { try { t.remove(); } catch {} }, 2800);
+    try { localStorage.removeItem(toastKey); } catch {}
+  }
 
-          // Ensure click is allowed
-          btn.style.pointerEvents = 'auto';
-          btn.style.cursor = 'pointer';
+  // --- bouton “Reprendre la chasse” si un contrôle existe déjà
+  function findBackBtn() {
+    return document.querySelector(
+      '#back-to-game, #back-to-map, .leaflet-control a, ' +
+      'a[href="/index.html"], a[href="./"], a[href="#"], button.back-to-game'
+    );
+  }
 
-          if (L2) {
-            // Label + link
-            btn.textContent = 'Retour carte Salento (niv. 2)';
-            if (btn.tagName === 'A') btn.setAttribute('href', '/index.html?level=2');
+  function setupBackBtn(btn) {
+    if (!btn) return;
+    btn.style.pointerEvents = 'auto';
+    btn.style.cursor = 'pointer';
 
-            // Force navigation even if other handlers prevent default
-            const go = (e) => {
-              try { e && e.preventDefault(); } catch {}
-              try {
-                document.body.style.transition = 'opacity 220ms ease';
-                document.body.style.opacity = '0';
-              } catch {}
-              window.location.assign('/index.html?level=2');
-            };
-            btn.addEventListener('click', go, { once: true });
-            btn.addEventListener('touchend', go, { passive: false, once: true });
+    const href = nextLevelHref();
+    const label = href.includes('level=3')
+      ? '↩︎ Reprendre la chasse (niv. 3)'
+      : (href.includes('level=2') ? '↩︎ Reprendre la chasse (niv. 2)' : '↩︎ Reprendre le jeu');
 
-            showBanner();
-          } else {
-            if (btn.tagName === 'A') btn.setAttribute('href', '/index.html');
-          }
-        }
+    if (btn.tagName === 'A') btn.setAttribute('href', href);
+    btn.textContent = label;
 
-        // Try immediately (if the control already exists)…
-        let btn = findBackBtn();
-        if (btn) {
-          setupBackBtn(btn);
-        } else {
-          // …otherwise, wait for Leaflet/React to render it
-          const mo = new MutationObserver(() => {
-            const b = findBackBtn();
-            if (b) {
-              mo.disconnect();
-              setupBackBtn(b);
-            }
-          });
-          mo.observe(document.documentElement, { childList: true, subtree: true });
+    const go = (e) => {
+      try { e && e.preventDefault(); } catch {}
+      try { document.body.style.transition = 'opacity 220ms ease'; document.body.style.opacity = '0'; } catch {}
+      window.location.assign(href);
+    };
+    btn.addEventListener('click', go, { once: true });
+    btn.addEventListener('touchend', go, { passive: false, once: true });
+  }
 
-          // Fallback CTA if still nothing after 1s
-          setTimeout(() => {
-            if (!L2) return;
-            if (findBackBtn()) return; // appears later, no need for CTA
-            if (document.getElementById('__cta_l2__')) return;
+  let btn = findBackBtn();
+  if (btn) {
+    setupBackBtn(btn);
+  } else {
+    const mo = new MutationObserver(() => {
+      const b = findBackBtn();
+      if (b) { mo.disconnect(); setupBackBtn(b); }
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
 
-            const cta = document.createElement('a');
-            cta.id = '__cta_l2__';
-            cta.textContent = '↩︎ Reprendre le jeu (niv. 2)';
-            cta.href = '/index.html?level=2';
-            cta.style.cssText =
-              'position:fixed;left:12px;bottom:12px;z-index:10010;'+
-              'background:#10223c;color:#fff;font:700 14px system-ui;'+
-              'padding:10px 14px;border-radius:12px;text-decoration:none;'+
-              'box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:auto;';
-            cta.addEventListener('click', (e) => {
-              e.preventDefault();
-              window.location.assign('/index.html?level=2');
-            });
-            document.body.appendChild(cta);
-            showBanner();
-          }, 1000);
-        }
-      })();
-    </script>
+    // CTA de secours si aucun bouton n'existe
+    setTimeout(() => {
+      if (findBackBtn()) return;
+      if (document.getElementById('__cta_resume__')) return;
+      const href = nextLevelHref();
+      const cta = document.createElement('a');
+      cta.id = '__cta_resume__';
+      cta.textContent = href.includes('level=3')
+        ? '↩︎ Reprendre la chasse (niv. 3)'
+        : (href.includes('level=2') ? '↩︎ Reprendre la chasse (niv. 2)' : '↩︎ Reprendre le jeu');
+      cta.href = href;
+      cta.style.cssText =
+        'position:fixed;left:12px;bottom:12px;z-index:10010;'+
+        'background:#10223c;color:#fff;font:700 14px system-ui;'+
+        'padding:10px 14px;border-radius:12px;text-decoration:none;'+
+        'box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:auto;';
+      cta.addEventListener('click', (e) => { e.preventDefault(); window.location.assign(href); });
+      document.body.appendChild(cta);
+    }, 900);
+  }
+})();
+</script>
   </body>
 </html>

@@ -4,6 +4,7 @@
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
+import { markLevelWin } from './bonus_maps.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -47,6 +48,15 @@ const BTL = {
   HIT_SHAKE_DECAY_PER_S: 1.8,
   HIT_SLOW_FACTOR: 0.45,
   HIT_SLOW_MS: 450,
+
+  // --- Sputacchina (boss Lecce)
+  SPORE_SPEED: 380,
+  SPORE_DMG: 12,
+  SPORE_LIFE_S: 1.8,
+  SPORE_BURST: 3,
+  SPORE_BURST_GAP_MS: 120,
+  SPORE_SLOW_FACTOR: 0.55,
+  SPORE_SLOW_MS: 700,
 };
 
 let state = {
@@ -56,6 +66,7 @@ let state = {
   victoryDance: false,
   active: false,
   foeType: 'jelly',
+  foeShotKind: 'zap', // 'zap' (par défaut) ou 'spore' pour Sputacchina
   w: 960, h: 540,
 
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
@@ -96,6 +107,71 @@ let state = {
 };
 
 // ---------------------------------------------------------
+// Helpers — unlock registry + legacy flags + navigation
+// ---------------------------------------------------------
+function __writeUnifiedUnlock(key){
+  try {
+    const K = 'bonus_unlocked_v1';
+    let obj;
+    try { obj = JSON.parse(localStorage.getItem(K)) || {}; }
+    catch { obj = {}; }
+    if (!obj[key]) {
+      obj[key] = true;
+      localStorage.setItem(K, JSON.stringify(obj));
+    }
+  } catch {}
+}
+
+function __persistUnlocksForFoe(foeType){
+  try {
+    // legacy umbrella bit (kept if some code still checks it)
+    localStorage.setItem('bonus_unlocked', '1');
+
+    if (foeType === 'jelly') {
+      // Otranto (L1)
+      localStorage.setItem('bonus_otranto_unlocked', '1');
+      __writeUnifiedUnlock('otranto');
+      // progression
+      try { markLevelWin?.(1); } catch {}
+      localStorage.setItem('__toast_next__', 'otranto');
+    } else if (foeType === 'crow') {
+      // Gallipoli (L2)
+      localStorage.setItem('bonus_gallipoli_unlocked', '1');
+      __writeUnifiedUnlock('gallipoli');
+      // historic L2 gating kept for compatibility
+      localStorage.setItem('level2_unlocked', 'true');
+      localStorage.setItem('level2_unlocked_at', String(Date.now()));
+      localStorage.setItem('level3_unlocked', 'true');
+      // progression
+      try { markLevelWin?.(2); } catch {}
+      localStorage.setItem('__toast_next__', 'gallipoli');
+    } else if (foeType === 'sputacchina') {
+      // Lecce (L3)
+      localStorage.setItem('bonus_lecce_unlocked', '1');
+      __writeUnifiedUnlock('lecce');
+      localStorage.setItem('level3_unlocked', 'true');
+      // progression
+      try { markLevelWin?.(3); } catch {}
+      localStorage.setItem('__toast_next__', 'lecce');
+    }
+
+    window.dispatchEvent(new CustomEvent('bonus:unlock', { detail:{ foe: foeType }}));
+  } catch(e){ console.error(e); }
+}
+
+function __redirectAfterWin(foeType){
+  if (foeType === 'sputacchina') {
+    location.href = '/app.html#/poi/lecce/realmap';
+  } else if (foeType === 'crow') {
+    location.href = '/app.html#/poi/gallipoli/realmap';
+  } else {
+    // default (Otranto or unknown) → Bonus hub
+    location.href = '/app.html#bonus';
+  }
+  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
+}
+
+// ---------------------------------------------------------
 // API
 // ---------------------------------------------------------
 export function setupBattleInputs(){
@@ -128,6 +204,8 @@ export function startBattle(foeType='jelly'){
   state.active = true;
   state.foeType = foeType;
   state.victoryDance = false;
+  // configure tir selon le boss
+  state.foeShotKind = (foeType === 'sputacchina') ? 'spore' : 'zap';
 
   // joueur
   state.player = { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 };
@@ -182,9 +260,8 @@ export function tickBattle(dt){
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
     if (state.foeDeath && !state.foeDeath.done) _tickFoeDeath(dt);
-    // danse à l’écran de victoire
     if (state.phase === 'end' && state.victory) {
-      // petite animation verticale
+      // petite animation "victoire" possible ici
     }
     return;
   }
@@ -274,9 +351,13 @@ export function tickBattle(dt){
           }
         }
 
-        // tirs (zaps)
+        // tirs (selon boss)
         if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
-          _fireFoeZap();
+          if (state.foeShotKind === 'spore') {
+            _fireFoeSporeBurst();
+          } else {
+            _fireFoeZap();
+          }
           state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
         }
       }
@@ -302,7 +383,7 @@ export function tickBattle(dt){
           if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
             state.player.hp = Math.max(0, state.player.hp - s.dmg);
             state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
-            state.slowUntil = now + BTL.HIT_SLOW_MS;
+            state.slowUntil = now + (s.kind === 'spore' ? (BTL.SPORE_SLOW_MS || BTL.HIT_SLOW_MS) : BTL.HIT_SLOW_MS);
             state.shots.splice(i,1);
             continue;
           }
@@ -415,26 +496,35 @@ export function renderBattle(ctx, _view, sprites){
   }
   ctx.restore();
 
-  // Ennemi (agrandi + fade si mort)
-  const F_W_BASE = Math.round(P_W * 1.5);
-  const F_H_BASE = Math.round(P_H * 1.5);
+  // --- Ennemi (agrandi + fade si mort)
+  const F_W_BASE = Math.round(P_W * 1.8);
+  const F_H_BASE = Math.round(P_H * 1.8);
   ctx.save();
   ctx.translate(state.foe.x, fY);
-  ctx.scale(-1, 1);
-  const foeImg = (state.foeType === 'jelly') ? sprites?.jellyImg : sprites?.crowImg;
+
+  let foeImg = null;
+  if (state.foeType === 'jelly')        foeImg = sprites?.jellyImg;
+  else if (state.foeType === 'crow')    foeImg = sprites?.crowImg;
+  else if (state.foeType === 'sputacchina') foeImg = sprites?.sputImg;
+
+  // jelly/crow "face droite" → flip pour viser la gauche ; Sputacchina déjà à gauche
+  const needFlip = (state.foeType === 'jelly' || state.foeType === 'crow');
+  if (needFlip) ctx.scale(-1, 1);
 
   let foeAlpha = 1, foeScale = 1;
-  if (state.foeDeath) {
-    foeAlpha = Math.max(0, state.foeDeath.fade);
-    foeScale = Math.max(0.5, 0.8 + 0.2 * foeAlpha);
-  }
+  if (state.foeDeath) { foeAlpha = Math.max(0, state.foeDeath.fade); foeScale = Math.max(0.5, 0.8 + 0.5*foeAlpha); }
   ctx.globalAlpha = foeAlpha;
 
   if (!state.foeDeath?.done) {
     const drawW = Math.round(F_W_BASE * foeScale);
     const drawH = Math.round(F_H_BASE * foeScale);
-    if (foeImg?.naturalWidth) ctx.drawImage(foeImg, 0, 0, drawW, drawH);
-    else { ctx.fillStyle = '#2a9d8f'; ctx.fillRect(0, 0, drawW, drawH); }
+    if (foeImg?.naturalWidth) {
+      if (needFlip) ctx.drawImage(foeImg, 0, 0, drawW, drawH);
+      else          ctx.drawImage(foeImg, -drawW, 0, drawW, drawH);
+    } else {
+      if (needFlip) { ctx.fillStyle='#2a9d8f'; ctx.fillRect(0, 0, drawW, drawH); }
+      else          { ctx.fillStyle='#2a9d8f'; ctx.fillRect(-drawW, 0, drawW, drawH); }
+    }
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -487,12 +577,24 @@ export function renderBattle(ctx, _view, sprites){
       ctx.stroke();
       ctx.restore();
     } else {
-      ctx.beginPath();
-      ctx.arc(s.x, h - BTL.FLOOR_H + s.y - 60, 8, 0, Math.PI*2);
-      ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
-      ctx.fill();
+      const cx = s.x, cy = h - BTL.FLOOR_H + s.y - 60;
+      if (s.kind === 'spore'){
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate( (Math.atan2(s.vy, s.vx)) );
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(40,200,120,0.95)';
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 8, 0, Math.PI*2);
+        ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
+        ctx.fill();
+      }
     }
-  }
+  } // ← ferme bien la boucle des tirs
 
   // Effets de victoire
   if (state.phase === 'end' && state.victory) {
@@ -545,37 +647,27 @@ function _endBattle(victory){
 
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
-      if (victory){
-        btn.textContent   = '🌟 Bonus débloqué → Carte';
-        btn.style.padding = '12px 16px';
-        btn.style.fontSize = '16px';
-        btn.style.transform = 'none';
-        btn.onclick = () => {
-          try {
-            localStorage.setItem('bonus_unlocked', '1');
-            localStorage.setItem('bonus_otranto_unlocked', '1');
-            localStorage.setItem('level2_unlocked', 'true');
-localStorage.setItem('level2_unlocked_at', String(Date.now()));
-            window.dispatchEvent(new CustomEvent('otranto:unlocked', { detail: { city: 'otranto' } }));
-          } catch {}
-          // Redirection vers la carte Leaflet d’Otranto
-          window.location.href = '/app.html#otranto';
-        };
-      } else {
-        btn.textContent   = '↻ Rejouer';
-        btn.style.padding = '16px 24px';
-        btn.style.fontSize = '18px';
-        btn.style.transform = 'scale(1.05)';
-        btn.onclick = () => {
-          // relance directement la battle (même ennemi)
-          startBattle(state.foeType);
-        };
-      }
+      btn.textContent = victory ? 'Continuer' : 'Réessayer';
+      btn.style.padding = '12px 16px';
+      btn.style.fontSize = '16px';
+      btn.style.transform = 'none';
+
+      btn.onclick = () => {
+        try {
+          if (victory) {
+            __persistUnlocksForFoe(state.foeType);
+            __redirectAfterWin(state.foeType);
+          } else {
+            state.ui.endOverlay.style.display = 'none';
+            startBattle(state.foeType);
+          }
+        } catch (e) { console.error(e); }
+      };
     }
     state.ui.endOverlay.style.display = 'flex';
   }
 
-  // 4) Marquer la fin
+  // 4) Marquer la fin (FX)
   state.ending = { mode: victory ? 'win' : 'lose', t: 0, fw: state.ending?.fw || [] };
 
   // 5) Effets finaux
@@ -589,8 +681,7 @@ localStorage.setItem('level2_unlocked_at', String(Date.now()));
     state.fx.fireworks.length = 0;
   }
 
-  // 6) Callbacks — on ne **redirige** plus via onWin :
-  //    on garde l’overlay et on attend le clic sur le CTA.
+  // 6) Callbacks (défaite immédiate, victoire gérée via bouton)
   try {
     if (!victory && typeof state.onLose === 'function') {
       setTimeout(() => state.onLose(), 0);
@@ -641,6 +732,7 @@ function _fireSpecial(){
   else mk();
 }
 
+// ---- Tir ennemi — ZAP (générique jelly/crow)
 function _fireFoeZapOnce() {
   const dx = (state.player.x - state.foe.x);
   const dy = (state.player.y - state.foe.y);
@@ -663,6 +755,32 @@ function _fireFoeZap(){
   _fireFoeZapOnce();
   for (let i = 1; i < BTL.FOE_BURST_COUNT; i++){
     setTimeout(_fireFoeZapOnce, i * BTL.FOE_BURST_GAP_MS);
+  }
+}
+
+// ---- Tir ennemi — SPORES (Sputacchina)
+function _fireFoeSporeOnce() {
+  const dx = (state.player.x - state.foe.x);
+  const dy = (state.player.y - state.foe.y);
+  const L  = Math.max(1, Math.hypot(dx, dy));
+  const vx = (dx / L) * BTL.SPORE_SPEED;
+  const vy = (dy / L) * BTL.SPORE_SPEED;
+
+  state.shots.push({
+    x: state.foe.x - 36,
+    y: state.foe.y,
+    vx, vy,
+    from: 'foe',
+    dmg: BTL.SPORE_DMG,
+    kind: 'spore',
+    life: BTL.SPORE_LIFE_S,
+  });
+}
+
+function _fireFoeSporeBurst(){
+  _fireFoeSporeOnce();
+  for (let i = 1; i < BTL.SPORE_BURST; i++){
+    setTimeout(_fireFoeSporeOnce, i * BTL.SPORE_BURST_GAP_MS);
   }
 }
 
@@ -782,9 +900,8 @@ function _ensureBattleUI(show){
       if (act === 'left')  state.input.left  = on;
       if (act === 'right') state.input.right = on;
       if (act === 'up')    state.input.up    = on;
-      // A / B déclenchent une fois à la pression
-      if (on === true && act === 'atk') state.input.atk = true;
-      if (on === true && act === 'spc') state.input.spc = true;
+      if (on === true && act === 'atk') state.input.atk = true; // trigger once
+      if (on === true && act === 'spc') state.input.spc = true; // trigger once
     };
 
     root.querySelectorAll('.__padbtn').forEach(b=>{
@@ -794,7 +911,7 @@ function _ensureBattleUI(show){
       b.addEventListener('mousedown',  e=>{ e.preventDefault(); press(act, true); });
       b.addEventListener('mouseup',    e=>{ e.preventDefault(); press(act, false); });
       b.addEventListener('mouseleave', ()=>{ press(act, false); });
-      b.addEventListener('click',      e=>{ e.preventDefault(); }); // évite double-clic
+      b.addEventListener('click',      e=>{ e.preventDefault(); });
     });
 
     // références UI

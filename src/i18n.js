@@ -13,6 +13,9 @@ export const I18N = {
     musicOff: "🎵 Musique",
     replay: "⟲ Rejouer",
     energy: "Énergie",
+    hud: {
+      leaves: "Feuilles",
+    },
     ask: (info) => `Dis-moi, où est ${info} ?`,
     success: (name) => `Bravo, c’est exactement ça : ${name} !`,
     errTitle: "⚠️ Problème d’assets",
@@ -26,6 +29,17 @@ export const I18N = {
       hudLabel: "Soleils",
       ask: (info) => `Où est ${info} ?`,
       win: "Bravo ! Victoire ✨"
+    },
+
+    // -------- Niveau 3 --------
+    level3: {
+      title: "Les Feuilles du Salento Nord",
+      subtitle: "Collecte les 10 feuilles d’olivier et découvre les secrets de Lecce.",
+      hudLabel: "Feuilles",
+      complete: "Toutes les feuilles d’olivier sont collectées !",
+      bonus_unlocked: "Bonus QR Lecce débloqué !",
+      open_bonus: "Scanner le QR bonus à Lecce",
+      battle_cta: "Lancer la bataille de Lecce"
     }
   },
 
@@ -38,6 +52,9 @@ export const I18N = {
     musicOff: "🎵 Musica",
     replay: "⟲ Rigioca",
     energy: "Energia",
+    hud: {
+      leaves: "Foglie",
+    },
     ask: (info) => `Dimmi, dov’è ${info}?`,
     success: (name) => `Bravissimo, è proprio ${name}!`,
     errTitle: "⚠️ Problema con le risorse",
@@ -51,6 +68,17 @@ export const I18N = {
       hudLabel: "Soli",
       ask: (info) => `Dov’è ${info}?`,
       win: "Bravissimo! Vittoria ✨"
+    },
+
+    // -------- Livello 3 --------
+    level3: {
+      title: "Le Foglie del Salento Nord",
+      subtitle: "Raccogli le 10 foglie d’ulivo e scopri i segreti di Lecce.",
+      hudLabel: "Foglie",
+      complete: "Tutte le foglie d’ulivo sono state raccolte!",
+      bonus_unlocked: "Bonus QR Lecce sbloccato!",
+      open_bonus: "Scansiona il QR bonus a Lecce",
+      battle_cta: "Avvia la battaglia di Lecce"
     }
   },
 
@@ -63,6 +91,9 @@ export const I18N = {
     musicOff: "🎵 Música",
     replay: "⟲ Repetir",
     energy: "Energía",
+    hud: {
+      leaves: "Hojas",
+    },
     ask: (info) => `Dime, ¿dónde está ${info}?`,
     success: (name) => `¡Bien hecho! Es exactamente: ${name}.`,
     errTitle: "⚠️ Problema de recursos",
@@ -76,6 +107,17 @@ export const I18N = {
       hudLabel: "Soles",
       ask: (info) => `¿Dónde está ${info}?`,
       win: "¡Bravo! Victoria ✨"
+    },
+
+    // -------- Nivel 3 --------
+    level3: {
+      title: "Las Hojas del Salento Norte",
+      subtitle: "Recoge 10 hojas de olivo y descubre los secretos de Lecce.",
+      hudLabel: "Hojas",
+      complete: "¡Todas las hojas de olivo recogidas!",
+      bonus_unlocked: "¡Bonus QR de Lecce desbloqueado!",
+      open_bonus: "Escanea el QR bonus en Lecce",
+      battle_cta: "Comienza la batalla de Lecce"
     }
   },
 
@@ -88,6 +130,9 @@ export const I18N = {
     musicOff: "🎵 Music",
     replay: "⟲ Replay",
     energy: "Energy",
+    hud: {
+      leaves: "Leaves",
+    },
     ask: (info) => `Tell me, where is ${info}?`,
     success: (name) => `Great, that’s exactly it: ${name}!`,
     errTitle: "⚠️ Asset issue",
@@ -101,11 +146,24 @@ export const I18N = {
       hudLabel: "Suns",
       ask: (info) => `Where is ${info}?`,
       win: "Great! Victory ✨"
+    },
+
+    // -------- Level 3 --------
+    level3: {
+      title: "Northern Salento Leaves",
+      subtitle: "Collect 10 olive leaves and discover Lecce’s hidden spirit.",
+      hudLabel: "Leaves",
+      complete: "All olive leaves collected!",
+      bonus_unlocked: "Lecce QR bonus unlocked!",
+      open_bonus: "Scan the Lecce QR bonus",
+      battle_cta: "Start the battle of Lecce"
     }
   }
 };
 
-// Textes POI (name + info) — multi-langues
+// ========================================================
+// Textes POI (ajout N3 dans 4 langues)
+// ========================================================
 export const POI_TEXT = {
   fr: {
     // Niveau 1
@@ -129,7 +187,54 @@ export const POI_TEXT = {
     tricase:       { name:"Tricase",             info:"les oliviers millénaires et la côte orientale" },
     torredellorso: { name:"Torre dell’Orso",     info:"la grande plage et les Due Sorelle" },
     soleto:        { name:"Soleto",              info:"la guglia gothique et les ruelles anciennes" },
-    copertino:     { name:"Copertino",           info:"le château et l’histoire de San Giuseppe da Copertino" }
+    copertino:     { name:"Copertino",           info:"le château et l’histoire de San Giuseppe da Copertino" },
+
+    // Niveau 3
+    acaya:            { name:"Acaya",            info:"la forteresse renaissance et les murailles" },
+    parco_rauccio:    { name:"Parco di Rauccio", info:"la réserve naturelle côtière et ses dunes" },
+    san_cataldo:      { name:"San Cataldo",      info:"le port de Lecce et son phare" },
+    cavallino:        { name:"Cavallino",        info:"le village baroque aux ruelles paisibles" },
+    rudiae:           { name:"Rudiae",           info:"le site archéologique et la mémoire d’Ennius" },
+    punta_prosciutto: { name:"Punta Prosciutto", info:"les plages claires et la mer turquoise" },
+    porto_selvaggio:  { name:"Porto Selvaggio",  info:"la pinède et les criques sauvages" },
+    galatone:         { name:"Galatone",         info:"le centre ancien et la basilique du Crocifisso" },
+    calimera:         { name:"Calimera",         info:"le musée de la Grèce Salentine et la pierre du passage" }
+  },
+
+  it: {
+    // Livello 1 (come già)
+    otranto:      { name:"Otranto — Cattedrale",             info:"la cattedrale con i mosaici medievali e la Cappella dei 800 Martiri" },
+    portobadisco: { name:"Porto Badisco — Cala",             info:"la grande cala turchese circondata da scogliere" },
+    santacesarea: { name:"Santa Cesarea Terme",              info:"le terme sulfuree e la Villa Sticchi sul mare" },
+    castro:       { name:"Castro — Castrum Minervae",        info:"la grotta Zinzulusa e il ricordo del tempio di Atena" },
+    ciolo:        { name:"Il Ciolo",                         info:"il piccolo fiordo con l’alto ponte stradale" },
+    leuca:        { name:"Santa Maria di Leuca",             info:"l’altissimo faro e la cascata monumentale del Finibus Terrae" },
+    gallipoli:    { name:"Gallipoli",                        info:"il centro storico su un isolotto collegato da un ponte" },
+    portocesareo: { name:"Porto Cesareo",                    info:"spiagge chiare e l’area marina protetta" },
+    nardo:        { name:"Nardò",                            info:"il centro barocco e Porto Selvaggio vicino" },
+    lecce:        { name:"Lecce",                            info:"barocco in pietra leccese, Santa Croce e il Duomo" },
+
+    // Livello 2
+    galatina:      { name:"Galatina",            info:"la taranta e la basilica di Santa Caterina d’Alessandria" },
+    ugento:        { name:"Ugento",              info:"i resti messapi e i venti marini" },
+    santacaterina: { name:"Santa Caterina",      info:"la marina di Nardò, calette e scogliere" },
+    maglie:        { name:"Maglie",              info:"il borgo storico e i suoi palazzi" },
+    melpignano:    { name:"Melpignano",          info:"la grande piazza della pizzica (Notte della Taranta)" },
+    tricase:       { name:"Tricase",             info:"gli ulivi millenari e la costa orientale" },
+    torredellorso: { name:"Torre dell’Orso",     info:"la spiaggia e le Due Sorelle" },
+    soleto:        { name:"Soleto",              info:"la guglia gotica e i vicoli antichi" },
+    copertino:     { name:"Copertino",           info:"il castello e San Giuseppe da Copertino" },
+
+    // Livello 3
+    acaya:            { name:"Acaya",            info:"la fortezza rinascimentale e le mura" },
+    parco_rauccio:    { name:"Parco di Rauccio", info:"la riserva naturale costiera e le dune" },
+    san_cataldo:      { name:"San Cataldo",      info:"il porto di Lecce e il suo faro" },
+    cavallino:        { name:"Cavallino",        info:"il borgo barocco e le stradine tranquille" },
+    rudiae:           { name:"Rudiae",           info:"il sito archeologico e la memoria di Ennio" },
+    punta_prosciutto: { name:"Punta Prosciutto", info:"spiagge chiare e mare turchese" },
+    porto_selvaggio:  { name:"Porto Selvaggio",  info:"la pineta e le calette selvagge" },
+    galatone:         { name:"Galatone",         info:"il centro storico e la basilica del Crocifisso" },
+    calimera:         { name:"Calimera",         info:"il museo della Grecia Salentina e la pietra del passaggio" }
   },
 
   en: {
@@ -154,32 +259,18 @@ export const POI_TEXT = {
     tricase:       { name:"Tricase",             info:"millenary olive trees and the eastern coast" },
     torredellorso: { name:"Torre dell’Orso",     info:"the beach and the ‘Due Sorelle’ rocks" },
     soleto:        { name:"Soleto",              info:"the Gothic spire and ancient lanes" },
-    copertino:     { name:"Copertino",           info:"the castle and Saint Joseph of Copertino" }
-  },
+    copertino:     { name:"Copertino",           info:"the castle and Saint Joseph of Copertino" },
 
-  it: {
-    // Livello 1
-    otranto:      { name:"Otranto — Cattedrale",             info:"la cattedrale con i mosaici medievali e la Cappella dei 800 Martiri" },
-    portobadisco: { name:"Porto Badisco — Cala",             info:"la grande cala turchese circondata da scogliere" },
-    santacesarea: { name:"Santa Cesarea Terme",              info:"le terme sulfuree e la Villa Sticchi sul mare" },
-    castro:       { name:"Castro — Castrum Minervae",        info:"la grotta Zinzulusa e il ricordo del tempio di Atena" },
-    ciolo:        { name:"Il Ciolo",                         info:"il piccolo fiordo con l’alto ponte stradale" },
-    leuca:        { name:"Santa Maria di Leuca",             info:"l’altissimo faro e la cascata monumentale del Finibus Terrae" },
-    gallipoli:    { name:"Gallipoli",                        info:"il centro storico su un isolotto collegato da un ponte" },
-    portocesareo: { name:"Porto Cesareo",                    info:"spiagge chiare e l’area marina protetta" },
-    nardo:        { name:"Nardò",                            info:"il centro barocco e Porto Selvaggio vicino" },
-    lecce:        { name:"Lecce",                            info:"barocco in pietra leccese, Santa Croce e il Duomo" },
-
-    // Livello 2
-    galatina:      { name:"Galatina",            info:"la taranta e la basilica di Santa Caterina d’Alessandria" },
-    ugento:        { name:"Ugento",              info:"i resti messapi e i venti marini" },
-    santacaterina: { name:"Santa Caterina",      info:"la marina di Nardò, calette e scogliere" },
-    maglie:        { name:"Maglie",              info:"il borgo storico e i suoi palazzi" },
-    melpignano:    { name:"Melpignano",          info:"la grande piazza della pizzica (Notte della Taranta)" },
-    tricase:       { name:"Tricase",             info:"gli ulivi millenari e la costa orientale" },
-    torredellorso: { name:"Torre dell’Orso",     info:"la spiaggia e le Due Sorelle" },
-    soleto:        { name:"Soleto",              info:"la guglia gotica e i vicoli antichi" },
-    copertino:     { name:"Copertino",           info:"il castello e San Giuseppe da Copertino" }
+    // Level 3
+    acaya:            { name:"Acaya",            info:"the Renaissance fortress and its walls" },
+    parco_rauccio:    { name:"Parco di Rauccio", info:"the coastal nature reserve and dunes" },
+    san_cataldo:      { name:"San Cataldo",      info:"Lecce’s harbor and lighthouse" },
+    cavallino:        { name:"Cavallino",        info:"the baroque village with quiet streets" },
+    rudiae:           { name:"Rudiae",           info:"the archaeological site and memory of Ennius" },
+    punta_prosciutto: { name:"Punta Prosciutto", info:"clear beaches and turquoise sea" },
+    porto_selvaggio:  { name:"Porto Selvaggio",  info:"the pine forest and wild coves" },
+    galatone:         { name:"Galatone",         info:"the old center and the Basilica of the Crucifix" },
+    calimera:         { name:"Calimera",         info:"the museum of Greek Salento and the stone of passage" }
   },
 
   es: {
@@ -204,7 +295,18 @@ export const POI_TEXT = {
     tricase:       { name:"Tricase",             info:"olivos milenarios y la costa oriental" },
     torredellorso: { name:"Torre dell’Orso",     info:"la playa y las rocas ‘Due Sorelle’" },
     soleto:        { name:"Soleto",              info:"la aguja gótica y las callejuelas antiguas" },
-    copertino:     { name:"Copertino",           info:"el castillo y San José de Copertino" }
+    copertino:     { name:"Copertino",           info:"el castillo y San José de Copertino" },
+
+    // Nivel 3
+    acaya:            { name:"Acaya",            info:"la fortaleza renacentista y sus murallas" },
+    parco_rauccio:    { name:"Parco di Rauccio", info:"la reserva natural costera y las dunas" },
+    san_cataldo:      { name:"San Cataldo",      info:"el puerto de Lecce y su faro" },
+    cavallino:        { name:"Cavallino",        info:"el pueblo barroco de calles tranquilas" },
+    rudiae:           { name:"Rudiae",           info:"el sitio arqueológico y la memoria de Ennio" },
+    punta_prosciutto: { name:"Punta Prosciutto", info:"playas claras y mar turquesa" },
+    porto_selvaggio:  { name:"Porto Selvaggio",  info:"el pinar y las calas salvajes" },
+    galatone:         { name:"Galatone",         info:"el centro histórico y la basílica del Crucifijo" },
+    calimera:         { name:"Calimera",         info:"el museo de la Grecia Salentina y la piedra del paso" }
   }
 };
 
@@ -258,8 +360,24 @@ export function setLang(langCode){
 
 // ---------- Helpers d’accès ----------
 export const LANG = detectLang();
-export const t = I18N[LANG] || I18N.en;
 
+// t = fonction **et** objet (compat descendante)
+function _resolvePath(dict, path) {
+  return path.split('.').reduce((acc, k) => (acc && typeof acc === 'object') ? acc[k] : undefined, dict);
+}
+
+function tFn(path, fallback, ...args){
+  const dict = I18N[LANG] || I18N.en;
+  let val = _resolvePath(dict, String(path||''));
+  if (typeof val === 'function') return val(...args);
+  if (typeof val === 'string') return val;
+  return (fallback !== undefined ? fallback : String(path||''));
+}
+
+// expose properties (t.title, t.level3.hudLabel, …)
+export const t = Object.assign(tFn, I18N[LANG] || I18N.en);
+
+// POI helpers
 export function poiPack(key, lang = LANG){
   const pack = POI_TEXT[lang] || POI_TEXT.en;
   const fr   = POI_TEXT.fr;
