@@ -1,0 +1,142 @@
+.bonus-index__root {
+  gap: 1.75rem;
+}
+
+.bonus-index__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bonus-index__title {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.65rem, 1.2vw + 1.5rem, 2.2rem);
+  font-weight: 800;
+}
+
+.bonus-index__lead {
+  margin: 0;
+  max-width: 48ch;
+  color: rgba(15, 23, 42, 0.68);
+}
+
+.bonus-index__resume-button {
+  white-space: nowrap;
+}
+
+.bonus-index__itinerary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.bonus-index__itinerary-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(37, 99, 235, 0.06);
+  transition: background 0.18s ease;
+}
+
+.bonus-index__itinerary-card--done {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.bonus-index__itinerary-card--locked {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.bonus-index__itinerary-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #f8fafc;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.bonus-index__itinerary-number--done {
+  background: #10b981;
+  color: #022c22;
+}
+
+.bonus-index__itinerary-number--locked {
+  background: #64748b;
+}
+
+.bonus-index__itinerary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.bonus-index__itinerary-title {
+  font-weight: 700;
+}
+
+.bonus-index__itinerary-status {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.bonus-index__empty {
+  font-weight: 600;
+  background: linear-gradient(120deg, #0f172a 0%, #111827 60%, #0b1020 100%);
+  color: #f8fafc;
+}
+
+.bonus-index__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.1rem;
+}
+
+.bonus-index__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bonus-index__card-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.bonus-index__card-subtitle {
+  font-size: 0.9rem;
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.bonus-index__card-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.bonus-index__card-button--locked {
+  --button-bg: #94a3b8;
+  --button-bg-hover: #94a3b8;
+  --button-color: #f8fafc;
+  --button-shadow: none;
+  --button-shadow-hover: none;
+}
+
+@media (max-width: 640px) {
+  .bonus-index__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bonus-index__resume-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

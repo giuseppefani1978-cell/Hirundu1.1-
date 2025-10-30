@@ -1,214 +1,126 @@
-// src/features/bonus/BonusIndex.tsx
 import React from "react";
+import { BONUS_MAPS, type BonusKey } from "./bonusData";
+import { openBonusMap } from "./bonusNavigation";
+import { useBonusProgress } from "./useBonusProgress";
+import type { ItineraryStep } from "./bonusStorage";
+import "./BonusIndex.css";
 
-// @ts-ignore – module JS existant
-import { BONUS_MAPS, getUnlockedKeys, openBonusMap, getResumeTarget } from "../../bonus_maps.js";
-
-type BonusKey = keyof typeof BONUS_MAPS;
-
-// ---- utilitaire : niveau à reprendre (1..3), en bouclant sur 1 si tout est fait
-function getResumeLevel(): number {
-  try {
-    const t = getResumeTarget(); // { id, name, key, done, unlocked, href }
-    if (t && typeof t.id === "number") return Math.max(1, Math.min(3, t.id));
-  } catch {}
-  return 1;
-}
+const ALL_KEYS = Object.keys(BONUS_MAPS) as BonusKey[];
 
 export default function BonusIndex() {
-  const [unlocked, setUnlocked] = React.useState<BonusKey[]>([]);
-  const [nextLevel, setNextLevel] = React.useState<number>(getResumeLevel());
-
-  React.useEffect(() => {
-    let mounted = true;
-
-    const read = () => {
-      try {
-        const keys: string[] = getUnlockedKeys();
-        if (!mounted) return;
-        setUnlocked(
-          (keys.filter((k) => BONUS_MAPS[k as BonusKey]) as BonusKey[]) || []
-        );
-        setNextLevel(getResumeLevel());
-      } catch {
-        if (!mounted) return;
-        setUnlocked([]);
-        setNextLevel(getResumeLevel());
-      }
-    };
-
-    read();
-    const onStorage = () => read();
-    const onVisible = () => document.visibilityState === "visible" && read();
-
-    window.addEventListener("storage", onStorage);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      mounted = false;
-      window.removeEventListener("storage", onStorage);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
+  const { unlockedKeys, resumeTarget, itinerary } = useBonusProgress();
+  const unlockedSet = React.useMemo(() => new Set(unlockedKeys), [unlockedKeys]);
+  const nextLevel = resumeTarget?.id ?? 1;
 
   const handleOpen = (key: BonusKey) => {
     try {
       openBonusMap(key);
-    } catch (e) {
-      alert("Impossible d’ouvrir la carte bonus.");
-      console.error(e);
+    } catch (error) {
+      console.error(error);
+      if (typeof window !== "undefined") {
+        window.alert?.("Impossible d’ouvrir la carte bonus.");
+      }
     }
   };
 
-  const allKeys = Object.keys(BONUS_MAPS) as BonusKey[];
-  const isUnlocked = (k: BonusKey) => unlocked.includes(k);
-
   const goHunt = () => {
+    if (typeof window === "undefined") return;
     const level = Math.max(1, Math.min(3, nextLevel));
-    // On conserve le même schéma que ta page de jeu
     window.location.assign(`/index.html?level=${level}`);
   };
 
   return (
-    <div style={{ fontFamily: "system-ui", maxWidth: 980, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ margin: "0 0 12px" }}>🎁 Bonus déverrouillés</h1>
+    <section className="app-section bonus-index__root">
+      <header className="bonus-index__header">
+        <div>
+          <h1 className="bonus-index__title">🎁 Bonus déverrouillés</h1>
+          <p className="bonus-index__lead">
+            Suis ta progression dans la chasse et ouvre les cartes partenaires débloquées.
+          </p>
+        </div>
         <button
           onClick={goHunt}
-          style={{
-            background: "#0b1020",
-            color: "#fff",
-            border: 0,
-            borderRadius: 12,
-            padding: "10px 14px",
-            fontWeight: 800,
-            boxShadow: "0 6px 18px rgba(0,0,0,.3)",
-            cursor: "pointer",
-          }}
+          className="app-button app-button--dark bonus-index__resume-button"
           title={`Reprendre la chasse (niv. ${nextLevel})`}
         >
           ↩︎ Reprendre la chasse (niv. {nextLevel})
         </button>
-      </div>
+      </header>
 
-      {/* Itinéraire */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 12,
-          marginBottom: 18,
-          background: "#fff",
-          border: "1px solid rgba(0,0,0,.08)",
-          borderRadius: 14,
-          padding: 12,
-        }}
-      >
-        <ItinCard n={1} done={localStorage.getItem("bonus_otranto_unlocked") === "1"} />
-        <ItinCard n={2} done={localStorage.getItem("level2_unlocked") === "true"} />
-        <ItinCard n={3} done={localStorage.getItem("level3_unlocked") === "true"} />
-      </div>
+      <Itinerary steps={itinerary} />
 
-      <p style={{ margin: "0 0 18px", opacity: 0.85 }}>
-        Ouvre les cartes réelles, retrouve les partenaires et scanne leurs QR.
-      </p>
-
-      {unlocked.length === 0 ? (
-        <div
-          style={{
-            background: "#0b1220",
-            color: "#fff",
-            padding: "14px 16px",
-            borderRadius: 12,
-            marginBottom: 14,
-          }}
-        >
+      {unlockedKeys.length === 0 ? (
+        <div className="surface-card bonus-index__empty" role="status">
           Aucun bonus débloqué pour l’instant. Gagne des niveaux pour révéler les cartes !
         </div>
       ) : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
-          gap: 14,
-        }}
-      >
-        {allKeys.map((k) => {
-          const cfg = BONUS_MAPS[k];
-          const unlockedFlag = isUnlocked(k);
+      <div className="bonus-index__grid">
+        {ALL_KEYS.map((key) => {
+          const cfg = BONUS_MAPS[key];
+          const unlocked = unlockedSet.has(key);
+          const buttonClass = unlocked
+            ? "app-button bonus-index__card-button"
+            : "app-button bonus-index__card-button bonus-index__card-button--locked";
           return (
-            <div
-              key={k}
-              style={{
-                border: "1px solid rgba(0,0,0,.12)",
-                borderRadius: 12,
-                padding: 12,
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02))",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>{cfg.title}</div>
-              <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 10 }}>
-                {cfg.markerText || "Carte bonus"}
-              </div>
-
+            <article key={key} className="surface-card bonus-index__card">
+              <div className="bonus-index__card-title">{cfg.title}</div>
+              <div className="bonus-index__card-subtitle">{cfg.markerText || "Carte bonus"}</div>
               <button
-                onClick={() => unlockedFlag && handleOpen(k)}
-                disabled={!unlockedFlag}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: 0,
-                  borderRadius: 10,
-                  cursor: unlockedFlag ? "pointer" : "not-allowed",
-                  background: unlockedFlag ? "#0ea5e9" : "#9ca3af",
-                  color: "#fff",
-                  fontWeight: 700,
-                }}
+                type="button"
+                onClick={() => unlocked && handleOpen(key)}
+                disabled={!unlocked}
+                className={buttonClass}
               >
-                {unlockedFlag ? "🗺️ Ouvrir la carte" : "🔒 Non débloquée"}
+                {unlocked ? "🗺️ Ouvrir la carte" : "🔒 Non débloquée"}
               </button>
-            </div>
+            </article>
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function Itinerary({ steps }: { steps: ItineraryStep[] }) {
+  return (
+    <div className="surface-card bonus-index__itinerary">
+      {steps.map((step) => (
+        <ItineraryCard key={step.id} step={step} />
+      ))}
     </div>
   );
 }
 
-function ItinCard({ n, done }: { n: number; done: boolean }) {
+function ItineraryCard({ step }: { step: ItineraryStep }) {
+  const statusLabel = step.completed
+    ? "Terminé — rejouer"
+    : step.available
+    ? "Prochaine étape — jouer"
+    : "À déverrouiller";
+  const cardClass = [
+    "bonus-index__itinerary-card",
+    step.completed ? "bonus-index__itinerary-card--done" : "",
+    !step.available ? "bonus-index__itinerary-card--locked" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const numberClass = [
+    "bonus-index__itinerary-number",
+    step.completed ? "bonus-index__itinerary-number--done" : "",
+    !step.available ? "bonus-index__itinerary-number--locked" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 12,
-        background: done ? "rgba(16,185,129,.08)" : "rgba(2,132,199,.06)",
-        border: "1px solid rgba(0,0,0,.06)",
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-      }}
-    >
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 999,
-          background: done ? "#10b981" : "#0284c7",
-          color: "#fff",
-          fontWeight: 800,
-          display: "grid",
-          placeItems: "center",
-          flex: "0 0 auto",
-        }}
-      >
-        {n}
-      </div>
-      <div style={{ fontWeight: 700 }}>
-        {`Niv. ${n} — `}{n === 1 ? "Otranto" : n === 2 ? "Gallipoli" : "Lecce"}
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          {done ? "Terminé – rejouer" : "Prochaine étape — jouer"}
+    <div className={cardClass}>
+      <div className={numberClass}>{step.id}</div>
+      <div className="bonus-index__itinerary-content">
+        <div className="bonus-index__itinerary-title">
+          Niv. {step.id} — {step.name}
         </div>
+        <div className="bonus-index__itinerary-status">{statusLabel}</div>
       </div>
     </div>
   );

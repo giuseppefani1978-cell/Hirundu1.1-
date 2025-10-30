@@ -2,9 +2,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-// styles that your map needs (safe to keep even if RealMap is not visited)
+// Global styles & map dependencies
 import "leaflet/dist/leaflet.css";
 import "./leaflet-icons";
+import "./ui/styles.css";
 
 import App from "./app"; // <- LOWERCASE to match src/app.tsx
 
