@@ -166,7 +166,6 @@ activateBonusButtonIfUnlocked();
   }
 
   const hof = createHallOfFameController();
-  hof.attachHudLink();
   hof.ensureHashRouting();
   const scoreLive = ensureScoreLiveElement();
 
@@ -520,7 +519,7 @@ activateBonusButtonIfUnlocked();
       `Bonus: ${state.score.counts.pasticciotto || 0} Pasticciotto · ${state.score.counts.rustico || 0} Rustico · ${state.score.counts.caffe || 0} Caffè`,
       `Temps: ${fmtTime(elapsed)}`,
       ``,
-      `👉 check le Hall of Fame en bas du HUD.`,
+      `👉 Consulte le Hall of Fame depuis la page Bonus.`,
     ];
     ui.showSuccess(`${lines.join('\n')}`);
     ui.showReplay(true);

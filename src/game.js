@@ -10,6 +10,7 @@ import {
 } from './audio.js';
 import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
+import { addHallOfFameEntry, getHallOfFameBonusUrl } from './hof/storage.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -97,15 +98,7 @@ const BONUS_TYPES = {
 const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
 const SCORE = { STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0 };
 
-// ----- HOF local -----
-const HOF_KEY = 'salento_hof_v1';
-const HOF_SIZE = 10;
-function loadHof(){ try { return JSON.parse(localStorage.getItem(HOF_KEY)) || []; } catch { return []; } }
-function saveHof(list){ try { localStorage.setItem(HOF_KEY, JSON.stringify(list)); } catch {} }
-function addToHof(entry){
-  const hof = loadHof(); hof.push(entry); hof.sort((a,b)=> b.score - a.score);
-  const trimmed = hof.slice(0, HOF_SIZE); saveHof(trimmed); return trimmed;
-}
+// ----- HOF utilitaires -----
 function fmtTime(ms){
   const s = Math.max(0, Math.round(ms/1000));
   const m = Math.floor(s/60), r = s%60;
@@ -120,90 +113,6 @@ function getCountry(){
     return { code:region, flag, label:region };
   }catch{ return { code:'??', flag:'🏳️', label:'??' }; }
 }
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  })[m]);
-}
-
-// ------- UI HOF PANEL -------
-function formatBonusBreakdown(bb){
-  if (!bb) return '';
-  const P = bb.pasticciotto||0, R = bb.rustico||0, C = bb.caffe||0;
-  return `P:${P} • R:${R} • C:${C}`;
-}
-function ensureHofPanel(){
-  let panel = document.getElementById('__hof__');
-  if (panel) return panel;
-  panel = document.createElement('div');
-  panel.id = '__hof__';
-  panel.style.cssText = `
-    position:fixed; inset:0; z-index:10002; display:none;
-    background:linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.75));
-    color:#fff; font:14px system-ui; overflow:hidden;
-  `;
-  panel.innerHTML = `
-    <div style="height:100%;max-width:900px;margin:0 auto;display:flex;flex-direction:column;padding:16px">
-      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
-        <h2 style="margin:0;font:600 22px system-ui">🏆 Hall of Fame</h2>
-        <button id="__hof_close" type="button"
-          style="background:#fff;color:#000;border:0;border-radius:10px;padding:10px 14px;cursor:pointer">Fermer</button>
-      </div>
-      <div id="__hof_table_wrap"
-           style="margin-top:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);
-                  border-radius:12px;overflow:auto;flex:1;min-height:0">
-        <div id="__hof_table"></div>
-      </div>
-      <div style="margin-top:10px;opacity:.8;font-size:12px">Les scores sont stockés localement sur cet appareil.</div>
-    </div>
-  `;
-  document.body.appendChild(panel);
-  panel.querySelector('#__hof_close').addEventListener('click', ()=> {
-    panel.style.display='none';
-    history.replaceState(null, '', location.pathname);
-  });
-  return panel;
-}
-function renderHofTable(list){
-  const host = ensureHofPanel();
-  const box = host.querySelector('#__hof_table');
-  const rows = list.map((e,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${e.country?.flag||'🏳️'}</td>
-      <td>${escapeHtml(e.name)}</td>
-      <td class="score">${e.score}</td>
-      <td>${e.stars}★</td>
-      <td>${e.bonuses}</td>
-      <td>${formatBonusBreakdown(e.bonusBreakdown)}</td>
-      <td>${e.hits}</td>
-      <td>${fmtTime(e.time)}</td>
-      <td>${new Date(e.date).toLocaleString()}</td>
-    </tr>`).join('');
-  box.innerHTML = `
-    <style>
-      #__hof__ table{width:100%;border-collapse:collapse;font-size:13px}
-      #__hof__ thead th{position:sticky;top:0;background:rgba(0,0,0,.5);backdrop-filter:saturate(120%) blur(2px)}
-      #__hof__ th, #__hof__ td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-      #__hof__ td.score{font-weight:700}
-      @media (max-width:480px){
-        #__hof__ table{font-size:12px}
-        #__hof__ th, #__hof__ td{padding:6px 8px}
-      }
-    </style>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th><th>Pays</th><th>Joueur</th><th>Score</th><th>Étoiles</th>
-          <th>Bonus</th><th>Détail bonus</th><th>Coups</th><th>Temps</th><th>Date</th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr><td colspan="10" style="opacity:.8">Aucun score pour l’instant.</td></tr>`}</tbody>
-    </table>
-  `;
-  host.style.display = 'block';
-}
-function openHofPanel(){ renderHofTable(loadHof()); }
 
 // ------------------------
 // BOOT (chasse uniquement)
@@ -232,9 +141,6 @@ export function boot(){
     replayBtn.style.bottom = '16px';
     replayBtn.style.zIndex = '10001';
   }
-
-  // Lien Hall of Fame dans le HUD (en bas)
-  ensureHofLinkInHud();
 
   // Score live (top-right)
   ensureScoreLive();
@@ -457,7 +363,7 @@ export function boot(){
       bonusScore,
       bonusBreakdown: { ...pickedCounts }
     };
-    addToHof(entry);
+    addHallOfFameEntry(entry);
 
     const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
     const lines = [
@@ -466,7 +372,7 @@ export function boot(){
       `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
       `Temps: ${fmtTime(entry.time)}`,
       ``,
-      `👉 check le Hall of Fame en bas du HUD.`
+      `👉 Consulte le Hall of Fame depuis la page Bonus.`
     ];
     ui.showSuccess(lines.join('\n'));
     ui.showReplay(true);
@@ -868,13 +774,21 @@ try { lsSet && lsSet('player_name', name); } catch {}
   }
 
   // hash → actions : #hof | #unlock-otranto | #bonus-otranto
-  window.addEventListener('hashchange', ()=>{
-    if (location.hash === '#hof') return openHofPanel();
+  const handleHash = () => {
+    if (location.hash === '#hof') {
+      try {
+        window.location.assign(getHallOfFameBonusUrl());
+      } catch (error) {
+        console.warn('[GAME] redirection vers le Hall of Fame impossible', error);
+      }
+      return;
+    }
     if (location.hash === '#unlock-otranto'){
       unlockOtrantoBonus();
       document.dispatchEvent(new Event('otranto:unlocked'));
       ensureBonusQuickLinkInHud();
       ui.showSuccess('✅ Carte bonus Otranto débloquée.');
+      return;
     }
     if (location.hash === '#bonus-otranto'){
       if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
@@ -883,24 +797,9 @@ try { lsSet && lsSet('player_name', name); } catch {}
       }
       openBonusMap();
     }
-  });
-  // check initial si on arrive déjà avec un hash
-  (function(){
-    if (location.hash === '#hof') openHofPanel();
-    if (location.hash === '#unlock-otranto'){
-      unlockOtrantoBonus();
-      document.dispatchEvent(new Event('otranto:unlocked'));
-      ensureBonusQuickLinkInHud();
-      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
-    }
-    if (location.hash === '#bonus-otranto'){
-      if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
-        unlockOtrantoBonus();
-        document.dispatchEvent(new Event('otranto:unlocked'));
-      }
-      openBonusMap();
-    }
-  })();
+  };
+  window.addEventListener('hashchange', handleHash);
+  handleHash();
 
   // helpers UI
   function ensureScoreLive(){
@@ -924,25 +823,6 @@ try { lsSet && lsSet('player_name', name); } catch {}
     const el = document.getElementById('__score_live');
     if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
   }
-  function ensureHofLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    let link = document.getElementById('__hof_in_hud');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__hof_in_hud';
-      link.type='button';
-      link.textContent = '🏆 Hall of Fame';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#fff; color:#000; border:0; border-radius:10px; padding:6px 10px;
-        font:600 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      link.addEventListener('click', openHofPanel);
-    }
-  }
-
   function ensureBonusQuickLinkInHud(){
     const hud = document.getElementById('hud');
     if (!hud) return;
