@@ -1,10 +1,14 @@
+import type { Partner } from "../qr/services/partners";
+import type { Poi } from "../qr/services/pois";
+
 export type BonusMapConfig = {
   title: string;
   lat: number;
   lng: number;
   zoom: number;
   markerText?: string;
-  partners: unknown[];
+  partnerIds: Partner["id"][];
+  poiIds: Poi["id"][];
 };
 
 export const BONUS_MAPS = {
@@ -14,7 +18,25 @@ export const BONUS_MAPS = {
     lng: 18.4863,
     zoom: 14,
     markerText: "Tu as libéré Otranto ! 🌊",
-    partners: [],
+    partnerIds: [
+      "otranto_castle",
+      "otranto_cathedral",
+      "otranto_beach",
+      "bar_caffe_mengoli",
+      "bar_porta_terra",
+      "bar_laltro_baffo",
+      "hotel_palazzo_papaleo",
+      "shop_artigiani",
+      "ristorante_hydro",
+      "beach_grotte",
+    ],
+    poiIds: [
+      "poi_castle",
+      "poi_cathedral",
+      "poi_beach_alimini",
+      "poi_caffe_mengoli",
+      "poi_grotta_poesia",
+    ],
   },
   gallipoli: {
     title: "Gallipoli",
@@ -22,7 +44,8 @@ export const BONUS_MAPS = {
     lng: 17.9889,
     zoom: 14,
     markerText: "Bravo ! Aracne triomphe à Gallipoli ! 🕊️",
-    partners: [],
+    partnerIds: [],
+    poiIds: [],
   },
   lecce: {
     title: "Lecce",
@@ -30,7 +53,8 @@ export const BONUS_MAPS = {
     lng: 18.175,
     zoom: 13,
     markerText: "Bienvenue à Lecce – le cœur du Salento ! ☀️",
-    partners: [],
+    partnerIds: [],
+    poiIds: [],
   },
 } as const satisfies Record<string, BonusMapConfig>;
 
