@@ -1,9 +1,11 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
 import { openBonusMap } from "./bonusNavigation";
 import { useBonusProgress } from "./useBonusProgress";
 import type { BonusProgressEntry, ItineraryStep } from "./bonusStorage";
 import "./BonusIndex.css";
+import HallOfFameSection from "./HallOfFameSection";
 
 type BonusCardModel = {
   key: BonusKey;
@@ -17,6 +19,7 @@ type BonusCardModel = {
 
 export default function BonusIndex() {
   const { unlockedKeys, resumeTarget, itinerary, progress } = useBonusProgress();
+  const location = useLocation();
 
   const unlockedSet = React.useMemo(() => new Set(unlockedKeys), [unlockedKeys]);
   const progressByKey = React.useMemo(() => {
@@ -75,6 +78,32 @@ export default function BonusIndex() {
     window.location.assign(`/index.html?level=${level}`);
   };
 
+  const highlightHallOfFame = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.has("hof");
+  }, [location.search]);
+
+  React.useEffect(() => {
+    if (!highlightHallOfFame) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const { pathname, search, hash } = window.location;
+    if (!hash.includes("?hof")) {
+      return;
+    }
+
+    const cleanedHash = hash.replace("?hof", "");
+    if (cleanedHash === hash) {
+      return;
+    }
+
+    window.history.replaceState(null, "", `${pathname}${search}${cleanedHash}`);
+  }, [highlightHallOfFame]);
+
   return (
     <section className="app-section bonus-index__root">
       <header className="bonus-index__header">
@@ -112,6 +141,8 @@ export default function BonusIndex() {
           <BonusCard key={card.key} card={card} onOpen={handleOpen} />
         ))}
       </div>
+
+      <HallOfFameSection highlight={highlightHallOfFame} />
     </section>
   );
 }

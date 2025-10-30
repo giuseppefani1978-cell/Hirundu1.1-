@@ -1,5 +1,6 @@
 import { t, poiName, poiInfo } from '../../i18n.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
+import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
   startMusic,
   stopMusic,
@@ -50,8 +51,171 @@ import {
 
 const TWO_PI = Math.PI * 2;
 
-// ====== PATCH: cible carte Leaflet (ouvre l'app React/Leaflet) ======
-const MAP_PAGE_URL = '/app.html#otranto';
+const BONUS_LINK_ID = '__otranto_bonus_link';
+const BONUS_STORAGE_KEYS = new Set([
+  'bonus_unlocked',
+  'bonus_unlocked_v1',
+  'bonus_otranto_unlocked',
+  'otranto_bonus_unlocked',
+  'level1_won',
+]);
+
+function safeSetLocalStorage(key, value) {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    debugLog('ls:set fail', key, error);
+  }
+}
+
+function readLegacyBonusFlag() {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return false;
+  }
+  try {
+    const keys = ['bonus_otranto_unlocked', 'otranto_bonus_unlocked', 'level1_won'];
+    return keys.some((key) => {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return false;
+      if (raw === 'true' || raw === '1') return true;
+      try {
+        return Boolean(JSON.parse(raw));
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
+
+function hasUnlockedOtrantoBonus() {
+  try {
+    if (isBonusUnlocked?.('otranto')) {
+      return true;
+    }
+  } catch (error) {
+    debugLog('bonus check failed', error);
+  }
+  return readLegacyBonusFlag();
+}
+
+function removeBonusQuickLink() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const existing = document.getElementById(BONUS_LINK_ID);
+  if (existing?.parentElement) {
+    existing.parentElement.removeChild(existing);
+  }
+}
+
+function ensureBonusQuickLinkInHud() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const hud = document.getElementById('hud');
+  if (!hud) {
+    return;
+  }
+
+  let link = document.getElementById(BONUS_LINK_ID);
+  if (!link) {
+    link = document.createElement('button');
+    link.id = BONUS_LINK_ID;
+    link.type = 'button';
+    link.textContent = '🎁 Bonus Otranto';
+    link.style.cssText = `
+      margin-top:8px; width:100%;
+      background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
+      font:700 12px system-ui; cursor:pointer;
+    `;
+    link.addEventListener('click', () => {
+      try {
+        openBonusMap('otranto');
+      } catch (error) {
+        console.warn('[game] unable to open bonus map', error);
+        window.location.assign('/app.html#/poi/otranto/realmap');
+      }
+    });
+    hud.appendChild(link);
+  }
+  link.disabled = false;
+}
+
+function activateBonusButtonIfUnlocked() {
+  if (!hasUnlockedOtrantoBonus()) {
+    removeBonusQuickLink();
+    return;
+  }
+  ensureBonusQuickLinkInHud();
+}
+
+function dispatchStorageEvent(key, value) {
+  if (typeof window === 'undefined' || typeof StorageEvent === 'undefined') {
+    return;
+  }
+  try {
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key,
+        newValue: value,
+        storageArea: window.localStorage,
+      }),
+    );
+  } catch (error) {
+    debugLog('storage dispatch failed', error);
+  }
+}
+
+function unlockOtrantoBonus() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  safeSetLocalStorage('bonus_unlocked', '1');
+  safeSetLocalStorage('bonus_otranto_unlocked', 'true');
+  safeSetLocalStorage('otranto_bonus_unlocked', 'true');
+  safeSetLocalStorage('level1_won', 'true');
+  safeSetLocalStorage('__toast_next__', 'otranto');
+
+  try {
+    unlockBonus?.('otranto');
+  } catch (error) {
+    debugLog('unlockBonus failed', error);
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent('bonus:unlock', { detail: { key: 'otranto' } }));
+  } catch (error) {
+    debugLog('bonus unlock dispatch failed', error);
+  }
+
+  try {
+    document.dispatchEvent(new Event('otranto:unlocked'));
+  } catch (error) {
+    debugLog('otranto event dispatch failed', error);
+  }
+
+  dispatchStorageEvent('bonus_otranto_unlocked', 'true');
+  dispatchStorageEvent('bonus_unlocked_v1', 'true');
+
+  activateBonusButtonIfUnlocked();
+}
+
+function storePlayerName(name) {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return;
+  }
+  try {
+    window.localStorage.setItem('player_name', name);
+  } catch (error) {
+    debugLog('store player name failed', error);
+  }
+}
 
 function createScoreData() {
   return {
@@ -142,9 +306,22 @@ export function boot() {
 
   ui.initUI();
   removeVictoryCTA();  
-  setupVictoryCTAHandlers();         // nettoie toute trace précédente (ex: refresh)
-activateBonusButtonIfUnlocked();
-  activateBonusButtonIfUnlocked(); // PATCH: rend le bouton A actif si bonus dispo
+  setupVictoryCTAHandlers(); // nettoie toute trace précédente (ex: refresh)
+
+  const handleStorage = (event) => {
+    if (!event || (event.key && !BONUS_STORAGE_KEYS.has(event.key))) {
+      return;
+    }
+    activateBonusButtonIfUnlocked();
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('bonus:unlock', activateBonusButtonIfUnlocked);
+    window.addEventListener('otranto:unlocked', activateBonusButtonIfUnlocked);
+  }
+
+  activateBonusButtonIfUnlocked();
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
@@ -166,7 +343,6 @@ activateBonusButtonIfUnlocked();
   }
 
   const hof = createHallOfFameController();
-  hof.attachHudLink();
   hof.ensureHashRouting();
   const scoreLive = ensureScoreLiveElement();
 
@@ -520,7 +696,7 @@ activateBonusButtonIfUnlocked();
       `Bonus: ${state.score.counts.pasticciotto || 0} Pasticciotto · ${state.score.counts.rustico || 0} Rustico · ${state.score.counts.caffe || 0} Caffè`,
       `Temps: ${fmtTime(elapsed)}`,
       ``,
-      `👉 check le Hall of Fame en bas du HUD.`,
+      `👉 Consulte le Hall of Fame depuis la page Bonus.`,
     ];
     ui.showSuccess(`${lines.join('\n')}`);
     ui.showReplay(true);
@@ -529,14 +705,7 @@ activateBonusButtonIfUnlocked();
   function triggerWin() {
     state.mode = 'win';
     finalizeRun({ won: true });
-    try {
-  localStorage.setItem('bonus_unlocked', '1');
-  localStorage.setItem('bonus_otranto_unlocked', '1');
-  // Informe bonus_transition.js d'attacher le CTA à l’overlay de victoire
-  window.dispatchEvent(new CustomEvent('otranto:unlocked', { detail: { city: 'otranto' } }));
-} catch {}
-
-activateBonusButtonIfUnlocked();
+    unlockOtrantoBonus();
 
     stopMusic();
     playFinaleLong();
@@ -584,8 +753,7 @@ activateBonusButtonIfUnlocked();
       const name = prompt('Ton nom/pseudo ?') || 'Joueur';
       state.score.playerName = (name || 'Joueur').trim() || 'Joueur';
       state.score.country = getCountry();
-      localStorage.setItem('player_name', name);
-try { lsSet && lsSet('player_name', name); } catch {}
+      storePlayerName(name);
 
       ui.hideOverlay();
       ui.showTouch(true);
