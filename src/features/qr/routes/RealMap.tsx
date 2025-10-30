@@ -104,7 +104,18 @@ export default function RealMap() {
   const center: LatLngTuple = [cfg.lat, cfg.lng];
   const inner = circleToPolygon(center[0], center[1], RADIUS_KM);
   const innerHole = [...inner].reverse();
-  const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
+const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
+
+  const { itinerary } = useBonusProgress();
+  const poiIds = useMemo(() => relevantPois.map((poi) => poi.id), [relevantPois]);
+  const passport = usePassport(key, poiIds);
+  const passportProgress = useMemo(() =>
+    computePassportProgress({
+      itinerary,
+      visitedPoiIds: passport.visited,
+      pois: relevantPois,
+    }),
+  [itinerary, passport.visited, relevantPois]);
 
   const { itinerary } = useBonusProgress();
   const poiIds = useMemo(() => relevantPois.map((poi) => poi.id), [relevantPois]);
