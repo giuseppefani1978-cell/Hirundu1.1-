@@ -701,9 +701,9 @@ export function boot(){
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
 
     try {
-      unlockBonus(LEVEL_ID, 'qr_bonus_lecce');
+      unlockLecceBonus();
       ui.showCTA((t.level3?.open_bonus || 'Scanner le QR bonus à Lecce'), () => {
-        openBonusMap(LEVEL_ID, 'qr_bonus_lecce');
+        openBonusMap('lecce');
       });
     } catch {}
   }
@@ -766,9 +766,8 @@ export function boot(){
     }
     if (location.hash === '#bonus-lecce') {
       try {
-        unlockBonus(LEVEL_ID, 'qr_bonus_lecce');
-        ensureBonusQuickLinkInHud();
-        openBonusMap(LEVEL_ID, 'qr_bonus_lecce');
+        unlockLecceBonus();
+        openBonusMap('lecce');
       } catch {}
     }
   };
@@ -797,10 +796,35 @@ export function boot(){
     const el = document.getElementById('__score_live');
     if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
   }
+
+  function unlockLecceBonus(){
+    try { unlockBonus('lecce'); } catch {}
+    try {
+      const KEY = 'bonus_unlocked_v1';
+      let obj;
+      try { obj = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { obj = {}; }
+      if (!obj || typeof obj !== 'object') obj = {};
+      if (obj.lecce !== true) {
+        obj.lecce = true;
+        localStorage.setItem(KEY, JSON.stringify(obj));
+      }
+      localStorage.setItem('lecce_bonus_unlocked', 'true');
+      localStorage.setItem('bonus_lecce_unlocked', 'true');
+      try { window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: JSON.stringify(obj) })); } catch {}
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'lecce_bonus_unlocked', newValue: 'true' })); } catch {}
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'bonus_lecce_unlocked', newValue: 'true' })); } catch {}
+      try { document.dispatchEvent(new Event('lecce:unlocked')); } catch {}
+      try { ensureBonusQuickLinkInHud(); } catch {}
+      console.log('[L3] ✅ Lecce débloqué ->', localStorage.getItem(KEY));
+    } catch (e) {
+      console.warn('⚠️ unlockLecceBonus() failed', e);
+    }
+  }
+
   function ensureBonusQuickLinkInHud(){
     const hud = document.getElementById('hud');
     if (!hud) return;
-    if (!isBonusUnlocked(LEVEL_ID, 'qr_bonus_lecce')) return;
+    if (!isBonusUnlocked('lecce')) return;
     let link = document.getElementById('__lecce_bonus_link');
     if (!link){
       link = document.createElement('button');
@@ -813,7 +837,7 @@ export function boot(){
         font:700 12px system-ui; cursor:pointer;
       `;
       hud.appendChild(link);
-      link.addEventListener('click', () => openBonusMap(LEVEL_ID, 'qr_bonus_lecce'));
+      link.addEventListener('click', () => openBonusMap('lecce'));
     }
   }
 }
