@@ -1,0 +1,168 @@
+.bonus-index__root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 16px 24px;
+}
+
+.bonus-index__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bonus-index__title {
+  margin: 0 0 12px;
+  font-size: 1.9rem;
+}
+
+.bonus-index__resume-button {
+  background: #0b1020;
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bonus-index__resume-button:hover,
+.bonus-index__resume-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.bonus-index__itinerary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.bonus-index__itinerary-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(2, 132, 199, 0.06);
+}
+
+.bonus-index__itinerary-card--done {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.bonus-index__itinerary-card--locked {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.bonus-index__itinerary-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #fff;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.bonus-index__itinerary-number--done {
+  background: #10b981;
+}
+
+.bonus-index__itinerary-number--locked {
+  background: #64748b;
+}
+
+.bonus-index__itinerary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bonus-index__itinerary-title {
+  font-weight: 700;
+}
+
+.bonus-index__itinerary-status {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.bonus-index__lead {
+  margin: 0 0 18px;
+  opacity: 0.85;
+}
+
+.bonus-index__empty {
+  background: #0b1220;
+  color: #fff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.bonus-index__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.bonus-index__card {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bonus-index__card-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.bonus-index__card-subtitle {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.bonus-index__card-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bonus-index__card-button--active {
+  cursor: pointer;
+  background: #0ea5e9;
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.35);
+}
+
+.bonus-index__card-button--active:hover,
+.bonus-index__card-button--active:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(14, 165, 233, 0.4);
+}
+
+.bonus-index__card-button--locked {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
