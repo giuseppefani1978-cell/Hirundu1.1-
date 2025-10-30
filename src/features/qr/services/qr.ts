@@ -1,5 +1,5 @@
 // Simple routeur d’actions QR. Tu peux brancher sur ton JSON si besoin.
-type QRAction =
+export type QRAction =
   | { type: "open-otranto-map" }
   | { type: "open-otranto-market" }
   | { type: "open-any"; path: string }
@@ -24,4 +24,3 @@ export function parseQrPayload(text: string): QRAction {
   // fallback: Raw
   return { type: "unknown", raw: t };
 }
-

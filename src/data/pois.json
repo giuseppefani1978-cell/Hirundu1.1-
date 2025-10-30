@@ -1,1 +1,47 @@
-
+[
+  {
+    "id": "poi_castle",
+    "label": "Castello Aragonese",
+    "lat": 40.1487,
+    "lng": 18.4855,
+    "radius": 80,
+    "partnerId": "otranto_castle",
+    "category": "monument"
+  },
+  {
+    "id": "poi_cathedral",
+    "label": "Cattedrale di Otranto",
+    "lat": 40.1479,
+    "lng": 18.4844,
+    "radius": 70,
+    "partnerId": "otranto_cathedral",
+    "category": "monument"
+  },
+  {
+    "id": "poi_beach_alimini",
+    "label": "Spiaggia degli Alimini",
+    "lat": 40.2069,
+    "lng": 18.4593,
+    "radius": 90,
+    "partnerId": "otranto_beach",
+    "category": "beach"
+  },
+  {
+    "id": "poi_caffe_mengoli",
+    "label": "Caffè Mengoli",
+    "lat": 40.149,
+    "lng": 18.4849,
+    "radius": 50,
+    "partnerId": "bar_caffe_mengoli",
+    "category": "bar"
+  },
+  {
+    "id": "poi_grotta_poesia",
+    "label": "Grotta della Poesia",
+    "lat": 40.2883,
+    "lng": 18.4317,
+    "radius": 120,
+    "partnerId": "beach_grotte",
+    "category": "beach"
+  }
+]
