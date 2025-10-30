@@ -21,9 +21,23 @@ async function boot() {
 
   switch (level) {
     case 3: {
-      // L3 expose startLevel3
+      // L3 expose startLevel3 dans certains builds legacy, sinon boot/start
       const mod = await import('../level3/level3_game.js');
-      mod.startLevel3?.();
+      const moduleApi = mod as Record<string, unknown>;
+      const maybeStartLevel3 = moduleApi.startLevel3;
+      if (typeof maybeStartLevel3 === 'function') {
+        (maybeStartLevel3 as () => void)();
+        break;
+      }
+      const maybeBoot = moduleApi.boot;
+      if (typeof maybeBoot === 'function') {
+        (maybeBoot as () => void)();
+        break;
+      }
+      const maybeStart = moduleApi.start;
+      if (typeof maybeStart === 'function') {
+        (maybeStart as () => void)();
+      }
       break;
     }
     case 2: {

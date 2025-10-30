@@ -14,7 +14,18 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "typeRoots": ["./node_modules/@types"],
+    "types": [
+      "estree",
+      "geojson",
+      "leaflet",
+      "offscreencanvas",
+      "prop-types",
+      "react",
+      "react-dom",
+      "use-sync-external-store"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
