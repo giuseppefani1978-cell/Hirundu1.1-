@@ -117,9 +117,32 @@ const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
     }),
   [itinerary, passport.visited, relevantPois]);
 
+  const { itinerary } = useBonusProgress();
+  const poiIds = useMemo(() => relevantPois.map((poi) => poi.id), [relevantPois]);
+  const passport = usePassport(key, poiIds);
+  const passportProgress = useMemo(
+    () =>
+      computePassportProgress({
+        itinerary,
+        visitedPoiIds: passport.visited,
+        pois: relevantPois,
+      }),
+    [itinerary, passport.visited, relevantPois]
+  );
+
+  const goToBonusHub = useCallback(() => {
+    navigate("/bonus");
+  }, [navigate]);
+
+  const goToMarket = useCallback(() => {
+    navigate(`/poi/${encodeURIComponent(key)}/market`);
+  }, [navigate, key]);
+
   const handleBack = () => {
     try {
-      window.dispatchEvent(new CustomEvent("salento:return", { detail: { from: key } }));
+      window.dispatchEvent(
+        new CustomEvent("salento:return", { detail: { from: key, target: "bonus" } })
+      );
     } catch (error) {
       console.warn("Échec de la notification de retour", error);
     }
@@ -127,12 +150,28 @@ const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/qr");
+      navigate("/bonus");
     }
   };
 
   return (
     <div className="real-map">
+      <nav className="real-map__actions" aria-label="Navigation bonus">
+        <button
+          type="button"
+          className="real-map__action-button real-map__action-button--bonus"
+          onClick={goToBonusHub}
+        >
+          🎁 Voir les bonus
+        </button>
+        <button
+          type="button"
+          className="real-map__action-button real-map__action-button--market"
+          onClick={goToMarket}
+        >
+          🛒 Marché &amp; Souvenirs
+        </button>
+      </nav>
       <MapContainer
         key={key}
         center={center}
@@ -202,7 +241,7 @@ const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
       />
 
       <button type="button" className="real-map__back" onClick={handleBack}>
-        ↩️ Retour à l’espace QR
+        ↩️ Retour à la page bonus
       </button>
     </div>
   );
