@@ -38,6 +38,11 @@ export function findPartnerById(id: string): Partner | undefined {
   return PARTNERS.find((partner) => partner.id === id);
 }
 
+export function findPartnerByName(name: string): Partner | undefined {
+  const target = name.trim().toLowerCase();
+  return PARTNERS.find((partner) => partner.name.toLowerCase() === target);
+}
+
 export function listPartnersByCategory(category: PartnerCategory): Partner[] {
   return PARTNERS.filter((partner) => partner.type === category);
 }

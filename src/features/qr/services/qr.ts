@@ -1,9 +1,12 @@
 // Simple routeur d’actions QR. Tu peux brancher sur ton JSON si besoin.
+import { findPartnerByQrId } from "./partners";
+
 export type QRAction =
   | { type: "open-otranto-map" }
   | { type: "open-otranto-market" }
   | { type: "open-any"; path: string }
   | { type: "badge"; name: string }
+  | { type: "partner"; partnerId: string }
   | { type: "unknown"; raw: string };
 
 export function parseQrPayload(text: string): QRAction {
@@ -15,6 +18,10 @@ export function parseQrPayload(text: string): QRAction {
   if (/^hirundu:\/\/badge\/(.+)/i.test(t)) {
     const m = t.match(/^hirundu:\/\/badge\/(.+)/i);
     return { type: "badge", name: decodeURIComponent(m?.[1] || "?" ) };
+  }
+  const partner = findPartnerByQrId(t);
+  if (partner) {
+    return { type: "partner", partnerId: partner.id };
   }
   if (/^hirundu:\/\/open\//i.test(t)) {
     // ex: hirundu://open//poi/otranto/realmap

@@ -34,9 +34,16 @@ const qrSlice = createSlice({
       state.lastScan = action.payload;
       state.error = undefined;
     },
-    scanFailed(state, action: PayloadAction<string>) {
+    scanFailed(state, action: PayloadAction<{ message: string; raw?: string }>) {
       state.status = "failed";
-      state.error = action.payload;
+      state.error = action.payload.message;
+      if (action.payload.raw) {
+        state.lastScan = {
+          raw: action.payload.raw,
+          action: { type: "unknown", raw: action.payload.raw },
+          scannedAt: new Date().toISOString(),
+        };
+      }
     },
     clearLastScan(state) {
       state.lastScan = undefined;

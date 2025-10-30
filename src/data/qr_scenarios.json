@@ -28,6 +28,13 @@
     "notes": "Utilise la route open:// pour tester la navigation libre."
   },
   {
+    "id": "partner_caffe_mengoli",
+    "label": "Partenaire Caffè Mengoli",
+    "payload": "QR_CAFFE_MENGOLI",
+    "expectedAction": { "type": "partner", "partnerId": "bar_caffe_mengoli" },
+    "notes": "Simule le scan direct d’un QR partenaire pour accéder aux vues marché/carte."
+  },
+  {
     "id": "unknown_debug",
     "label": "QR inconnu pour tests d’erreur",
     "payload": "hirundu://unknown/payload",
