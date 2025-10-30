@@ -10,7 +10,7 @@ type AppLayoutProps = {
 const NAV_LINKS = [
   { to: "/qr", label: "QR Hub", icon: "🔍" },
   { to: "/bonus", label: "Bonus", icon: "🎁" },
-  { to: "/poi/otranto/market", label: "Marché Otranto", icon: "🏪" },
+  { to: "/poi/otranto/market", label: "Marché & Souvenirs", icon: "🏪" },
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {

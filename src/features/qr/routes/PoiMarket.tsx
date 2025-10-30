@@ -61,7 +61,7 @@ export default function PoiMarket() {
     <section className="app-section poi-market">
       <header className="poi-market__header">
         <div className="poi-market__header-copy">
-          <h1 className="poi-market__title">🛒 Marché de {cfg.title}</h1>
+          <h1 className="poi-market__title">🛒 Marché &amp; Souvenirs de {cfg.title}</h1>
           <p className="poi-market__subtitle">
             Retrouve ici tous les partenaires fictifs associés à la carte bonus et leurs récompenses
             pour préparer les tests terrain.
