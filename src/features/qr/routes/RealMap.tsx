@@ -143,11 +143,7 @@ export default function RealMap() {
       console.warn("Échec de la notification de retour", error);
     }
 
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/bonus");
-    }
+    navigate("/bonus");
   };
 
   return (

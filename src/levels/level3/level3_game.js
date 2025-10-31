@@ -826,10 +826,21 @@ export function boot(){
     }
   }
 
+  function hasLecceBonusUnlocked() {
+    if (isBonusUnlocked('lecce')) return true;
+    try {
+      const legacy = localStorage.getItem('bonus_lecce_unlocked') || localStorage.getItem('lecce_bonus_unlocked');
+      if (legacy === 'true' || legacy === '1') {
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
   function ensureBonusQuickLinkInHud(){
     const hud = document.getElementById('hud');
     if (!hud) return;
-    if (!isBonusUnlocked('lecce')) return;
+    if (!hasLecceBonusUnlocked()) return;
     let link = document.getElementById('__lecce_bonus_link');
     if (!link){
       link = document.createElement('button');

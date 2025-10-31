@@ -33,6 +33,106 @@ function collectHallOfFameKeys() {
   return [...discovered];
 }
 
+const LEGACY_LIST_KEYS = ['entries', 'list', 'scores', 'runs', 'records', 'items', 'values'];
+
+function normalizeBonusBreakdown(raw) {
+  if (!raw) return undefined;
+  if (typeof raw === 'object') return raw;
+  if (typeof raw !== 'string') return undefined;
+
+  const result = { pasticciotto: 0, rustico: 0, caffe: 0 };
+  const tokens = raw.split(/[•,|]/);
+  tokens.forEach((token) => {
+    const cleaned = token.trim();
+    if (!cleaned) return;
+    const match = cleaned.match(/(p|r|c)[^0-9]*(\d+)/i);
+    if (!match) return;
+    const [, kind, amount] = match;
+    const value = Number.parseInt(amount, 10);
+    if (!Number.isFinite(value)) return;
+    const key = kind.toLowerCase();
+    if (key === 'p') result.pasticciotto = value;
+    if (key === 'r') result.rustico = value;
+    if (key === 'c') result.caffe = value;
+  });
+  return result;
+}
+
+function normalizeEntry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const entry = { ...raw };
+
+  if (typeof entry.name !== 'string' || !entry.name.trim()) {
+    const fallbackName =
+      typeof raw.player === 'string'
+        ? raw.player
+        : typeof raw.alias === 'string'
+        ? raw.alias
+        : 'Joueur';
+    entry.name = fallbackName;
+  }
+
+  const coerceNumber = (value, fallback = 0) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  };
+
+  if (!Number.isFinite(entry.score)) {
+    entry.score = coerceNumber(raw.score ?? raw.points ?? raw.total ?? raw.value, 0);
+  }
+  if (!Number.isFinite(entry.stars)) {
+    entry.stars = coerceNumber(raw.stars ?? raw.progress ?? raw.progression, 0);
+  }
+  if (!Number.isFinite(entry.bonuses)) {
+    entry.bonuses = coerceNumber(raw.bonuses ?? raw.bonus ?? raw.bonusCount, 0);
+  }
+  if (!Number.isFinite(entry.hits)) {
+    entry.hits = coerceNumber(raw.hits ?? raw.moves ?? raw.steps, 0);
+  }
+  if (!Number.isFinite(entry.time)) {
+    entry.time = coerceNumber(raw.time ?? raw.duration ?? raw.ms ?? raw.elapsed, 0);
+  }
+
+  if (!entry.date || typeof entry.date !== 'string') {
+    entry.date = typeof raw.date === 'number' ? new Date(raw.date).toISOString() : new Date().toISOString();
+  }
+
+  if (entry.country && typeof entry.country === 'string') {
+    entry.country = { label: entry.country };
+  }
+
+  const breakdown = normalizeBonusBreakdown(entry.bonusBreakdown ?? raw.breakdown);
+  if (breakdown) {
+    entry.bonusBreakdown = breakdown;
+  }
+
+  return entry;
+}
+
+function extractEntryArray(parsed) {
+  if (Array.isArray(parsed)) {
+    return parsed;
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    return [];
+  }
+
+  for (const key of LEGACY_LIST_KEYS) {
+    const value = parsed[key];
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  const values = Object.values(parsed);
+  if (values.every((item) => item && typeof item === 'object')) {
+    return values;
+  }
+
+  return [];
+}
+
 function readRawList(key = DEFAULT_KEY) {
   if (typeof window === 'undefined' || !('localStorage' in window)) {
     return [];
@@ -41,7 +141,20 @@ function readRawList(key = DEFAULT_KEY) {
     const raw = window.localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const entries = extractEntryArray(parsed);
+    if (!entries.length) {
+      return [];
+    }
+    const normalized = entries
+      .map((item) => normalizeEntry(item))
+      .filter((item) => item !== null);
+    if (!normalized.length) {
+      return [];
+    }
+    if (!Array.isArray(parsed) || parsed.length !== normalized.length) {
+      writeRawList(normalized, key);
+    }
+    return normalized;
   } catch (error) {
     console.warn('[hof] unable to read hall of fame entries', error);
     return [];

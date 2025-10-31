@@ -809,10 +809,21 @@ export function boot(){
     const el = document.getElementById('__score_live');
     if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
   }
+  function hasGallipoliBonusUnlocked() {
+    if (isBonusUnlocked('gallipoli')) return true;
+    try {
+      const legacy = localStorage.getItem('gallipoli_bonus_unlocked');
+      if (legacy === 'true' || legacy === '1') {
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
   function ensureBonusQuickLinkInHud(){
     const hud = document.getElementById('hud');
     if (!hud) return;
-    if (!isBonusUnlocked('gallipoli')) return;
+    if (!hasGallipoliBonusUnlocked()) return;
     let link = document.getElementById('__gallipoli_bonus_link');
     if (!link){
       link = document.createElement('button');
