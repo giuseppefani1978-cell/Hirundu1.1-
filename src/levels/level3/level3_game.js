@@ -151,6 +151,7 @@ export function boot(){
 
   // Score live (top-right)
   ensureScoreLive();
+  try { ensureBonusQuickLinkInHud(); } catch {}
 
   // Images (portée locale à boot, comme L2) -------------
   const mapImg   = new Image();

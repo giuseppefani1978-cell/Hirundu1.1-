@@ -1,4 +1,5 @@
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
+import { PASSPORT_EVENT, PASSPORT_STORAGE_KEY } from "../qr/passport/passportStorage";
 
 const STORAGE_KEY = "bonus_unlocked_v1";
 export const BONUS_PROGRESS_EVENT = "bonus:updated";
@@ -239,4 +240,73 @@ export function broadcastBonusUpdate(): void {
   } catch {
     // ignore if CustomEvent is not available
   }
+}
+
+const PROGRESS_STORAGE_KEYS = [
+  STORAGE_KEY,
+  "player_name",
+  "bonus_unlocked",
+  "bonus_unlocked_v1",
+  "bonus_otranto_unlocked",
+  "otranto_bonus_unlocked",
+  "otranto_bonus_seen",
+  "bonus_gallipoli_unlocked",
+  "gallipoli_bonus_unlocked",
+  "gallipoli_bonus_seen",
+  "bonus_lecce_unlocked",
+  "lecce_bonus_unlocked",
+  "level1_won",
+  "level1_won_at",
+  "level2_won",
+  "level2_won_at",
+  "level3_won",
+  "level3_won_at",
+  "level2_unlocked",
+  "level2_unlocked_at",
+  "level3_unlocked",
+  "level3_unlocked_at",
+  "__toast_next__",
+];
+
+function dispatchStorageRemoval(key: string, storageArea: Storage): void {
+  if (typeof window === "undefined" || typeof StorageEvent === "undefined") {
+    return;
+  }
+  try {
+    const event = new StorageEvent("storage", {
+      key,
+      newValue: null,
+      oldValue: null,
+      storageArea,
+    });
+    window.dispatchEvent(event);
+  } catch {
+    // ignore
+  }
+}
+
+export function resetBonusProgress(): void {
+  const storage = getStorage();
+  if (!storage) return;
+
+  const keys = new Set(PROGRESS_STORAGE_KEYS);
+  keys.add(PASSPORT_STORAGE_KEY);
+
+  keys.forEach((key) => {
+    if (!key) return;
+    try {
+      storage.removeItem(key);
+      dispatchStorageRemoval(key, storage);
+    } catch {
+      // ignore
+    }
+  });
+
+  try {
+    window.dispatchEvent(new CustomEvent(PASSPORT_EVENT));
+  } catch {
+    // ignore
+  }
+
+  broadcastBonusUpdate();
 }

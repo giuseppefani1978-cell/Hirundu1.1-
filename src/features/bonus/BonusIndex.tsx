@@ -3,7 +3,11 @@ import { useLocation } from "react-router-dom";
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
 import { openBonusMap } from "./bonusNavigation";
 import { useBonusProgress } from "./useBonusProgress";
-import type { BonusProgressEntry, ItineraryStep } from "./bonusStorage";
+import {
+  resetBonusProgress,
+  type BonusProgressEntry,
+  type ItineraryStep,
+} from "./bonusStorage";
 import "./BonusIndex.css";
 import HallOfFameSection from "./HallOfFameSection";
 
@@ -78,6 +82,21 @@ export default function BonusIndex() {
     window.location.assign(`/index.html?level=${level}`);
   };
 
+  const handleResetProgress = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    const confirmed = window.confirm?.(
+      "Réinitialiser la progression ? Cela efface les niveaux débloqués, les bonus et le passeport QR. Le Hall of Fame reste inchangé."
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    resetBonusProgress();
+    window.alert?.(
+      "Progression remise à zéro. Tu peux relancer la chasse et saisir un nouveau nom si besoin."
+    );
+  }, []);
+
   const highlightHallOfFame = React.useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.has("hof");
@@ -119,13 +138,22 @@ export default function BonusIndex() {
           </p>
           <Summary totals={totals} resumeTarget={resumeTarget?.name} />
         </div>
-        <button
-          onClick={goHunt}
-          className="app-button app-button--dark bonus-index__resume-button"
-          title={`Reprendre la chasse (niv. ${nextLevel})`}
-        >
-          ↩︎ Reprendre la chasse (niv. {nextLevel})
-        </button>
+        <div className="bonus-index__actions">
+          <button
+            onClick={goHunt}
+            className="app-button app-button--dark bonus-index__resume-button"
+            title={`Reprendre la chasse (niv. ${nextLevel})`}
+          >
+            ↩︎ Reprendre la chasse (niv. {nextLevel})
+          </button>
+          <button
+            type="button"
+            onClick={handleResetProgress}
+            className="bonus-index__reset-button"
+          >
+            🔄 Réinitialiser la progression
+          </button>
+        </div>
       </header>
 
       <Itinerary steps={itinerary} activeKey={resumeTarget?.key} />

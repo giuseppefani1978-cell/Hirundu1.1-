@@ -73,8 +73,71 @@
   color: #1d4ed8;
 }
 
+.bonus-index__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
 .bonus-index__resume-button {
   white-space: nowrap;
+}
+
+.bonus-index__reset-button {
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  padding: 0.55rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: rgba(248, 250, 252, 0.85);
+  color: rgba(15, 23, 42, 0.75);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 8px 20px -16px rgba(15, 23, 42, 0.45);
+}
+
+.bonus-index__reset-button:hover,
+.bonus-index__reset-button:focus-visible {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.35);
+  outline: none;
+}
+
+.bonus-index__reset-button:active {
+  background: rgba(37, 99, 235, 0.16);
+  box-shadow: 0 14px 32px -18px rgba(37, 99, 235, 0.5);
+}
+
+.bonus-index__reset-button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.bonus-index__reset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.bonus-index__actions > * {
+  min-width: 0;
+}
+
+.bonus-index__actions button {
+  width: max-content;
+}
+
+@media (max-width: 720px) {
+  .bonus-index__actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .bonus-index__actions button {
+    width: 100%;
+  }
 }
 
 .bonus-index__itinerary {
