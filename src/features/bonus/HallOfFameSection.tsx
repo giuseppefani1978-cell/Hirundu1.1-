@@ -2,7 +2,7 @@ import React from "react";
 import {
   formatHallOfFameBreakdown,
   formatHallOfFameTime,
-  getHallOfFameKeys,
+  isHallOfFameStorageKey,
   loadAllHallOfFame,
 } from "../../hof/storage";
 
@@ -22,13 +22,14 @@ export type HallOfFameEntry = {
 };
 
 function useHallOfFameEntries() {
-  const hofKeys = React.useMemo(() => getHallOfFameKeys(), []);
-
   const readEntries = React.useCallback(() => {
     const metaMap: Record<string, { label: string; suffix: string }> = {
       salento_hof_v1: { label: "Niv. 1", suffix: "★" },
       salento_hof_v2: { label: "Niv. 2", suffix: "🌞" },
       salento_hof_v3: { label: "Niv. 3", suffix: "🍃" },
+      salento_hof: { label: "Archive", suffix: "★" },
+      salento_hof_v0: { label: "Archive", suffix: "★" },
+      hof: { label: "Archive", suffix: "★" },
     };
 
     const data = loadAllHallOfFame();
@@ -56,7 +57,7 @@ function useHallOfFameEntries() {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key && !hofKeys.includes(event.key)) {
+      if (event.key && !isHallOfFameStorageKey(event.key)) {
         return;
       }
       setEntries(readEntries());
@@ -64,7 +65,7 @@ function useHallOfFameEntries() {
 
     const handleBroadcast = (event: Event) => {
       const detail = (event as CustomEvent<{ key?: string }>).detail;
-      if (detail?.key && !hofKeys.includes(detail.key)) {
+      if (detail?.key && !isHallOfFameStorageKey(detail.key)) {
         return;
       }
       setEntries(readEntries());
@@ -77,7 +78,7 @@ function useHallOfFameEntries() {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("hof:update", handleBroadcast as EventListener);
     };
-  }, [hofKeys, readEntries]);
+  }, [readEntries]);
 
   return entries;
 }

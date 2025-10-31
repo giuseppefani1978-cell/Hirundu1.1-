@@ -1,7 +1,36 @@
 const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];
-const HOF_SIZE = 10;
 const BONUS_PAGE_URL = '/app.html#/bonus?hof';
+
+function isLikelyHallOfFameKey(key) {
+  if (!key) return false;
+  return (
+    HOF_KEYS.includes(key) ||
+    /^salento_hof/i.test(key) ||
+    key === 'hof'
+  );
+}
+
+function collectHallOfFameKeys() {
+  const discovered = new Set(HOF_KEYS);
+
+  if (typeof window === 'undefined' || !('localStorage' in window)) {
+    return [...discovered];
+  }
+
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key && isLikelyHallOfFameKey(key)) {
+        discovered.add(key);
+      }
+    }
+  } catch (error) {
+    console.warn('[hof] unable to enumerate hall of fame keys', error);
+  }
+
+  return [...discovered];
+}
 
 function readRawList(key = DEFAULT_KEY) {
   if (typeof window === 'undefined' || !('localStorage' in window)) {
@@ -42,7 +71,7 @@ export function loadHallOfFame(key = DEFAULT_KEY) {
 }
 
 export function loadAllHallOfFame() {
-  return HOF_KEYS.map((key) => ({ key, entries: readRawList(key) }));
+  return getHallOfFameKeys().map((key) => ({ key, entries: readRawList(key) }));
 }
 
 export function saveHallOfFame(entries, key = DEFAULT_KEY) {
@@ -53,9 +82,8 @@ export function addHallOfFameEntry(entry, key = DEFAULT_KEY) {
   const list = readRawList(key);
   list.push(entry);
   list.sort((a, b) => (b?.score || 0) - (a?.score || 0));
-  const trimmed = list.slice(0, HOF_SIZE);
-  writeRawList(trimmed, key);
-  return trimmed;
+  writeRawList(list, key);
+  return list;
 }
 
 export function formatHallOfFameTime(ms) {
@@ -76,7 +104,11 @@ export function formatHallOfFameBreakdown(breakdown) {
 }
 
 export function getHallOfFameKeys() {
-  return [...HOF_KEYS];
+  return collectHallOfFameKeys();
+}
+
+export function isHallOfFameStorageKey(key) {
+  return isLikelyHallOfFameKey(key);
 }
 
 export function getHallOfFameBonusUrl() {
@@ -89,4 +121,3 @@ export function openHallOfFameBonusPage() {
 }
 
 export const HOF_KEY = DEFAULT_KEY;
-export { HOF_SIZE };
