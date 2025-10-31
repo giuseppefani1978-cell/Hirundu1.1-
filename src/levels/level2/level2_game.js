@@ -13,6 +13,7 @@ import * as ui from '../../ui.js';
 import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
+import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
@@ -130,10 +131,6 @@ export function boot(){
   // Titres L2 + HUD "Soleils"
   const hudLabel = document.getElementById('hudLabel');
   if (hudLabel) hudLabel.textContent = 'Soleils';
-  const titleH1 = document.getElementById('titleH1');
-  if (titleH1) titleH1.textContent = 'Les Soleils du Salento';
-  const subtitleP = document.getElementById('subtitleP');
-  if (subtitleP) subtitleP.textContent = 'Collecte les 10 soleils et découvre 10 nouveaux lieux du Salento.';
 
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
@@ -187,6 +184,23 @@ export function boot(){
   if (heroAr) heroAr.src = ASSETS.BIRD_URL;
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
+
+  prepareLevelIntro({
+    level: 2,
+    theme: 'gallipoli',
+    badge: 'Niveau 2',
+    title: 'Les Soleils du Salento',
+    subtitle: 'Collecte les 10 soleils et révèle la côte ionienne.',
+    description:
+      'Pars de Gallipoli, esquive les méduses et récupère chaque soleil pour faire progresser le passeport.',
+    footnote: 'Victoire = BONUS Gallipoli débloqué',
+    startLabel: '▶︎ Lancer le niveau 2',
+    highlight: {
+      title: 'Briefing',
+      body: 'Les soleils alimentent ta progression et ouvrent la route vers Lecce.',
+    },
+    accentColor: '#facc15',
+  });
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -382,7 +396,21 @@ export function boot(){
     ui.showReplay(true);
 
     if (won) {
-      const winExtra = `🌟 Carte bonus débloquée — utilise le bouton ci-dessous pour l'ouvrir.`;
+      queueLevelTransition({
+        targetLevel: 3,
+        theme: 'lecce',
+        badge: 'Niveau 3',
+        subtitle: 'Dernier défi : Lecce',
+        description: 'Envole-toi vers le nord pour récupérer les feuilles sacrées et conclure la mission.',
+        highlight: {
+          title: 'Transition',
+          body: 'Carte BONUS Lecce disponible après la prochaine victoire.',
+        },
+        footnote: 'Victoire = BONUS Lecce + accès Niveau 3',
+        startLabel: '▶︎ Entrer dans le niveau 3',
+        accentColor: '#38bdf8',
+      });
+      const winExtra = `🌟 BONUS Gallipoli débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       try { unlockGallipoliBonus(); } catch {}
       try { showBonusCta(); } catch {}
@@ -829,7 +857,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__gallipoli_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ Carte Gallipoli (bonus)';
+      link.textContent = '🗺️ BONUS Gallipoli';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
@@ -846,7 +874,7 @@ export function boot(){
     const btn = document.createElement('button');
     btn.id = '__bonus_cta';
     btn.type = 'button';
-    btn.textContent = '🌞 Victoire ! Carte bonus débloquée — Gallipoli';
+    btn.textContent = '🌞 BONUS Gallipoli — ouvrir';
     btn.style.cssText = `
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:86px; z-index:10003;
@@ -1114,7 +1142,7 @@ window.__unlockOtranto = () => {
 };
 window.__openBonusMap = () => {
   location.assign('app.html#/poi/otranto/realmap');
-  console.log('🗺️ Carte bonus Otranto ouverte');
+  console.log('🗺️ BONUS Otranto ouvert');
 };
 
 // Migration/compat : écrit bonus_unlocked_v1.gallipoli = true + legacy

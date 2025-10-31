@@ -4,6 +4,8 @@ import {
   formatHallOfFameTime,
   isHallOfFameStorageKey,
   loadAllHallOfFame,
+  loadHallOfFameSummary,
+  normalizeHallOfFameName,
 } from "../../hof/storage";
 
 type SourceMeta = {
@@ -102,11 +104,33 @@ type HallOfFameSectionProps = {
 
 export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const entries = useHallOfFameEntries();
+  const summarySnapshot = React.useMemo(() => loadHallOfFameSummary(), [entries]);
+  const summaryPlayersRaw = summarySnapshot?.players;
+  const summaryTotalRaw = summarySnapshot?.total;
+  const summaryPlayers = typeof summaryPlayersRaw === "number" && summaryPlayersRaw > 0 ? summaryPlayersRaw : 0;
+  const totalRuns =
+    typeof summaryTotalRaw === "number" && summaryTotalRaw > 0 ? summaryTotalRaw : entries.length;
+
+  const playersCount = React.useMemo(() => {
+    if (summaryPlayers > 0) {
+      return summaryPlayers;
+    }
+    if (entries.length === 0) {
+      return 0;
+    }
+    const fallback = new Set<string>();
+    entries.forEach((entry, index) => {
+      const normalizedName = normalizeHallOfFameName(entry.name);
+      const countryLabel = entry.country?.label ?? (typeof entry.country === "string" ? entry.country : "");
+      const normalizedCountry = normalizeHallOfFameName(countryLabel);
+      const fallbackId = normalizedName || normalizedCountry || `${entry.sourceKey}:${entry.date ?? index}`;
+      fallback.add(fallbackId);
+    });
+    return fallback.size;
+  }, [entries, summaryPlayers]);
+
   const entryStats = React.useMemo(() => {
-    const perSource = new Map<
-      string,
-      { label: string; count: number; order: number; suffix: string }
-    >();
+    const perSource = new Map<string, { label: string; count: number; order: number; suffix: string }>();
     SOURCE_META.filter((meta) => meta.alwaysShow).forEach((meta) => {
       perSource.set(meta.label, {
         label: meta.label,
@@ -115,42 +139,63 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
         suffix: meta.suffix ?? DEFAULT_SUFFIX,
       });
     });
-    const playerIds = new Set<string>();
+
+    const summaryPerKey = summarySnapshot?.perKey ?? {};
+
+    Object.entries(summaryPerKey).forEach(([key, data]) => {
+      const meta = SOURCE_META_MAP.get(key);
+      const label = meta?.label ?? key;
+      const suffix = meta?.suffix ?? DEFAULT_SUFFIX;
+      const order =
+        SOURCE_LABEL_ORDER.get(label) ??
+        (meta ? SOURCE_META.indexOf(meta) : Number.MAX_SAFE_INTEGER);
+      perSource.set(label, {
+        label,
+        count: data?.runs ?? 0,
+        order,
+        suffix,
+      });
+    });
+
     entries.forEach((entry) => {
       const knownMeta = SOURCE_META_MAP.get(entry.sourceKey);
       const label = knownMeta?.label ?? entry.sourceLabel;
       const suffix = knownMeta?.suffix ?? entry.progressSuffix ?? DEFAULT_SUFFIX;
-      const current = perSource.get(label) ?? {
-        label,
-        count: 0,
-        order:
-          SOURCE_LABEL_ORDER.get(label) ??
-          (knownMeta ? SOURCE_META.indexOf(knownMeta) : Number.MAX_SAFE_INTEGER),
-        suffix,
-      };
-      current.count += 1;
-      current.suffix = suffix;
-      perSource.set(label, current);
-      const normalizedName = normalizePlayerName(entry.name);
-      const normalizedCountry = normalizePlayerName(entry.country?.label);
-      const fallbackId = `${entry.sourceKey}:${entry.date}`;
-      const identifier = normalizedName || normalizedCountry || fallbackId;
-      playerIds.add(identifier);
+      const order =
+        SOURCE_LABEL_ORDER.get(label) ??
+        (knownMeta ? SOURCE_META.indexOf(knownMeta) : Number.MAX_SAFE_INTEGER);
+      const existing = perSource.get(label);
+      if (existing) {
+        existing.suffix = suffix;
+        if (!Object.prototype.hasOwnProperty.call(summaryPerKey, entry.sourceKey)) {
+          existing.count += 1;
+        }
+      } else {
+        perSource.set(label, {
+          label,
+          count: 1,
+          order,
+          suffix,
+        });
+      }
     });
+
+    const sorted = Array.from(perSource.values()).sort((a, b) => {
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      if (a.count !== b.count) {
+        return b.count - a.count;
+      }
+      return a.label.localeCompare(b.label);
+    });
+
     return {
-      total: entries.length,
-      players: playerIds.size,
-      perSource: Array.from(perSource.values()).sort((a, b) => {
-        if (a.order !== b.order) {
-          return a.order - b.order;
-        }
-        if (a.count !== b.count) {
-          return b.count - a.count;
-        }
-        return a.label.localeCompare(b.label);
-      }),
+      total: totalRuns,
+      players: playersCount,
+      perSource: sorted,
     };
-  }, [entries]);
+  }, [entries, playersCount, summarySnapshot, totalRuns]);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -258,21 +303,6 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
       </footer>
     </section>
   );
-}
-
-function normalizePlayerName(name?: string): string {
-  if (!name) {
-    return "";
-  }
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-function pluralSuffix(count: number): "" | "s" {
-  return count === 1 ? "" : "s";
 }
 
 export default HallOfFameSection;

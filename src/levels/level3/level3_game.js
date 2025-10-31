@@ -15,6 +15,7 @@ import * as ui from '../../ui.js';
 import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
+import { prepareLevelIntro } from '../../level_transition.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
@@ -126,10 +127,6 @@ export function boot(){
   // Titres L3 + HUD "Feuilles"
   const hudLabel = document.getElementById('hudLabel');
   if (hudLabel) hudLabel.textContent = INVENTORY_LABEL;
-  const titleH1 = document.getElementById('titleH1');
-  if (titleH1) titleH1.textContent = (t.level3?.title || 'Salento Nord — Lecce');
-  const subtitleP = document.getElementById('subtitleP');
-  if (subtitleP) subtitleP.textContent = (t.level3?.subtitle || 'Collecte les 10 feuilles et découvre le nord du Salento.');
 
   ui.updateScore(0, LEAVES_TARGET);
   ui.renderStars(0, LEAVES_TARGET);
@@ -181,6 +178,23 @@ export function boot(){
   if (heroAr) heroAr.src = ASSETS.BIRD_URL;
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
+
+  prepareLevelIntro({
+    level: 3,
+    theme: 'lecce',
+    badge: 'Niveau 3',
+    title: t.level3?.title || 'Salento Nord — Lecce',
+    subtitle: t.level3?.subtitle || 'Collecte les 10 feuilles et découvre le nord du Salento.',
+    description:
+      'Récolte les feuilles salentines pour compléter ton passeport et accéder au BONUS Lecce.',
+    footnote: 'Victoire = BONUS Lecce débloqué',
+    startLabel: '▶︎ Lancer le niveau 3',
+    highlight: {
+      title: 'Briefing',
+      body: 'Le défi final commence ici : surveille ton énergie et ton score.',
+    },
+    accentColor: '#38bdf8',
+  });
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -366,7 +380,7 @@ export function boot(){
     ui.showReplay(true);
 
     if (won) {
-      const winMsg = (t.level3?.bonus_unlocked || 'Bonus QR Lecce débloqué !');
+      const winMsg = (t.level3?.bonus_unlocked || 'BONUS Lecce débloqué !');
       ui.showSuccess([...baseLines, `🌟 ${winMsg}`].join('\n'));
       try { ensureBonusQuickLinkInHud(); } catch {}
     }
@@ -846,7 +860,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__lecce_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ Carte Lecce (bonus)';
+      link.textContent = '🗺️ BONUS Lecce';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;

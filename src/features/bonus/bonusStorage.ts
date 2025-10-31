@@ -266,6 +266,7 @@ const PROGRESS_STORAGE_KEYS = [
   "level3_unlocked",
   "level3_unlocked_at",
   "__toast_next__",
+  "__level_transition_v1__",
 ];
 
 function dispatchStorageRemoval(key: string, storageArea: Storage): void {

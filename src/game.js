@@ -11,6 +11,7 @@ import {
 import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from './hof/storage.js';
+import { prepareLevelIntro, queueLevelTransition } from './level_transition.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -195,6 +196,23 @@ export function boot(){
   if (heroAr) heroAr.src = ASSETS.BIRD_URL;
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
+
+  prepareLevelIntro({
+    level: 1,
+    theme: 'otranto',
+    badge: 'Niveau 1',
+    title: 'Le Vol d\'Aracne',
+    subtitle: 'Chasse aux 10 étoiles de la côte d\'Otranto',
+    description:
+      'Fais planer Aracne au-dessus des villages d\'Otranto pour récupérer les étoiles et ouvrir la suite de l\'aventure.',
+    footnote: 'Victoire = BONUS Otranto débloqué',
+    startLabel: '▶︎ Lancer la chasse',
+    highlight: {
+      title: 'Briefing',
+      body: 'Capture chaque étoile pour préparer la prochaine étape de la mission.',
+    },
+    accentColor: '#f97316',
+  });
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -385,7 +403,7 @@ export function boot(){
     addHallOfFameEntry(entry);
 
     const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
-    const lines = [
+    const baseLines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
       `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
@@ -393,12 +411,26 @@ export function boot(){
       ``,
       `👉 Consulte le Hall of Fame depuis la page Bonus.`
     ];
-    ui.showSuccess(lines.join('\n'));
+    ui.showSuccess(baseLines.join('\n'));
     ui.showReplay(true);
 
     if (won) {
+      queueLevelTransition({
+        targetLevel: 2,
+        theme: 'gallipoli',
+        badge: 'Niveau 2',
+        subtitle: 'Nouveau terrain de jeu : Gallipoli',
+        description: 'Traverse la côte ionienne et récolte les 10 soleils pour continuer l\'aventure.',
+        highlight: {
+          title: 'Transition',
+          body: 'Carte BONUS Gallipoli disponible après la chasse.',
+        },
+        footnote: 'Victoire = BONUS Gallipoli + accès Niveau 2',
+        startLabel: '▶︎ Explorer Gallipoli',
+        accentColor: '#facc15',
+      });
       // Message clair pour la victoire + indication bonus
-      const winExtra = `🌟 Carte bonus débloquée — utilise le bouton ci-dessous pour l'ouvrir.`;
+      const winExtra = `🌟 BONUS Otranto débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       // débloque le bonus dans le LS
       console.log('[GAME] finalizeRun: won=true — unlocking Otranto bonus');
@@ -816,7 +848,7 @@ export function boot(){
       unlockOtrantoBonus();
       document.dispatchEvent(new Event('otranto:unlocked'));
       ensureBonusQuickLinkInHud();
-      ui.showSuccess('✅ Carte bonus Otranto débloquée.');
+      ui.showSuccess('✅ BONUS Otranto débloqué.');
       return;
     }
     if (location.hash === '#bonus-otranto'){
@@ -861,7 +893,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__otranto_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ Carte Otranto (bonus)';
+      link.textContent = '🗺️ BONUS Otranto';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
@@ -879,7 +911,7 @@ export function boot(){
     const btn = document.createElement('button');
     btn.id = '__bonus_cta';
     btn.type = 'button';
-    btn.textContent = '🌟 Victoire ! Carte bonus débloquée — Ouvrir';
+    btn.textContent = '🌟 BONUS Otranto — ouvrir';
     btn.style.cssText = `
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:86px; z-index:10003;
@@ -1111,5 +1143,5 @@ window.__unlockOtranto = () => {
 };
 window.__openBonusMap = () => {
   location.assign('app.html#/poi/otranto/realmap');
-  console.log('🗺️ Carte bonus Otranto ouverte');
+  console.log('🗺️ BONUS Otranto ouvert');
 };

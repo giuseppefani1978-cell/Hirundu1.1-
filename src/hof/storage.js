@@ -35,6 +35,42 @@ function collectHallOfFameKeys() {
 
 const LEGACY_LIST_KEYS = ['entries', 'list', 'scores', 'runs', 'records', 'items', 'values'];
 
+function normalizeToken(value) {
+  if (!value || typeof value !== 'string') {
+    return '';
+  }
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function identifyEntry(entry, key, index) {
+  if (!entry || typeof entry !== 'object') {
+    return `${key}:${index}`;
+  }
+
+  const name = normalizeToken(entry.name);
+  if (name) return `name:${name}`;
+
+  const alias = normalizeToken(entry.alias);
+  if (alias) return `alias:${alias}`;
+
+  const player = normalizeToken(entry.player);
+  if (player) return `player:${player}`;
+
+  const countryLabel = typeof entry.country === 'string' ? entry.country : entry.country?.label;
+  const country = normalizeToken(countryLabel);
+  if (country) return `country:${country}`;
+
+  if (entry.date) {
+    return `date:${entry.date}`;
+  }
+
+  return `${key}:${index}`;
+}
+
 function normalizeBonusBreakdown(raw) {
   if (!raw) return undefined;
   if (typeof raw === 'object') return raw;
@@ -237,3 +273,32 @@ export function openHallOfFameBonusPage() {
 
 export const HOF_KEY = DEFAULT_KEY;
 export { HOF_SIZE };
+
+export function loadHallOfFameSummary() {
+  const summary = {
+    total: 0,
+    players: 0,
+    perKey: {},
+  };
+
+  const seenPlayers = new Set();
+  const keys = getHallOfFameKeys();
+
+  keys.forEach((key) => {
+    const entries = readRawList(key);
+    summary.perKey[key] = {
+      runs: entries.length,
+    };
+    summary.total += entries.length;
+    entries.forEach((entry, index) => {
+      seenPlayers.add(identifyEntry(entry, key, index));
+    });
+  });
+
+  summary.players = seenPlayers.size;
+  return summary;
+}
+
+export function normalizeHallOfFameName(value) {
+  return normalizeToken(value);
+}

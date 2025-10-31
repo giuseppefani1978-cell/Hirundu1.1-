@@ -42,15 +42,18 @@
     <div class="game">
       <!-- Overlay Start -->
       <div class="overlay" id="overlay">
-        <div class="card" id="overlayCard">
-          <div class="heroes">
+        <div class="overlay-card" id="overlayCard">
+          <div class="overlay-card__badge" id="overlayBadge"></div>
+          <h1 class="overlay-card__title" id="titleH1">Le Vol d’Aracne</h1>
+          <p class="overlay-card__subtitle" id="subtitleP">Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.</p>
+          <div class="overlay-card__highlight" id="overlayHighlight" hidden></div>
+          <p class="overlay-card__description" id="overlayDescription"></p>
+          <div class="overlay-card__heroes" id="overlayHeroes">
             <img id="heroAr" alt="Aracne">
             <img id="heroTa" alt="Tarantula">
           </div>
-          <h1 id="titleH1">Le Vol d’Aracne</h1>
-          <p id="subtitleP">Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.</p>
-          <p class="inspiration" id="inspiredP">Inspiré par le fameux roman</p>
-          <button id="startBtn" type="button">Démarrer</button>
+          <p class="overlay-card__footnote" id="overlayFootnote"></p>
+          <button id="startBtn" type="button" class="overlay-card__button">▶︎ Lancer la chasse</button>
         </div>
       </div>
 
