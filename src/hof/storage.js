@@ -1,5 +1,6 @@
 const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];
+const HOF_SIZE = 10;
 const BONUS_PAGE_URL = '/app.html#/bonus?hof';
 
 function isLikelyHallOfFameKey(key) {
@@ -82,8 +83,9 @@ export function addHallOfFameEntry(entry, key = DEFAULT_KEY) {
   const list = readRawList(key);
   list.push(entry);
   list.sort((a, b) => (b?.score || 0) - (a?.score || 0));
-  writeRawList(list, key);
-  return list;
+  const trimmed = list.slice(0, HOF_SIZE);
+  writeRawList(trimmed, key);
+  return trimmed;
 }
 
 export function formatHallOfFameTime(ms) {
@@ -121,3 +123,4 @@ export function openHallOfFameBonusPage() {
 }
 
 export const HOF_KEY = DEFAULT_KEY;
+export { HOF_SIZE };

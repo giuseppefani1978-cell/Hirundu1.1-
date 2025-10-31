@@ -91,11 +91,17 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const entries = useHallOfFameEntries();
   const entryStats = React.useMemo(() => {
     const perSource = new Map<string, number>();
+    const playerIds = new Set<string>();
     entries.forEach((entry) => {
       perSource.set(entry.sourceLabel, (perSource.get(entry.sourceLabel) ?? 0) + 1);
+      const normalizedName = normalizePlayerName(entry.name);
+      if (normalizedName) {
+        playerIds.add(normalizedName);
+      }
     });
     return {
       total: entries.length,
+      players: playerIds.size,
       perSource: Array.from(perSource.entries()).sort((a, b) => b[1] - a[1]),
     };
   }, [entries]);
@@ -134,7 +140,10 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
           </p>
           {entryStats.total > 0 ? (
             <p className="bonus-index__hof-meta" aria-live="polite">
-              {entryStats.total} score{entryStats.total > 1 ? "s" : ""} sauvegardé{entryStats.total > 1 ? "s" : ""}
+              {entryStats.total} partie{entryStats.total > 1 ? "s" : ""} enregistrée{entryStats.total > 1 ? "s" : ""}
+              {entryStats.players > 0
+                ? ` · ${entryStats.players} joueur${entryStats.players > 1 ? "s" : ""}`
+                : ""}
               {entryStats.perSource.length > 0 ? " · " : ""}
               {entryStats.perSource.map(([label, count], index) => (
                 <span key={label}>
@@ -197,6 +206,17 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
       </footer>
     </section>
   );
+}
+
+function normalizePlayerName(name?: string): string {
+  if (!name) {
+    return "";
+  }
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 export default HallOfFameSection;

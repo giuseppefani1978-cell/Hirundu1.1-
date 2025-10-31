@@ -12,7 +12,12 @@ import {
   scanSucceeded,
   type QrScanRecord,
 } from "../state/qrSlice";
-import { findPartnerById, getAllPartners, type PartnerReward } from "../services/partners";
+import {
+  findPartnerById,
+  findPartnerByName,
+  getAllPartners,
+  type PartnerReward,
+} from "../services/partners";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
 import { getEnrichedPois } from "../services/pois";
 import { setPoiVisited } from "../passport/passportStorage";
@@ -23,7 +28,7 @@ const SCENARIOS = getAllQrScenarios();
 const PARTNERS = getAllPartners();
 const PARTNER_BY_ID = new Map(PARTNERS.map((partner) => [partner.id, partner]));
 const PARTNER_BY_NAME = new Map(
-  PARTNERS.map((partner) => [partner.name.toLowerCase(), partner])
+  PARTNERS.map((partner) => [normalizeToken(partner.name), partner])
 );
 
 export default function QrHub() {
@@ -77,6 +82,9 @@ export default function QrHub() {
 
       if (action.type === "partner") {
         markPartnerVisit(action.partnerId, enrichedPois);
+      }
+      if (action.type === "badge") {
+        markBadgeVisit(action.name, enrichedPois);
       }
     },
     [dispatch, enrichedPois]
@@ -306,7 +314,7 @@ function describeAction(
       };
     }
     case "badge": {
-      const partnerByName = PARTNER_BY_NAME.get(action.name.toLowerCase());
+      const partnerByName = PARTNER_BY_NAME.get(normalizeToken(action.name));
       return {
         icon: "🏅",
         title: `Badge débloqué : ${action.name}`,
@@ -345,22 +353,47 @@ function describeAction(
   }
 }
 
-function markPartnerVisit(
-  partnerId: string,
-  pois: ReturnType<typeof getEnrichedPois>
-): void {
+function markPartnerVisit(partnerId: string, pois: ReturnType<typeof getEnrichedPois>): void {
+  const partner = PARTNER_BY_ID.get(partnerId) || findPartnerById(partnerId);
+  if (!partner) {
+    return;
+  }
+
+  const targets = pois.filter((poi) => poi.partner?.id === partner.id);
+  applyPassportVisits(targets);
+}
+
+function markBadgeVisit(name: string, pois: ReturnType<typeof getEnrichedPois>): void {
+  const normalizedName = normalizeToken(name);
+  if (!normalizedName) {
+    return;
+  }
+
+  const partner = PARTNER_BY_NAME.get(normalizedName) || findPartnerByName(name);
+  if (partner) {
+    markPartnerVisit(partner.id, pois);
+    return;
+  }
+
+  const targets = pois.filter((poi) => normalizeToken(poi.label) === normalizedName);
+  applyPassportVisits(targets);
+}
+
+function applyPassportVisits(targets: ReturnType<typeof getEnrichedPois>): void {
+  if (!targets.length) {
+    return;
+  }
+
   const seen = new Set<string>();
-  pois
-    .filter((poi) => poi.partner?.id === partnerId)
-    .forEach((poi) => {
-      const bonusKey = resolveBonusKey(poi);
-      const config = BONUS_MAPS[bonusKey];
-      if (!config) return;
-      const identifier = `${bonusKey}:${poi.id}`;
-      if (seen.has(identifier)) return;
-      seen.add(identifier);
-      setPoiVisited(bonusKey, poi.id, true, config.poiIds);
-    });
+  targets.forEach((poi) => {
+    const bonusKey = resolveBonusKey(poi);
+    const config = BONUS_MAPS[bonusKey];
+    if (!config) return;
+    const identifier = `${bonusKey}:${poi.id}`;
+    if (seen.has(identifier)) return;
+    seen.add(identifier);
+    setPoiVisited(bonusKey, poi.id, true, config.poiIds);
+  });
 }
 
 function rewardLabel(reward: PartnerReward | undefined): string {
@@ -390,4 +423,16 @@ function resolveBonusKey(poi: ReturnType<typeof getEnrichedPois>[number] | undef
   const entries = Object.entries(BONUS_MAPS) as [BonusKey, (typeof BONUS_MAPS)[BonusKey]][];
   const found = entries.find(([, cfg]) => cfg.poiIds.includes(poi.id));
   return found?.[0] ?? "otranto";
+}
+
+function normalizeToken(value: string | undefined | null): string {
+  if (!value) {
+    return "";
+  }
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
 }
