@@ -157,18 +157,25 @@
 }
 
 .real-map__passport-tiers {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-  font-size: 0.62rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
+  line-height: 1.35;
 }
 
 .real-map__passport-tier {
-  padding: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.75rem;
+  min-height: 2.1rem;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(148, 163, 184, 0.18);
   text-align: center;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .real-map__passport-tier--active {
@@ -225,17 +232,37 @@
   gap: 0.5rem;
 }
 
-.real-map__passport-poi label {
-  display: flex;
+.real-map__passport-poi {
+  display: grid;
+  grid-template-columns: auto 1fr;
   gap: 0.65rem;
-  align-items: center;
+  align-items: flex-start;
   font-size: 0.9rem;
 }
 
-.real-map__passport-poi input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: #f97316;
+.real-map__passport-poi-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  font-size: 1rem;
+}
+
+.real-map__passport-poi-status--validated {
+  background: rgba(74, 222, 128, 0.28);
+}
+
+.real-map__passport-poi-status--pending {
+  background: rgba(248, 250, 252, 0.12);
+}
+
+.real-map__passport-poi-state {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: rgba(226, 232, 240, 0.7);
 }
 
 .real-map__passport-poi-partner {

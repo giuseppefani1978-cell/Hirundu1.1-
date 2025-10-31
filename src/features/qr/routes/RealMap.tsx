@@ -14,6 +14,12 @@ import "leaflet/dist/leaflet.css";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
 import { getEnrichedPois, type EnrichedPoi } from "../services/pois";
 import { findPartnerById, type Partner } from "../services/partners";
+import {
+  PASSPORT_EVENT,
+  PASSPORT_STORAGE_KEY,
+  getVisitedFor,
+  isBrowserEnvironment,
+} from "../passport/passportStorage";
 import { useBonusProgress } from "../../bonus/useBonusProgress";
 import type { ItineraryStep } from "../../bonus/bonusStorage";
 import tarantulaIconUrl from "../../../assets/tarantula-icon.svg?url";
@@ -226,7 +232,6 @@ export default function RealMap() {
         itinerary={itinerary}
         pois={relevantPois}
         visitedPoiIds={passport.visited}
-        onTogglePoi={passport.setVisited}
         progress={passportProgress}
       />
 
@@ -293,67 +298,20 @@ const TARANTULA_POI_ICON = new Icon({
   className: "real-map__poi-icon",
 });
 
-const PASSPORT_STORAGE_KEY = "salentino_passport_v1";
-const PASSPORT_EVENT = "passport:updated";
-const isBrowser = typeof window !== "undefined";
-
-type PassportStorage = {
-  pois: Record<string, string[]>;
-};
-
-function readPassportStorage(): PassportStorage {
-  if (!isBrowser) return { pois: {} };
-  try {
-    const raw = window.localStorage.getItem(PASSPORT_STORAGE_KEY);
-    if (!raw) return { pois: {} };
-    const parsed = JSON.parse(raw) as Partial<PassportStorage>;
-    if (!parsed || typeof parsed !== "object") return { pois: {} };
-    const pois = parsed.pois && typeof parsed.pois === "object" ? parsed.pois : {};
-    const clean: Record<string, string[]> = {};
-    Object.entries(pois as Record<string, unknown>).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        clean[key] = value.filter((item): item is string => typeof item === "string");
-      }
-    });
-    return { pois: clean };
-  } catch (error) {
-    console.warn("Impossible de lire le passeport Salentino", error);
-    return { pois: {} };
-  }
-}
-
-function writePassportStorage(record: PassportStorage): void {
-  if (!isBrowser) return;
-  try {
-    window.localStorage.setItem(PASSPORT_STORAGE_KEY, JSON.stringify(record));
-    window.dispatchEvent(new CustomEvent(PASSPORT_EVENT));
-  } catch (error) {
-    console.warn("Impossible d’enregistrer le passeport Salentino", error);
-  }
-}
-
-function computeVisitedFor(mapKey: BonusKey, poiIds: string[]): Set<string> {
-  const storage = readPassportStorage();
-  const allowed = new Set(poiIds);
-  const stored = storage.pois[mapKey] ?? [];
-  return new Set(stored.filter((id) => allowed.has(id)));
-}
-
 function usePassport(mapKey: BonusKey, poiIds: string[]): {
   visited: Set<string>;
-  setVisited: (poiId: string, visited: boolean) => void;
 } {
   const allowedKey = useMemo(() => [...poiIds].sort().join("|"), [poiIds]);
-  const [visited, setVisited] = useState<Set<string>>(() => computeVisitedFor(mapKey, poiIds));
+  const [visited, setVisited] = useState<Set<string>>(() => getVisitedFor(mapKey, poiIds));
 
   useEffect(() => {
-    setVisited(computeVisitedFor(mapKey, poiIds));
+    setVisited(getVisitedFor(mapKey, poiIds));
   }, [mapKey, allowedKey, poiIds]);
 
   useEffect(() => {
-    if (!isBrowser) return undefined;
+    if (!isBrowserEnvironment()) return undefined;
     const sync = () => {
-      setVisited(computeVisitedFor(mapKey, poiIds));
+      setVisited(getVisitedFor(mapKey, poiIds));
     };
     const onStorage = (event: StorageEvent) => {
       if (event.key && event.key !== PASSPORT_STORAGE_KEY) return;
@@ -367,42 +325,7 @@ function usePassport(mapKey: BonusKey, poiIds: string[]): {
     };
   }, [mapKey, allowedKey, poiIds]);
 
-  const persist = useCallback(
-    (nextSet: Set<string>) => {
-      if (!isBrowser) return;
-      const storage = readPassportStorage();
-      const allowed = new Set(poiIds);
-      const sanitized = [...nextSet].filter((id) => allowed.has(id));
-      const nextRecord: PassportStorage = {
-        pois: { ...storage.pois },
-      };
-      if (sanitized.length > 0) {
-        nextRecord.pois[mapKey] = sanitized;
-      } else {
-        delete nextRecord.pois[mapKey];
-      }
-      writePassportStorage(nextRecord);
-    },
-    [mapKey, allowedKey, poiIds]
-  );
-
-  const setPassportVisited = useCallback(
-    (poiId: string, nextVisited: boolean) => {
-      setVisited((prev) => {
-        const next = new Set(prev);
-        if (nextVisited) {
-          next.add(poiId);
-        } else {
-          next.delete(poiId);
-        }
-        persist(next);
-        return next;
-      });
-    },
-    [persist]
-  );
-
-  return { visited, setVisited: setPassportVisited };
+  return { visited };
 }
 
 function computePassportProgress({
@@ -461,7 +384,6 @@ type PassportSalentinoProps = {
   itinerary: ItineraryStep[];
   pois: EnrichedPoi[];
   visitedPoiIds: Set<string>;
-  onTogglePoi: (poiId: string, visited: boolean) => void;
   progress: PassportProgress;
 };
 
@@ -470,7 +392,6 @@ function PassportSalentino({
   itinerary,
   pois,
   visitedPoiIds,
-  onTogglePoi,
   progress,
 }: PassportSalentinoProps) {
   const completionPercent = Math.round(progress.ratio * 100);
@@ -561,28 +482,37 @@ function PassportSalentino({
       <section className="real-map__passport-section">
         <h3>Points finaux à valider</h3>
         <p className="real-map__passport-hint">
-          Coche les lieux visités pour suivre ta progression ({progress.visitedPoiCount}/{
-            progress.totalPoiCount
-          }).
+          Les validations s’activent automatiquement via les QR codes partenaires ({
+            progress.visitedPoiCount
+          }
+          /{progress.totalPoiCount}).
         </p>
         <ul className="real-map__passport-pois">
           {pois.map((poi) => {
             const checked = visitedPoiIds.has(poi.id);
             return (
               <li key={poi.id} className="real-map__passport-poi">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(event) => onTogglePoi(poi.id, event.target.checked)}
-                  />
-                  <span>
-                    <strong>{poi.label}</strong>
-                    {poi.partner ? (
-                      <span className="real-map__passport-poi-partner"> – {poi.partner.name}</span>
-                    ) : null}
-                  </span>
-                </label>
+                <span
+                  className={
+                    "real-map__passport-poi-status" +
+                    (checked
+                      ? " real-map__passport-poi-status--validated"
+                      : " real-map__passport-poi-status--pending")
+                  }
+                  role="img"
+                  aria-label={checked ? "Validé via QR" : "En attente"}
+                >
+                  {checked ? "✅" : "⌛"}
+                </span>
+                <div>
+                  <strong>{poi.label}</strong>
+                  {poi.partner ? (
+                    <span className="real-map__passport-poi-partner"> – {poi.partner.name}</span>
+                  ) : null}
+                  <div className="real-map__passport-poi-state">
+                    {checked ? "Validé via QR" : "En attente de validation"}
+                  </div>
+                </div>
               </li>
             );
           })}

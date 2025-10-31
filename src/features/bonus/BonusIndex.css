@@ -300,6 +300,15 @@
   color: rgba(15, 23, 42, 0.62);
 }
 
+.bonus-index__hof-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(15, 23, 42, 0.56);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .bonus-index__hof-empty {
   margin: 0;
   font-weight: 600;

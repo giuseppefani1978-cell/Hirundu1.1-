@@ -2,7 +2,7 @@ import React from "react";
 import {
   formatHallOfFameBreakdown,
   formatHallOfFameTime,
-  getHallOfFameKeys,
+  isHallOfFameStorageKey,
   loadAllHallOfFame,
 } from "../../hof/storage";
 
@@ -22,13 +22,14 @@ export type HallOfFameEntry = {
 };
 
 function useHallOfFameEntries() {
-  const hofKeys = React.useMemo(() => getHallOfFameKeys(), []);
-
   const readEntries = React.useCallback(() => {
     const metaMap: Record<string, { label: string; suffix: string }> = {
       salento_hof_v1: { label: "Niv. 1", suffix: "★" },
       salento_hof_v2: { label: "Niv. 2", suffix: "🌞" },
       salento_hof_v3: { label: "Niv. 3", suffix: "🍃" },
+      salento_hof: { label: "Archive", suffix: "★" },
+      salento_hof_v0: { label: "Archive", suffix: "★" },
+      hof: { label: "Archive", suffix: "★" },
     };
 
     const data = loadAllHallOfFame();
@@ -56,7 +57,7 @@ function useHallOfFameEntries() {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key && !hofKeys.includes(event.key)) {
+      if (event.key && !isHallOfFameStorageKey(event.key)) {
         return;
       }
       setEntries(readEntries());
@@ -64,7 +65,7 @@ function useHallOfFameEntries() {
 
     const handleBroadcast = (event: Event) => {
       const detail = (event as CustomEvent<{ key?: string }>).detail;
-      if (detail?.key && !hofKeys.includes(detail.key)) {
+      if (detail?.key && !isHallOfFameStorageKey(detail.key)) {
         return;
       }
       setEntries(readEntries());
@@ -77,7 +78,7 @@ function useHallOfFameEntries() {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("hof:update", handleBroadcast as EventListener);
     };
-  }, [hofKeys, readEntries]);
+  }, [readEntries]);
 
   return entries;
 }
@@ -88,6 +89,16 @@ type HallOfFameSectionProps = {
 
 export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const entries = useHallOfFameEntries();
+  const entryStats = React.useMemo(() => {
+    const perSource = new Map<string, number>();
+    entries.forEach((entry) => {
+      perSource.set(entry.sourceLabel, (perSource.get(entry.sourceLabel) ?? 0) + 1);
+    });
+    return {
+      total: entries.length,
+      perSource: Array.from(perSource.entries()).sort((a, b) => b[1] - a[1]),
+    };
+  }, [entries]);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -121,6 +132,18 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
           <p className="bonus-index__hof-lead">
             Les meilleurs scores de la chasse sont enregistrés sur cet appareil. Challenge accepté ?
           </p>
+          {entryStats.total > 0 ? (
+            <p className="bonus-index__hof-meta" aria-live="polite">
+              {entryStats.total} score{entryStats.total > 1 ? "s" : ""} sauvegardé{entryStats.total > 1 ? "s" : ""}
+              {entryStats.perSource.length > 0 ? " · " : ""}
+              {entryStats.perSource.map(([label, count], index) => (
+                <span key={label}>
+                  {label}: {count}
+                  {index < entryStats.perSource.length - 1 ? " • " : ""}
+                </span>
+              ))}
+            </p>
+          ) : null}
         </div>
       </header>
 
