@@ -104,6 +104,25 @@ function fmtTime(ms){
   const m = Math.floor(s/60), r = s%60;
   return `${m}m${String(r).padStart(2,'0')}s`;
 }
+function getStoredPlayerName(){
+  const stored = lsGet('player_name', null);
+  if (typeof stored === 'string' && stored.trim()) {
+    return stored.trim();
+  }
+  if (stored && typeof stored === 'object' && 'name' in stored) {
+    const potential = String(stored.name).trim();
+    if (potential) {
+      return potential;
+    }
+  }
+  try {
+    const raw = localStorage.getItem('player_name');
+    if (typeof raw === 'string' && raw.trim()) {
+      return raw.trim();
+    }
+  } catch {}
+  return '';
+}
 function getCountry(){
   try{
     const lang = navigator.language || (Intl.DateTimeFormat().resolvedOptions().locale);
@@ -730,11 +749,16 @@ export function boot(){
   function startGame(){
     try{
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
-      const name = prompt("Ton nom/pseudo ?") || "Joueur";
-      playerName = (name||'').trim() || "Joueur";
+      const remembered = getStoredPlayerName();
+      if (remembered) {
+        playerName = remembered;
+      } else {
+        const response = prompt("Ton nom/pseudo ?") || "Joueur";
+        playerName = (response||'').trim() || "Joueur";
+      }
       country = getCountry();
-      localStorage.setItem('player_name', name);
-try { lsSet && lsSet('player_name', name); } catch {}
+      try { localStorage.setItem('player_name', playerName); } catch {}
+      try { lsSet && lsSet('player_name', playerName); } catch {}
 
 
       ui.hideOverlay();

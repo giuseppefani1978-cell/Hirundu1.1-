@@ -6,6 +6,28 @@ import {
   loadAllHallOfFame,
 } from "../../hof/storage";
 
+type SourceMeta = {
+  key: string;
+  label: string;
+  suffix: string;
+  alwaysShow?: boolean;
+};
+
+const SOURCE_META: SourceMeta[] = [
+  { key: "salento_hof_v1", label: "Niv. 1", suffix: "★", alwaysShow: true },
+  { key: "salento_hof_v2", label: "Niv. 2", suffix: "🌞", alwaysShow: true },
+  { key: "salento_hof_v3", label: "Niv. 3", suffix: "🍃", alwaysShow: true },
+  { key: "salento_hof", label: "Archive", suffix: "★" },
+  { key: "salento_hof_v0", label: "Archive", suffix: "★" },
+  { key: "hof", label: "Archive", suffix: "★" },
+];
+
+const SOURCE_META_MAP = new Map(SOURCE_META.map((meta) => [meta.key, meta]));
+const SOURCE_LABEL_ORDER = new Map(
+  SOURCE_META.map((meta, index) => [meta.label, index])
+);
+const DEFAULT_SUFFIX = "★";
+
 export type HallOfFameEntry = {
   name: string;
   country?: { flag?: string; label?: string };
@@ -23,23 +45,14 @@ export type HallOfFameEntry = {
 
 function useHallOfFameEntries() {
   const readEntries = React.useCallback(() => {
-    const metaMap: Record<string, { label: string; suffix: string }> = {
-      salento_hof_v1: { label: "Niv. 1", suffix: "★" },
-      salento_hof_v2: { label: "Niv. 2", suffix: "🌞" },
-      salento_hof_v3: { label: "Niv. 3", suffix: "🍃" },
-      salento_hof: { label: "Archive", suffix: "★" },
-      salento_hof_v0: { label: "Archive", suffix: "★" },
-      hof: { label: "Archive", suffix: "★" },
-    };
-
     const data = loadAllHallOfFame();
     return data
       .flatMap(({ key, entries }) =>
         entries.map((entry) => ({
           ...entry,
           sourceKey: key,
-          sourceLabel: metaMap[key]?.label ?? key,
-          progressSuffix: metaMap[key]?.suffix ?? "★",
+          sourceLabel: SOURCE_META_MAP.get(key)?.label ?? key,
+          progressSuffix: SOURCE_META_MAP.get(key)?.suffix ?? DEFAULT_SUFFIX,
         }))
       )
       .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -90,10 +103,27 @@ type HallOfFameSectionProps = {
 export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const entries = useHallOfFameEntries();
   const entryStats = React.useMemo(() => {
-    const perSource = new Map<string, number>();
+    const perSource = new Map<string, { label: string; count: number; order: number }>();
+    SOURCE_META.filter((meta) => meta.alwaysShow).forEach((meta) => {
+      perSource.set(meta.label, {
+        label: meta.label,
+        count: 0,
+        order: SOURCE_LABEL_ORDER.get(meta.label) ?? Number.MAX_SAFE_INTEGER,
+      });
+    });
     const playerIds = new Set<string>();
     entries.forEach((entry) => {
-      perSource.set(entry.sourceLabel, (perSource.get(entry.sourceLabel) ?? 0) + 1);
+      const knownMeta = SOURCE_META_MAP.get(entry.sourceKey);
+      const label = knownMeta?.label ?? entry.sourceLabel;
+      const current = perSource.get(label) ?? {
+        label,
+        count: 0,
+        order:
+          SOURCE_LABEL_ORDER.get(label) ??
+          (knownMeta ? SOURCE_META.indexOf(knownMeta) : Number.MAX_SAFE_INTEGER),
+      };
+      current.count += 1;
+      perSource.set(label, current);
       const normalizedName = normalizePlayerName(entry.name);
       const normalizedCountry = normalizePlayerName(entry.country?.label);
       const fallbackId = `${entry.sourceKey}:${entry.date}`;
@@ -103,7 +133,15 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
     return {
       total: entries.length,
       players: playerIds.size,
-      perSource: Array.from(perSource.entries()).sort((a, b) => b[1] - a[1]),
+      perSource: Array.from(perSource.values()).sort((a, b) => {
+        if (a.order !== b.order) {
+          return a.order - b.order;
+        }
+        if (a.count !== b.count) {
+          return b.count - a.count;
+        }
+        return a.label.localeCompare(b.label);
+      }),
     };
   }, [entries]);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
@@ -139,21 +177,20 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
           <p className="bonus-index__hof-lead">
             Les meilleurs scores de la chasse sont enregistrés sur cet appareil. Challenge accepté ?
           </p>
-          {entryStats.total > 0 ? (
-            <p className="bonus-index__hof-meta" aria-live="polite">
-              {entryStats.total} partie{entryStats.total > 1 ? "s" : ""} enregistrée{entryStats.total > 1 ? "s" : ""}
-              {entryStats.players > 0
-                ? ` · ${entryStats.players} joueur${entryStats.players > 1 ? "s" : ""}`
-                : ""}
-              {entryStats.perSource.length > 0 ? " · " : ""}
-              {entryStats.perSource.map(([label, count], index) => (
-                <span key={label}>
-                  {label}: {count}
-                  {index < entryStats.perSource.length - 1 ? " • " : ""}
-                </span>
-              ))}
-            </p>
-          ) : null}
+          <p className="bonus-index__hof-meta" aria-live="polite">
+            <span>
+              {entryStats.total} partie
+              {pluralSuffix(entryStats.total)} enregistrée
+              {pluralSuffix(entryStats.total)}
+            </span>
+            <span>
+              · {entryStats.players} joueur
+              {pluralSuffix(entryStats.players)}
+            </span>
+            {entryStats.perSource.map(({ label, count }) => (
+              <span key={label}>· {label}: {count}</span>
+            ))}
+          </p>
         </div>
       </header>
 
@@ -218,6 +255,10 @@ function normalizePlayerName(name?: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function pluralSuffix(count: number): "" | "s" {
+  return count === 1 ? "" : "s";
 }
 
 export default HallOfFameSection;
