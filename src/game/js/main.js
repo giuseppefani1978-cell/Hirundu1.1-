@@ -903,7 +903,8 @@ export function boot() {
       }
     });
 
-    const playerSize = Math.min(160, Math.max(90, view.dw * state.player.size || 90));
+    const playerScale = typeof state.player.size === 'number' ? state.player.size : PLAYER_BASE.size;
+    const playerSize = Math.min(120, Math.max(60, view.dw * playerScale));
     const px = view.ox + state.player.x * view.dw;
     const py = view.oy + state.player.y * view.dh;
 

@@ -480,9 +480,10 @@ export function renderBattle(ctx, _view, sprites){
   }
 
   // Personnages
-  const P_W = 140, P_H = 152;
-  const pY = h - BTL.FLOOR_H + state.player.y - P_H;
-  const fY = h - BTL.FLOOR_H + state.foe.y    - P_H - 50;
+  const P_W = 96, P_H = 108;
+  const playerBaseline = h - BTL.FLOOR_H + state.player.y;
+  const foeBaseline = h - BTL.FLOOR_H + state.foe.y;
+  const pY = playerBaseline - P_H;
 
   // Joueur
   ctx.save();
@@ -499,8 +500,6 @@ export function renderBattle(ctx, _view, sprites){
   // --- Ennemi (agrandi + fade si mort)
   const F_W_BASE = Math.round(P_W * 1.8);
   const F_H_BASE = Math.round(P_H * 1.8);
-  ctx.save();
-  ctx.translate(state.foe.x, fY);
 
   let foeImg = null;
   if (state.foeType === 'jelly')        foeImg = sprites?.jellyImg;
@@ -509,15 +508,19 @@ export function renderBattle(ctx, _view, sprites){
 
   // jelly/crow "face droite" → flip pour viser la gauche ; Sputacchina déjà à gauche
   const needFlip = (state.foeType === 'jelly' || state.foeType === 'crow');
-  if (needFlip) ctx.scale(-1, 1);
 
   let foeAlpha = 1, foeScale = 1;
   if (state.foeDeath) { foeAlpha = Math.max(0, state.foeDeath.fade); foeScale = Math.max(0.5, 0.8 + 0.5*foeAlpha); }
+  const drawW = Math.round(F_W_BASE * foeScale);
+  const drawH = Math.round(F_H_BASE * foeScale);
+  const FOE_BASELINE_OFFSET = -18;
+
+  ctx.save();
+  ctx.translate(state.foe.x, foeBaseline - drawH + FOE_BASELINE_OFFSET);
+  if (needFlip) ctx.scale(-1, 1);
   ctx.globalAlpha = foeAlpha;
 
   if (!state.foeDeath?.done) {
-    const drawW = Math.round(F_W_BASE * foeScale);
-    const drawH = Math.round(F_H_BASE * foeScale);
     if (foeImg?.naturalWidth) {
       if (needFlip) ctx.drawImage(foeImg, 0, 0, drawW, drawH);
       else          ctx.drawImage(foeImg, -drawW, 0, drawW, drawH);

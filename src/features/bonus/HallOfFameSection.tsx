@@ -95,9 +95,10 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
     entries.forEach((entry) => {
       perSource.set(entry.sourceLabel, (perSource.get(entry.sourceLabel) ?? 0) + 1);
       const normalizedName = normalizePlayerName(entry.name);
-      if (normalizedName) {
-        playerIds.add(normalizedName);
-      }
+      const normalizedCountry = normalizePlayerName(entry.country?.label);
+      const fallbackId = `${entry.sourceKey}:${entry.date}`;
+      const identifier = normalizedName || normalizedCountry || fallbackId;
+      playerIds.add(identifier);
     });
     return {
       total: entries.length,

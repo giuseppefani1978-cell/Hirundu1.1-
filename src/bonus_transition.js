@@ -3,19 +3,41 @@
 // et jamais sur l’accueil. S’attache à l’overlay de victoire dès qu’il existe.
 
 const CTA_ID = '__victory_bonus_btn';
-const MAP_PAGE_URL = '/app.html#otranto';
+
+const CTA_CONFIG = {
+  otranto: {
+    label: '🌟 Victoire : Bonus d\'Otranto → Carte',
+    href: '/app.html#otranto',
+    storageKeys: ['bonus_unlocked', 'bonus_otranto_unlocked', 'otranto_bonus_unlocked'],
+  },
+  gallipoli: {
+    label: '🌟 Victoire : Bonus de Gallipoli → Carte',
+    href: '/app.html#gallipoli',
+    storageKeys: ['bonus_unlocked', 'bonus_gallipoli_unlocked', 'gallipoli_bonus_unlocked'],
+  },
+  lecce: {
+    label: '🌟 Victoire : Bonus de Lecce → Carte',
+    href: '/app.html#lecce',
+    storageKeys: ['bonus_unlocked', 'bonus_lecce_unlocked', 'lecce_bonus_unlocked'],
+  },
+};
+
+let pendingTargetKey = null;
 
 export function removeVictoryCTA() {
   const btn = document.getElementById(CTA_ID);
   if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
+  pendingTargetKey = null;
 }
 
-function buildCTA() {
+function buildCTA(targetKey) {
   if (document.getElementById(CTA_ID)) return null;
+  const config = CTA_CONFIG[targetKey];
+  if (!config) return null;
   const btn = document.createElement('button');
   btn.id = CTA_ID;
   btn.type = 'button';
-  btn.textContent = '🌟 Victoire : Bonus débloqué → Carte';
+  btn.textContent = config.label;
   btn.style.cssText = `
     display:block; width:100%;
     margin-top:12px;
@@ -28,10 +50,11 @@ function buildCTA() {
   `;
   btn.addEventListener('click', () => {
     try {
-      localStorage.setItem('bonus_unlocked', '1');
-      localStorage.setItem('bonus_otranto_unlocked', '1');
+      config.storageKeys.forEach((key) => {
+        localStorage.setItem(key, 'true');
+      });
     } catch {}
-    window.location.href = MAP_PAGE_URL;
+    window.location.href = config.href;
   });
   return btn;
 }
@@ -56,7 +79,9 @@ async function waitForOverlayCard(timeoutMs = 4000) {
   });
 }
 
-async function attachCTAIntoVictoryOverlay() {
+async function attachCTAIntoVictoryOverlay(targetKey = pendingTargetKey) {
+  if (!targetKey || !CTA_CONFIG[targetKey]) return;
+  pendingTargetKey = targetKey;
   // Ne JAMAIS afficher sur l’accueil
   const isHome = window.location.pathname.endsWith('/') ||
                  window.location.pathname.endsWith('/index.html') ||
@@ -69,7 +94,7 @@ async function attachCTAIntoVictoryOverlay() {
   // Évite doublons
   if (overlayCard.querySelector(`#${CTA_ID}`)) return;
 
-  const cta = buildCTA();
+  const cta = buildCTA(targetKey);
   if (!cta) return;
 
   // On l’insère à la fin de la carte de victoire
@@ -83,7 +108,13 @@ export function setupVictoryCTAHandlers() {
 
   // Quand le jeu signale qu’Otranto est débloqué, on injecte le CTA dans l’overlay
   window.addEventListener('otranto:unlocked', () => {
-    attachCTAIntoVictoryOverlay();
+    attachCTAIntoVictoryOverlay('otranto');
+  });
+  window.addEventListener('gallipoli:unlocked', () => {
+    attachCTAIntoVictoryOverlay('gallipoli');
+  });
+  window.addEventListener('lecce:unlocked', () => {
+    attachCTAIntoVictoryOverlay('lecce');
   });
 
   // Si jamais l’overlay arrive un poil après l’évènement, on retente un peu plus tard

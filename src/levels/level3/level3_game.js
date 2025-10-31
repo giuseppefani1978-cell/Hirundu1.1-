@@ -14,6 +14,7 @@ import {
 import * as ui from '../../ui.js';
 import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
+import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
@@ -68,7 +69,7 @@ const POIS = [
 ];
 const LEAVES_TARGET = POIS.length;
 
-const PLAYER_BASE = { x:0.55, y:0.25, speed:0.0048, size:0.11 };
+const PLAYER_BASE = { x:0.55, y:0.25, speed:0.0048, size:0.08 };
 const ENERGY = { MAX:100, START:100 };
 
 const ENEMY  = { JELLY:'jelly', CROW:'crow' };
@@ -119,6 +120,8 @@ export function boot(){
 
   // UI init
   ui.initUI();
+  removeVictoryCTA();
+  setupVictoryCTAHandlers();
 
   // Titres L3 + HUD "Feuilles"
   const hudLabel = document.getElementById('hudLabel');
@@ -420,7 +423,8 @@ export function boot(){
     }
 
     // joueur + collisions + ennemis/bonus (mode play)
-    const bw = Math.min(160, Math.max(90, dw * player.size || 90));
+    const playerScale = typeof player.size === 'number' ? player.size : PLAYER_BASE.size;
+    const bw = Math.min(120, Math.max(60, dw * playerScale));
     const bx = ox + player.x*dw;
     const by = oy + player.y*dh;
 

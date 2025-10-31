@@ -43,7 +43,7 @@ export const PLAYER_BASE = Object.freeze({
   x: 0.55,
   y: 0.25,
   speed: 0.0048,
-  size: 0.11,
+  size: 0.08,
 });
 
 export const ENERGY = Object.freeze({
