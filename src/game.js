@@ -749,16 +749,20 @@ export function boot(){
   function startGame(){
     try{
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
-      const remembered = getStoredPlayerName();
-      if (remembered) {
-        playerName = remembered;
+      const storedName = playerName && playerName.trim() ? playerName : getStoredPlayerName();
+      if (storedName) {
+        playerName = storedName.trim();
+        if (playerName !== storedName) {
+          try { localStorage.setItem('player_name', playerName); } catch {}
+          try { lsSet && lsSet('player_name', playerName); } catch {}
+        }
       } else {
         const response = prompt("Ton nom/pseudo ?") || "Joueur";
         playerName = (response||'').trim() || "Joueur";
+        try { localStorage.setItem('player_name', playerName); } catch {}
+        try { lsSet && lsSet('player_name', playerName); } catch {}
       }
       country = getCountry();
-      try { localStorage.setItem('player_name', playerName); } catch {}
-      try { lsSet && lsSet('player_name', playerName); } catch {}
 
 
       ui.hideOverlay();

@@ -103,26 +103,33 @@ type HallOfFameSectionProps = {
 export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const entries = useHallOfFameEntries();
   const entryStats = React.useMemo(() => {
-    const perSource = new Map<string, { label: string; count: number; order: number }>();
+    const perSource = new Map<
+      string,
+      { label: string; count: number; order: number; suffix: string }
+    >();
     SOURCE_META.filter((meta) => meta.alwaysShow).forEach((meta) => {
       perSource.set(meta.label, {
         label: meta.label,
         count: 0,
         order: SOURCE_LABEL_ORDER.get(meta.label) ?? Number.MAX_SAFE_INTEGER,
+        suffix: meta.suffix ?? DEFAULT_SUFFIX,
       });
     });
     const playerIds = new Set<string>();
     entries.forEach((entry) => {
       const knownMeta = SOURCE_META_MAP.get(entry.sourceKey);
       const label = knownMeta?.label ?? entry.sourceLabel;
+      const suffix = knownMeta?.suffix ?? entry.progressSuffix ?? DEFAULT_SUFFIX;
       const current = perSource.get(label) ?? {
         label,
         count: 0,
         order:
           SOURCE_LABEL_ORDER.get(label) ??
           (knownMeta ? SOURCE_META.indexOf(knownMeta) : Number.MAX_SAFE_INTEGER),
+        suffix,
       };
       current.count += 1;
+      current.suffix = suffix;
       perSource.set(label, current);
       const normalizedName = normalizePlayerName(entry.name);
       const normalizedCountry = normalizePlayerName(entry.country?.label);
@@ -177,20 +184,27 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
           <p className="bonus-index__hof-lead">
             Les meilleurs scores de la chasse sont enregistrés sur cet appareil. Challenge accepté ?
           </p>
-          <p className="bonus-index__hof-meta" aria-live="polite">
-            <span>
-              {entryStats.total} partie
-              {pluralSuffix(entryStats.total)} enregistrée
-              {pluralSuffix(entryStats.total)}
-            </span>
-            <span>
-              · {entryStats.players} joueur
-              {pluralSuffix(entryStats.players)}
-            </span>
-            {entryStats.perSource.map(({ label, count }) => (
-              <span key={label}>· {label}: {count}</span>
+          <div className="bonus-index__hof-meta" aria-live="polite">
+            <div className="bonus-index__hof-stat">
+              <span className="bonus-index__hof-stat-label">Parties enregistrées</span>
+              <strong className="bonus-index__hof-stat-value">{entryStats.total}</strong>
+            </div>
+            <div className="bonus-index__hof-stat">
+              <span className="bonus-index__hof-stat-label">Joueurs uniques</span>
+              <strong className="bonus-index__hof-stat-value">{entryStats.players}</strong>
+            </div>
+            {entryStats.perSource.map(({ label, count, suffix }) => (
+              <div key={label} className="bonus-index__hof-stat">
+                <span className="bonus-index__hof-stat-label">{label}</span>
+                <strong className="bonus-index__hof-stat-value">
+                  {count}
+                  <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
+                    {suffix}
+                  </span>
+                </strong>
+              </div>
             ))}
-          </p>
+          </div>
         </div>
       </header>
 
