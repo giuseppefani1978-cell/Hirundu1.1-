@@ -15,6 +15,7 @@ import {
 import { findPartnerById, getAllPartners, type PartnerReward } from "../services/partners";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
 import { getEnrichedPois } from "../services/pois";
+import { setPoiVisited } from "../passport/passportStorage";
 import { useAppDispatch, useAppSelector } from "../../../store";
 import "./QrHub.css";
 
@@ -73,8 +74,12 @@ export default function QrHub() {
       }
 
       dispatch(scanSucceeded(record));
+
+      if (action.type === "partner") {
+        markPartnerVisit(action.partnerId, enrichedPois);
+      }
     },
-    [dispatch]
+    [dispatch, enrichedPois]
   );
 
   const handleScanResult = useCallback(
@@ -338,6 +343,24 @@ function describeAction(
     default:
       return null;
   }
+}
+
+function markPartnerVisit(
+  partnerId: string,
+  pois: ReturnType<typeof getEnrichedPois>
+): void {
+  const seen = new Set<string>();
+  pois
+    .filter((poi) => poi.partner?.id === partnerId)
+    .forEach((poi) => {
+      const bonusKey = resolveBonusKey(poi);
+      const config = BONUS_MAPS[bonusKey];
+      if (!config) return;
+      const identifier = `${bonusKey}:${poi.id}`;
+      if (seen.has(identifier)) return;
+      seen.add(identifier);
+      setPoiVisited(bonusKey, poi.id, true, config.poiIds);
+    });
 }
 
 function rewardLabel(reward: PartnerReward | undefined): string {
