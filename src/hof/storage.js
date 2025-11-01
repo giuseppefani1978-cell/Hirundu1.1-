@@ -2,6 +2,8 @@ const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];
 const HOF_SIZE = 10;
 const BONUS_PAGE_URL = '/app.html#/bonus?hof';
+const SUMMARY_STORAGE_KEY = 'salento_hof_summary_v1';
+const SUMMARY_VERSION = 1;
 
 function isLikelyHallOfFameKey(key) {
   if (!key) return false;
@@ -146,6 +148,36 @@ function normalizeEntry(raw) {
   return entry;
 }
 
+function coercePositiveNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
+function coerceNonNegativeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : 0;
+}
+
+function addBonusBreakdown(target, breakdown) {
+  if (!target || typeof target !== 'object') {
+    return;
+  }
+
+  if (!breakdown || typeof breakdown !== 'object') {
+    return;
+  }
+
+  target.pasticciotto += coerceNonNegativeNumber(
+    breakdown.pasticciotto ?? breakdown.p ?? breakdown.pasticciotti
+  );
+  target.rustico += coerceNonNegativeNumber(
+    breakdown.rustico ?? breakdown.r ?? breakdown.rustici
+  );
+  target.caffe += coerceNonNegativeNumber(
+    breakdown.caffe ?? breakdown.c ?? breakdown.caffes
+  );
+}
+
 function extractEntryArray(parsed) {
   if (Array.isArray(parsed)) {
     return parsed;
@@ -216,6 +248,240 @@ function writeRawList(list, key = DEFAULT_KEY) {
   }
 }
 
+function cloneBonusTotals(seed) {
+  if (!seed || typeof seed !== 'object') {
+    return { pasticciotto: 0, rustico: 0, caffe: 0 };
+  }
+  return {
+    pasticciotto: coerceNonNegativeNumber(seed.pasticciotto),
+    rustico: coerceNonNegativeNumber(seed.rustico),
+    caffe: coerceNonNegativeNumber(seed.caffe),
+  };
+}
+
+function createEmptySummary(perKeySeeds = HOF_KEYS) {
+  const perKey = {};
+  perKeySeeds.forEach((key) => {
+    perKey[key] = {
+      runs: 0,
+      points: 0,
+      bonuses: cloneBonusTotals(),
+    };
+  });
+
+  return {
+    version: SUMMARY_VERSION,
+    total: 0,
+    points: 0,
+    bonuses: cloneBonusTotals(),
+    perKey,
+    playerIndex: {},
+    playerFallback: 0,
+  };
+}
+
+function ensurePerKeySummary(summary, key) {
+  if (!summary.perKey[key]) {
+    summary.perKey[key] = {
+      runs: 0,
+      points: 0,
+      bonuses: cloneBonusTotals(),
+    };
+  } else {
+    const record = summary.perKey[key];
+    record.runs = coerceNonNegativeNumber(record.runs);
+    record.points = coerceNonNegativeNumber(record.points);
+    record.bonuses = cloneBonusTotals(record.bonuses);
+  }
+  return summary.perKey[key];
+}
+
+function readSummaryRecord() {
+  if (typeof window === 'undefined' || !('localStorage' in window)) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SUMMARY_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    if (parsed.version !== SUMMARY_VERSION) {
+      return null;
+    }
+
+    const summary = createEmptySummary();
+    summary.total = coerceNonNegativeNumber(parsed.total ?? parsed.runs ?? 0);
+    summary.points = coerceNonNegativeNumber(parsed.points ?? parsed.totalPoints ?? 0);
+    summary.bonuses = cloneBonusTotals(parsed.bonuses ?? parsed.bonusTotals);
+
+    const perKeyRaw = parsed.perKey;
+    if (perKeyRaw && typeof perKeyRaw === 'object') {
+      Object.entries(perKeyRaw).forEach(([key, value]) => {
+        if (!key || !value || typeof value !== 'object') {
+          return;
+        }
+        const record = ensurePerKeySummary(summary, key);
+        record.runs = coerceNonNegativeNumber(value.runs ?? value.total ?? 0);
+        record.points = coerceNonNegativeNumber(value.points ?? value.score ?? 0);
+        record.bonuses = cloneBonusTotals(value.bonuses ?? value.bonusTotals);
+      });
+    }
+
+    const playerIndex = parsed.playerIndex || parsed.playersIndex || parsed.playersMap;
+    if (playerIndex && typeof playerIndex === 'object') {
+      Object.entries(playerIndex).forEach(([id, count]) => {
+        if (!id) return;
+        summary.playerIndex[id] = coerceNonNegativeNumber(count);
+      });
+    }
+
+    if (typeof parsed.players === 'number' && parsed.players > 0) {
+      summary.playerFallback = coerceNonNegativeNumber(parsed.players);
+    }
+
+    return summary;
+  } catch (error) {
+    console.warn('[hof] unable to read hall of fame summary', error);
+    return null;
+  }
+}
+
+function writeSummaryRecord(summary) {
+  if (typeof window === 'undefined' || !('localStorage' in window)) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      SUMMARY_STORAGE_KEY,
+      JSON.stringify({
+        ...summary,
+        version: SUMMARY_VERSION,
+      })
+    );
+  } catch (error) {
+    console.warn('[hof] unable to persist hall of fame summary', error);
+  }
+}
+
+function rebuildSummaryRecord() {
+  const keys = collectHallOfFameKeys();
+  const summary = createEmptySummary(keys);
+
+  keys.forEach((key) => {
+    const entries = readRawList(key);
+    const record = ensurePerKeySummary(summary, key);
+    record.runs = entries.length;
+    record.points = 0;
+    record.bonuses = cloneBonusTotals();
+
+    entries.forEach((entry, index) => {
+      const normalized = normalizeEntry(entry) ?? entry;
+      summary.total += 1;
+
+      const score = coercePositiveNumber(
+        normalized?.score ?? normalized?.points ?? normalized?.total
+      );
+      if (score > 0) {
+        summary.points += score;
+        record.points += score;
+      }
+
+      addBonusBreakdown(summary.bonuses, normalized?.bonusBreakdown ?? normalized?.breakdown);
+      addBonusBreakdown(record.bonuses, normalized?.bonusBreakdown ?? normalized?.breakdown);
+
+      const playerId = identifyEntry(normalized, key, index);
+      if (playerId) {
+        summary.playerIndex[playerId] = (summary.playerIndex[playerId] || 0) + 1;
+      }
+    });
+  });
+
+  writeSummaryRecord(summary);
+  return summary;
+}
+
+function ensureSummaryRecord() {
+  return readSummaryRecord() ?? rebuildSummaryRecord();
+}
+
+function applyEntryToSummary(entry, key) {
+  const summary = ensureSummaryRecord();
+  if (!summary) {
+    return null;
+  }
+
+  const normalized = normalizeEntry(entry) ?? entry;
+
+  summary.total += 1;
+
+  const score = coercePositiveNumber(
+    normalized?.score ?? normalized?.points ?? normalized?.total
+  );
+  if (score > 0) {
+    summary.points += score;
+  }
+
+  addBonusBreakdown(summary.bonuses, normalized?.bonusBreakdown ?? normalized?.breakdown);
+
+  const record = ensurePerKeySummary(summary, key);
+  record.runs += 1;
+  if (score > 0) {
+    record.points += score;
+  }
+  addBonusBreakdown(record.bonuses, normalized?.bonusBreakdown ?? normalized?.breakdown);
+
+  const playerId = identifyEntry(normalized, key, summary.total);
+  if (playerId) {
+    summary.playerIndex[playerId] = (summary.playerIndex[playerId] || 0) + 1;
+  }
+
+  summary.playerFallback = 0;
+
+  writeSummaryRecord(summary);
+  return summary;
+}
+
+function deriveSummarySnapshot(summary) {
+  const keys = new Set([
+    ...HOF_KEYS,
+    ...Object.keys(summary?.perKey || {}),
+    ...collectHallOfFameKeys(),
+  ]);
+
+  const perKey = {};
+  keys.forEach((key) => {
+    const record = summary?.perKey?.[key];
+    perKey[key] = {
+      runs: coerceNonNegativeNumber(record?.runs ?? 0),
+      points: coerceNonNegativeNumber(record?.points ?? 0),
+      bonuses: cloneBonusTotals(record?.bonuses),
+    };
+  });
+
+  const playerIndex = summary?.playerIndex && typeof summary.playerIndex === 'object'
+    ? summary.playerIndex
+    : {};
+  const playersFromIndex = Object.keys(playerIndex).filter(Boolean).length;
+  const fallbackPlayers = coerceNonNegativeNumber(summary?.playerFallback ?? summary?.players ?? 0);
+  const players = playersFromIndex > 0 ? playersFromIndex : fallbackPlayers;
+
+  return {
+    total: coerceNonNegativeNumber(summary?.total ?? 0),
+    players,
+    perKey,
+    points: coerceNonNegativeNumber(summary?.points ?? 0),
+    bonuses: cloneBonusTotals(summary?.bonuses),
+  };
+}
+
 export function loadHallOfFame(key = DEFAULT_KEY) {
   return readRawList(key);
 }
@@ -234,6 +500,11 @@ export function addHallOfFameEntry(entry, key = DEFAULT_KEY) {
   list.sort((a, b) => (b?.score || 0) - (a?.score || 0));
   const trimmed = list.slice(0, HOF_SIZE);
   writeRawList(trimmed, key);
+  try {
+    applyEntryToSummary(entry, key);
+  } catch (error) {
+    console.warn('[hof] unable to update hall of fame summary', error);
+  }
   return trimmed;
 }
 
@@ -273,75 +544,13 @@ export function openHallOfFameBonusPage() {
 
 export const HOF_KEY = DEFAULT_KEY;
 export { HOF_SIZE };
-
-function coercePositiveNumber(value) {
-  const num = Number(value);
-  return Number.isFinite(num) && num > 0 ? num : 0;
-}
-
-function coerceNonNegativeNumber(value) {
-  const num = Number(value);
-  return Number.isFinite(num) && num >= 0 ? num : 0;
-}
-
-function addBonusBreakdown(target, breakdown) {
-  if (!breakdown || typeof breakdown !== 'object') {
-    return;
-  }
-
-  target.pasticciotto += coerceNonNegativeNumber(
-    breakdown.pasticciotto ?? breakdown.p ?? breakdown.pasticciotti
-  );
-  target.rustico += coerceNonNegativeNumber(
-    breakdown.rustico ?? breakdown.r ?? breakdown.rustici
-  );
-  target.caffe += coerceNonNegativeNumber(
-    breakdown.caffe ?? breakdown.c ?? breakdown.caffes
-  );
-}
-
 export function loadHallOfFameSummary() {
-  const summary = {
-    total: 0,
-    players: 0,
-    perKey: {},
-    points: 0,
-    bonuses: { pasticciotto: 0, rustico: 0, caffe: 0 },
-  };
-
-  const seenPlayers = new Set();
-  const keys = getHallOfFameKeys();
-
-  keys.forEach((key) => {
-    const entries = readRawList(key);
-    const perKey = {
-      runs: entries.length,
-      points: 0,
-      bonuses: { pasticciotto: 0, rustico: 0, caffe: 0 },
-    };
-
-    summary.total += entries.length;
-
-    entries.forEach((entry, index) => {
-      seenPlayers.add(identifyEntry(entry, key, index));
-
-      const score = coercePositiveNumber(entry?.score ?? entry?.points ?? entry?.total);
-      if (score > 0) {
-        summary.points += score;
-        perKey.points += score;
-      }
-
-      addBonusBreakdown(summary.bonuses, entry?.bonusBreakdown ?? entry?.breakdown);
-      addBonusBreakdown(perKey.bonuses, entry?.bonusBreakdown ?? entry?.breakdown);
-    });
-
-    summary.perKey[key] = perKey;
-  });
-
-  summary.players = seenPlayers.size;
-  return summary;
+  const summary = ensureSummaryRecord();
+  if (!summary) {
+    return deriveSummarySnapshot(createEmptySummary());
+  }
+  return deriveSummarySnapshot(summary);
 }
-
 export function normalizeHallOfFameName(value) {
   return normalizeToken(value);
 }
