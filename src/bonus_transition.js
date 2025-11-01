@@ -2,22 +2,24 @@
 // Gère l’affichage du CTA “Victoire : Bonus débloqué” uniquement après la victoire,
 // et jamais sur l’accueil. S’attache à l’overlay de victoire dès qu’il existe.
 
+import { withBase } from './utils/basePath.js';
+
 const CTA_ID = '__victory_bonus_btn';
 
 const CTA_CONFIG = {
   otranto: {
     label: '🌟 BONUS → Carte',
-    href: '/app.html#otranto',
+    target: '#otranto',
     storageKeys: ['bonus_unlocked', 'bonus_otranto_unlocked', 'otranto_bonus_unlocked'],
   },
   gallipoli: {
     label: '🌟 BONUS → Carte',
-    href: '/app.html#gallipoli',
+    target: '#gallipoli',
     storageKeys: ['bonus_unlocked', 'bonus_gallipoli_unlocked', 'gallipoli_bonus_unlocked'],
   },
   lecce: {
     label: '🌟 BONUS → Carte',
-    href: '/app.html#lecce',
+    target: '#lecce',
     storageKeys: ['bonus_unlocked', 'bonus_lecce_unlocked', 'lecce_bonus_unlocked'],
   },
 };
@@ -48,13 +50,15 @@ function buildCTA(targetKey) {
     box-shadow:0 6px 18px rgba(0,0,0,.25);
     cursor:pointer;
   `;
+  const targetHref = withBase(`app.html${config.target || ''}`);
+
   btn.addEventListener('click', () => {
     try {
       config.storageKeys.forEach((key) => {
         localStorage.setItem(key, 'true');
       });
     } catch {}
-    window.location.href = config.href;
+    window.location.href = targetHref;
   });
   return btn;
 }

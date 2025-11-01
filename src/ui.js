@@ -29,19 +29,19 @@ let el = {
 // Initialisation/sanity
 // —————————————————————————————
 export function initUI() {
-  el.hud       = qs('#hud');
-  el.score     = qs('#score');
-  el.stars     = qs('#stars');
-  el.musicBtn  = qs('#musicBtn');
+  el.hud = qs('#hud');
+  el.score = qs('#score');
+  el.stars = qs('#stars');
+  el.musicBtn = qs('#musicBtn');
   el.replayBtn = qs('#replayFloat');
-  el.tarTop    = qs('#tarTop');
+  el.tarTop = qs('#tarTop');
   el.tarAvatar = qs('#tarAvatar');
-  el.bdTitle   = qs('#bdTitle');
-  el.bdText    = qs('#bdText');
-  el.overlay   = qs('#overlay');
-  el.touch     = qs('#touch');
-  el.errBox    = qs('#err');
-  el.errText   = qs('#errText');
+  el.bdTitle = qs('#bdTitle');
+  el.bdText = qs('#bdText');
+  el.overlay = qs('#overlay');
+  el.touch = qs('#touch');
+  el.errBox = qs('#err');
+  el.errText = qs('#errText');
 
   // — Barre d’énergie : injection auto en bas du HUD —
   buildEnergyBar();
@@ -103,11 +103,11 @@ function buildEnergyBar() {
  * Met à jour la barre d’énergie (0..100)
  */
 export function updateEnergy(percent) {
-  const p = Math.max(0, Math.min(100, percent|0));
+  const p = Math.max(0, Math.min(100, percent | 0));
   const full = Math.round((p / 100) * ENERGY_SEGMENTS);
 
   el.energySegs.forEach((seg, idx) => {
-    const on = (ENERGY_SEGMENTS - idx) <= full; // on remplit par le bas
+    const on = ENERGY_SEGMENTS - idx <= full; // on remplit par le bas
     seg.style.background = on ? '#7ac37a' : '#e5d9a6';
   });
 
@@ -143,8 +143,11 @@ export function renderStars(n, total) {
 
 function starSVG(fill) {
   const f = fill || '#d26f45';
-  return 'data:image/svg+xml;base64,' + btoa(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 5 L61 36 L94 36 L67 55 L77 88 L50 68 L23 88 L33 55 L6 36 L39 36 Z' fill='${f}' stroke='#8c3f28' stroke-width='4' stroke-linejoin='round'/></svg>`
+  return (
+    'data:image/svg+xml;base64,' +
+    btoa(
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 5 L61 36 L94 36 L67 55 L77 88 L50 68 L23 88 L33 55 L6 36 L39 36 Z' fill='${f}' stroke='#8c3f28' stroke-width='4' stroke-linejoin='round'/></svg>`,
+    )
   );
 }
 
@@ -154,21 +157,25 @@ function starSVG(fill) {
 export function showAsk(text) {
   if (!el.tarTop) return;
   el.bdTitle.textContent = 'Tarantula';
-  el.bdText.textContent  = text || '';
+  el.bdText.textContent = text || '';
   el.tarTop.classList.add('show');
 }
 export function showSuccess(text) {
   if (!el.tarTop) return;
   el.bdTitle.textContent = 'Tarantula';
-  el.bdText.textContent  = text || '';
+  el.bdText.textContent = text || '';
   el.tarTop.classList.add('show');
 }
 
 // —————————————————————————————
 // Overlay / Touch / Boutons
 // —————————————————————————————
-export function hideOverlay() { el.overlay && (el.overlay.style.display = 'none'); }
-export function showOverlay() { el.overlay && (el.overlay.style.display = ''); }
+export function hideOverlay() {
+  el.overlay && (el.overlay.style.display = 'none');
+}
+export function showOverlay() {
+  el.overlay && (el.overlay.style.display = '');
+}
 
 export function showTouch(show = true) {
   if (!el.touch) return;
@@ -182,7 +189,7 @@ export function showReplay(show = true) {
 
 export function setMusicLabel(isOn) {
   if (!el.musicBtn) return;
-  const txt = isOn ? (t.musicOn || 'Musique ON') : (t.musicOff || 'Musique OFF');
+  const txt = isOn ? t.musicOn || 'Musique ON' : t.musicOff || 'Musique OFF';
   const icon = isOn ? '🔊' : '🔈';
   el.musicBtn.innerHTML = `<span aria-hidden="true">${icon}</span> ${txt}`;
   el.musicBtn.setAttribute('aria-pressed', String(!!isOn));
@@ -229,20 +236,20 @@ export function showEphemeralLabel(x, y, text, opts = {}) {
 
   // position de départ (légèrement en dessous)
   node.style.left = `${Math.round(x)}px`;
-  node.style.top  = `${Math.round(y)}px`;
+  node.style.top = `${Math.round(y)}px`;
 
   // style inline (fallback si le CSS n’est pas chargé)
-  node.style.position   = 'absolute';
-  node.style.transform  = 'translate(-50%, -50%)';
-  node.style.font       = '700 14px system-ui';
-  node.style.color      = '#000';
-  node.style.padding    = '6px 10px';
+  node.style.position = 'absolute';
+  node.style.transform = 'translate(-50%, -50%)';
+  node.style.font = '700 14px system-ui';
+  node.style.color = '#000';
+  node.style.padding = '6px 10px';
   node.style.borderRadius = '10px';
-  node.style.border     = '2px solid rgba(0,0,0,.25)';
+  node.style.border = '2px solid rgba(0,0,0,.25)';
   node.style.background = color || 'transparent'; //
   node.style.textShadow = '0 1px 0 rgba(0,0,0,.2)';
-  node.style.boxShadow  = '0 6px 12px rgba(0,0,0,.25)';
-  node.style.opacity    = '0';
+  node.style.boxShadow = '0 6px 12px rgba(0,0,0,.25)';
+  node.style.opacity = '0';
   node.style.transition = 'transform 140ms ease, opacity 140ms ease';
 
   labelLayer.appendChild(node);
@@ -254,11 +261,14 @@ export function showEphemeralLabel(x, y, text, opts = {}) {
   });
 
   // attente puis légère montée + fade
-  setTimeout(() => {
-    node.style.transition = 'transform 260ms ease, opacity 260ms ease';
-    node.style.transform  = `translate(-50%, -50%) translateY(${dy}px)`;
-    node.style.opacity    = '0';
-  }, Math.max(1, durationMs - 260));
+  setTimeout(
+    () => {
+      node.style.transition = 'transform 260ms ease, opacity 260ms ease';
+      node.style.transform = `translate(-50%, -50%) translateY(${dy}px)`;
+      node.style.opacity = '0';
+    },
+    Math.max(1, durationMs - 260),
+  );
 
   // cleanup
   setTimeout(() => {
@@ -272,7 +282,9 @@ export function showEphemeralLabel(x, y, text, opts = {}) {
 export function assetFail(who, url, placeholderCb) {
   if (!el.errBox || !el.errText) return;
   el.errBox.style.display = 'block';
-  el.errText.innerHTML += (el.errText.innerHTML ? '<br>' : '') + (t.assetMissing?.(who, url) || `${who} missing: ${url}`);
+  el.errText.innerHTML +=
+    (el.errText.innerHTML ? '<br>' : '') +
+    (t.assetMissing?.(who, url) || `${who} missing: ${url}`);
   if (typeof placeholderCb === 'function') placeholderCb();
 }
 
@@ -317,6 +329,8 @@ function ensureCTA() {
 
   ctaDesc = document.createElement('p');
   ctaDesc.id = 'ctaPromptDescription';
+  ctaDesc.style.cssText =
+    'margin: 0; font: 500 14px system-ui; color: #26374a;';
   ctaDesc.style.cssText = 'margin: 0; font: 500 14px system-ui; color: #26374a;';
   ctaDesc.hidden = true;
   ctaNode.appendChild(ctaDesc);
