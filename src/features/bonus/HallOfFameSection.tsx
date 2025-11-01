@@ -35,9 +35,6 @@ const SOURCE_META: SourceMeta[] = [
 ];
 
 const SOURCE_META_MAP = new Map(SOURCE_META.map((meta) => [meta.key, meta]));
-const SOURCE_LABEL_ORDER = new Map(
-  SOURCE_META.map((meta, index) => [meta.label, index])
-);
 const DEFAULT_SUFFIX = "★";
 
 export type HallOfFameEntry = {
@@ -188,75 +185,14 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
     return fallback.size;
   }, [entries, summaryPlayers]);
 
-  const entryStats = React.useMemo(() => {
-    const perSource = new Map<string, { label: string; count: number; order: number; suffix: string }>();
-    SOURCE_META.filter((meta) => meta.alwaysShow).forEach((meta) => {
-      perSource.set(meta.label, {
-        label: meta.label,
-        count: 0,
-        order: SOURCE_LABEL_ORDER.get(meta.label) ?? Number.MAX_SAFE_INTEGER,
-        suffix: meta.suffix ?? DEFAULT_SUFFIX,
-      });
-    });
-
-    const summaryPerKey: Record<string, SummaryTotals> =
-      (summarySnapshot?.perKey as Record<string, SummaryTotals>) ?? {};
-
-    Object.entries(summaryPerKey).forEach(([key, data]) => {
-      const meta = SOURCE_META_MAP.get(key);
-      const label = meta?.label ?? key;
-      const suffix = meta?.suffix ?? DEFAULT_SUFFIX;
-      const order =
-        SOURCE_LABEL_ORDER.get(label) ??
-        (meta ? SOURCE_META.indexOf(meta) : Number.MAX_SAFE_INTEGER);
-      perSource.set(label, {
-        label,
-        count: data?.runs ?? 0,
-        order,
-        suffix,
-      });
-    });
-
-    entries.forEach((entry) => {
-      const knownMeta = SOURCE_META_MAP.get(entry.sourceKey);
-      const label = knownMeta?.label ?? entry.sourceLabel;
-      const suffix = knownMeta?.suffix ?? entry.progressSuffix ?? DEFAULT_SUFFIX;
-      const order =
-        SOURCE_LABEL_ORDER.get(label) ??
-        (knownMeta ? SOURCE_META.indexOf(knownMeta) : Number.MAX_SAFE_INTEGER);
-      const existing = perSource.get(label);
-      if (existing) {
-        existing.suffix = suffix;
-        if (!Object.prototype.hasOwnProperty.call(summaryPerKey, entry.sourceKey)) {
-          existing.count += 1;
-        }
-      } else {
-        perSource.set(label, {
-          label,
-          count: 1,
-          order,
-          suffix,
-        });
-      }
-    });
-
-    const sorted = Array.from(perSource.values()).sort((a, b) => {
-      if (a.order !== b.order) {
-        return a.order - b.order;
-      }
-      if (a.count !== b.count) {
-        return b.count - a.count;
-      }
-      return a.label.localeCompare(b.label);
-    });
-
-    return {
+  const entryStats = React.useMemo(
+    () => ({
       total: totalRuns,
       players: playersCount,
-      perSource: sorted,
       totals: aggregateTotals,
-    };
-  }, [aggregateTotals, entries, playersCount, summarySnapshot, totalRuns]);
+    }),
+    [aggregateTotals, playersCount, totalRuns]
+  );
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -332,17 +268,6 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
               <span className="bonus-index__hof-stat-label">Joueurs uniques</span>
               <strong className="bonus-index__hof-stat-value">{entryStats.players}</strong>
             </div>
-            {entryStats.perSource.map(({ label, count, suffix }) => (
-              <div key={label} className="bonus-index__hof-stat">
-                <span className="bonus-index__hof-stat-label">{label}</span>
-                <strong className="bonus-index__hof-stat-value">
-                  {count}
-                  <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
-                    {suffix}
-                  </span>
-                </strong>
-              </div>
-            ))}
           </div>
         </div>
       </header>
