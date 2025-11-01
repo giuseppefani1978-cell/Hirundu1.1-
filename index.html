@@ -112,7 +112,11 @@
     const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
     if ('serviceWorker' in navigator) {
       if (isProd) {
-        try { await navigator.serviceWorker.register('/sw.js'); } catch {}
+        try {
+          const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
+          const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
+          await navigator.serviceWorker.register(swUrl);
+        } catch {}
       } else {
         // DEV: désactive tout SW + vide les caches
         try {
