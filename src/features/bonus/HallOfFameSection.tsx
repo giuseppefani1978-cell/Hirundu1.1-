@@ -15,6 +15,16 @@ type SourceMeta = {
   alwaysShow?: boolean;
 };
 
+type SummaryTotals = {
+  runs?: number;
+  points?: number;
+  bonuses?: {
+    pasticciotto?: number;
+    rustico?: number;
+    caffe?: number;
+  };
+};
+
 const SOURCE_META: SourceMeta[] = [
   { key: "salento_hof_v1", label: "Niv. 1", suffix: "★", alwaysShow: true },
   { key: "salento_hof_v2", label: "Niv. 2", suffix: "🌞", alwaysShow: true },
@@ -107,9 +117,58 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
   const summarySnapshot = React.useMemo(() => loadHallOfFameSummary(), [entries]);
   const summaryPlayersRaw = summarySnapshot?.players;
   const summaryTotalRaw = summarySnapshot?.total;
+  const summaryPointsRaw = summarySnapshot?.points;
+  const summaryBonusTotals: SummaryTotals["bonuses"] =
+    (summarySnapshot?.bonuses as SummaryTotals["bonuses"]) ??
+    ((summarySnapshot as { bonusTotals?: SummaryTotals["bonuses"] })?.bonusTotals);
   const summaryPlayers = typeof summaryPlayersRaw === "number" && summaryPlayersRaw > 0 ? summaryPlayersRaw : 0;
   const totalRuns =
     typeof summaryTotalRaw === "number" && summaryTotalRaw > 0 ? summaryTotalRaw : entries.length;
+  const numberFormatter = React.useMemo(() => new Intl.NumberFormat("fr-FR"), []);
+
+  const fallbackTotals = React.useMemo(
+    () =>
+      entries.reduce(
+        (acc, entry) => {
+          const score = Number(entry?.score ?? 0);
+          if (Number.isFinite(score)) {
+            acc.points += score;
+          }
+          const breakdown = entry?.bonusBreakdown;
+          if (breakdown && typeof breakdown === "object") {
+            const add = (key: "pasticciotto" | "rustico" | "caffe") => {
+              const value = Number((breakdown as Record<string, unknown>)[key]);
+              if (Number.isFinite(value)) {
+                acc[key] += value;
+              }
+            };
+            add("pasticciotto");
+            add("rustico");
+            add("caffe");
+          }
+          return acc;
+        },
+        { points: 0, pasticciotto: 0, rustico: 0, caffe: 0 }
+      ),
+    [entries]
+  );
+
+  const aggregateTotals = React.useMemo(() => {
+    const pick = (value: unknown, fallback: number) => {
+      const num = Number(value);
+      if (Number.isFinite(num) && (num > 0 || fallback <= 0)) {
+        return num;
+      }
+      return fallback;
+    };
+
+    return {
+      points: pick(summaryPointsRaw, fallbackTotals.points),
+      pasticciotto: pick(summaryBonusTotals?.pasticciotto, fallbackTotals.pasticciotto),
+      rustico: pick(summaryBonusTotals?.rustico, fallbackTotals.rustico),
+      caffe: pick(summaryBonusTotals?.caffe, fallbackTotals.caffe),
+    };
+  }, [fallbackTotals, summaryBonusTotals, summaryPointsRaw]);
 
   const playersCount = React.useMemo(() => {
     if (summaryPlayers > 0) {
@@ -140,7 +199,8 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
       });
     });
 
-    const summaryPerKey = summarySnapshot?.perKey ?? {};
+    const summaryPerKey: Record<string, SummaryTotals> =
+      (summarySnapshot?.perKey as Record<string, SummaryTotals>) ?? {};
 
     Object.entries(summaryPerKey).forEach(([key, data]) => {
       const meta = SOURCE_META_MAP.get(key);
@@ -194,8 +254,9 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
       total: totalRuns,
       players: playersCount,
       perSource: sorted,
+      totals: aggregateTotals,
     };
-  }, [entries, playersCount, summarySnapshot, totalRuns]);
+  }, [aggregateTotals, entries, playersCount, summarySnapshot, totalRuns]);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -230,6 +291,39 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
             Les meilleurs scores de la chasse sont enregistrés sur cet appareil. Challenge accepté ?
           </p>
           <div className="bonus-index__hof-meta" aria-live="polite">
+            <div className="bonus-index__hof-stat bonus-index__hof-stat--accent">
+              <span className="bonus-index__hof-stat-label">Points cumulés</span>
+              <strong className="bonus-index__hof-stat-value">
+                {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.points)))}
+              </strong>
+            </div>
+            <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
+              <span className="bonus-index__hof-stat-label">Pasticciotti collectés</span>
+              <strong className="bonus-index__hof-stat-value">
+                {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.pasticciotto)))}
+                <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
+                  🥮
+                </span>
+              </strong>
+            </div>
+            <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
+              <span className="bonus-index__hof-stat-label">Rustici collectés</span>
+              <strong className="bonus-index__hof-stat-value">
+                {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.rustico)))}
+                <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
+                  🥟
+                </span>
+              </strong>
+            </div>
+            <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
+              <span className="bonus-index__hof-stat-label">Caffè leccesi dégustés</span>
+              <strong className="bonus-index__hof-stat-value">
+                {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.caffe)))}
+                <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
+                  ☕
+                </span>
+              </strong>
+            </div>
             <div className="bonus-index__hof-stat">
               <span className="bonus-index__hof-stat-label">Parties enregistrées</span>
               <strong className="bonus-index__hof-stat-value">{entryStats.total}</strong>

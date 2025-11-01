@@ -6,17 +6,17 @@ const CTA_ID = '__victory_bonus_btn';
 
 const CTA_CONFIG = {
   otranto: {
-    label: '🌟 BONUS Otranto → Carte',
+    label: '🌟 BONUS → Carte',
     href: '/app.html#otranto',
     storageKeys: ['bonus_unlocked', 'bonus_otranto_unlocked', 'otranto_bonus_unlocked'],
   },
   gallipoli: {
-    label: '🌟 BONUS Gallipoli → Carte',
+    label: '🌟 BONUS → Carte',
     href: '/app.html#gallipoli',
     storageKeys: ['bonus_unlocked', 'bonus_gallipoli_unlocked', 'gallipoli_bonus_unlocked'],
   },
   lecce: {
-    label: '🌟 BONUS Lecce → Carte',
+    label: '🌟 BONUS → Carte',
     href: '/app.html#lecce',
     storageKeys: ['bonus_unlocked', 'bonus_lecce_unlocked', 'lecce_bonus_unlocked'],
   },

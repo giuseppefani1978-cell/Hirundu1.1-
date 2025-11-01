@@ -205,7 +205,7 @@ export function boot(){
     subtitle: 'Chasse aux 10 étoiles de la côte d\'Otranto',
     description:
       'Fais planer Aracne au-dessus des villages d\'Otranto pour récupérer les étoiles et ouvrir la suite de l\'aventure.',
-    footnote: 'Victoire = BONUS Otranto débloqué',
+    footnote: 'Victoire = BONUS débloqué',
     startLabel: '▶︎ Lancer la chasse',
     highlight: {
       title: 'Briefing',
@@ -423,14 +423,14 @@ export function boot(){
         description: 'Traverse la côte ionienne et récolte les 10 soleils pour continuer l\'aventure.',
         highlight: {
           title: 'Transition',
-          body: 'Carte BONUS Gallipoli disponible après la chasse.',
+          body: 'Carte BONUS disponible après la chasse.',
         },
-        footnote: 'Victoire = BONUS Gallipoli + accès Niveau 2',
+        footnote: 'Victoire = BONUS + accès Niveau 2',
         startLabel: '▶︎ Explorer Gallipoli',
         accentColor: '#facc15',
       });
       // Message clair pour la victoire + indication bonus
-      const winExtra = `🌟 BONUS Otranto débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
+      const winExtra = `🌟 BONUS débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       // débloque le bonus dans le LS
       console.log('[GAME] finalizeRun: won=true — unlocking Otranto bonus');
@@ -893,7 +893,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__otranto_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ BONUS Otranto';
+      link.textContent = '🗺️ BONUS';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
@@ -911,7 +911,7 @@ export function boot(){
     const btn = document.createElement('button');
     btn.id = '__bonus_cta';
     btn.type = 'button';
-    btn.textContent = '🌟 BONUS Otranto — ouvrir';
+    btn.textContent = '🌟 BONUS — ouvrir';
     btn.style.cssText = `
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:86px; z-index:10003;
@@ -1143,5 +1143,5 @@ window.__unlockOtranto = () => {
 };
 window.__openBonusMap = () => {
   location.assign('app.html#/poi/otranto/realmap');
-  console.log('🗺️ BONUS Otranto ouvert');
+  console.log('🗺️ BONUS ouvert');
 };

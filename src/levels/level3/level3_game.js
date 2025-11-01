@@ -186,8 +186,8 @@ export function boot(){
     title: t.level3?.title || 'Salento Nord — Lecce',
     subtitle: t.level3?.subtitle || 'Collecte les 10 feuilles et découvre le nord du Salento.',
     description:
-      'Récolte les feuilles salentines pour compléter ton passeport et accéder au BONUS Lecce.',
-    footnote: 'Victoire = BONUS Lecce débloqué',
+      'Récolte les feuilles salentines pour compléter ton passeport et accéder au BONUS.',
+    footnote: 'Victoire = BONUS débloqué',
     startLabel: '▶︎ Lancer le niveau 3',
     highlight: {
       title: 'Briefing',
@@ -380,7 +380,7 @@ export function boot(){
     ui.showReplay(true);
 
     if (won) {
-      const winMsg = (t.level3?.bonus_unlocked || 'BONUS Lecce débloqué !');
+      const winMsg = (t.level3?.bonus_unlocked || 'BONUS débloqué !');
       ui.showSuccess([...baseLines, `🌟 ${winMsg}`].join('\n'));
       try { ensureBonusQuickLinkInHud(); } catch {}
     }
@@ -860,7 +860,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__lecce_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ BONUS Lecce';
+      link.textContent = '🗺️ BONUS';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;

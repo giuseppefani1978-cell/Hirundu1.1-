@@ -274,11 +274,39 @@ export function openHallOfFameBonusPage() {
 export const HOF_KEY = DEFAULT_KEY;
 export { HOF_SIZE };
 
+function coercePositiveNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
+function coerceNonNegativeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : 0;
+}
+
+function addBonusBreakdown(target, breakdown) {
+  if (!breakdown || typeof breakdown !== 'object') {
+    return;
+  }
+
+  target.pasticciotto += coerceNonNegativeNumber(
+    breakdown.pasticciotto ?? breakdown.p ?? breakdown.pasticciotti
+  );
+  target.rustico += coerceNonNegativeNumber(
+    breakdown.rustico ?? breakdown.r ?? breakdown.rustici
+  );
+  target.caffe += coerceNonNegativeNumber(
+    breakdown.caffe ?? breakdown.c ?? breakdown.caffes
+  );
+}
+
 export function loadHallOfFameSummary() {
   const summary = {
     total: 0,
     players: 0,
     perKey: {},
+    points: 0,
+    bonuses: { pasticciotto: 0, rustico: 0, caffe: 0 },
   };
 
   const seenPlayers = new Set();
@@ -286,13 +314,28 @@ export function loadHallOfFameSummary() {
 
   keys.forEach((key) => {
     const entries = readRawList(key);
-    summary.perKey[key] = {
+    const perKey = {
       runs: entries.length,
+      points: 0,
+      bonuses: { pasticciotto: 0, rustico: 0, caffe: 0 },
     };
+
     summary.total += entries.length;
+
     entries.forEach((entry, index) => {
       seenPlayers.add(identifyEntry(entry, key, index));
+
+      const score = coercePositiveNumber(entry?.score ?? entry?.points ?? entry?.total);
+      if (score > 0) {
+        summary.points += score;
+        perKey.points += score;
+      }
+
+      addBonusBreakdown(summary.bonuses, entry?.bonusBreakdown ?? entry?.breakdown);
+      addBonusBreakdown(perKey.bonuses, entry?.bonusBreakdown ?? entry?.breakdown);
     });
+
+    summary.perKey[key] = perKey;
   });
 
   summary.players = seenPlayers.size;

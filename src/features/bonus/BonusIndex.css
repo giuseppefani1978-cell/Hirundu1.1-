@@ -380,6 +380,32 @@
   border: 1px solid rgba(148, 163, 184, 0.24);
 }
 
+.bonus-index__hof-stat--accent {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.32);
+}
+
+.bonus-index__hof-stat--accent .bonus-index__hof-stat-label {
+  color: rgba(37, 99, 235, 0.78);
+}
+
+.bonus-index__hof-stat--accent .bonus-index__hof-stat-value {
+  color: #1d4ed8;
+}
+
+.bonus-index__hof-stat--bonus {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.32);
+}
+
+.bonus-index__hof-stat--bonus .bonus-index__hof-stat-label {
+  color: rgba(4, 120, 87, 0.72);
+}
+
+.bonus-index__hof-stat--bonus .bonus-index__hof-stat-value {
+  color: #047857;
+}
+
 .bonus-index__hof-stat-label {
   font-size: 0.72rem;
   letter-spacing: 0.02em;

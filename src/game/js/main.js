@@ -128,7 +128,7 @@ function ensureBonusQuickLinkInHud() {
     link = document.createElement('button');
     link.id = BONUS_LINK_ID;
     link.type = 'button';
-    link.textContent = '🗺️ BONUS Otranto';
+    link.textContent = '🗺️ BONUS';
     link.style.cssText = `
       margin-top:8px; width:100%;
       background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
@@ -364,7 +364,7 @@ export function boot() {
     subtitle: 'Chasse aux 10 étoiles de la côte d\'Otranto',
     description:
       'Planifie ta route, récupère les étoiles et ouvre la voie vers Gallipoli.',
-    footnote: 'Victoire = BONUS Otranto débloqué',
+    footnote: 'Victoire = BONUS débloqué',
     startLabel: '▶︎ Lancer la chasse',
     highlight: {
       title: 'Briefing',
@@ -728,13 +728,13 @@ export function boot() {
         description: 'Traverse la côte ionienne et récolte les 10 soleils pour continuer l\'aventure.',
         highlight: {
           title: 'Transition',
-          body: 'Carte BONUS Gallipoli disponible après la chasse.',
+          body: 'Carte BONUS disponible après la chasse.',
         },
-        footnote: 'Victoire = BONUS Gallipoli + accès Niveau 2',
+        footnote: 'Victoire = BONUS + accès Niveau 2',
         startLabel: '▶︎ Explorer Gallipoli',
         accentColor: '#facc15',
       });
-      const winExtra = '🌟 BONUS Otranto débloqué — utilise le bouton ci-dessous pour l\'ouvrir.';
+      const winExtra = '🌟 BONUS débloqué — utilise le bouton ci-dessous pour l\'ouvrir.';
       ui.showSuccess([...baseLines, winExtra].join('\n'));
     }
   }

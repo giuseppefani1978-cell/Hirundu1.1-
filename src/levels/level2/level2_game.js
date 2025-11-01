@@ -193,7 +193,7 @@ export function boot(){
     subtitle: 'Collecte les 10 soleils et révèle la côte ionienne.',
     description:
       'Pars de Gallipoli, esquive les méduses et récupère chaque soleil pour faire progresser le passeport.',
-    footnote: 'Victoire = BONUS Gallipoli débloqué',
+    footnote: 'Victoire = BONUS débloqué',
     startLabel: '▶︎ Lancer le niveau 2',
     highlight: {
       title: 'Briefing',
@@ -404,13 +404,13 @@ export function boot(){
         description: 'Envole-toi vers le nord pour récupérer les feuilles sacrées et conclure la mission.',
         highlight: {
           title: 'Transition',
-          body: 'Carte BONUS Lecce disponible après la prochaine victoire.',
+          body: 'Carte BONUS disponible après la prochaine victoire.',
         },
-        footnote: 'Victoire = BONUS Lecce + accès Niveau 3',
+        footnote: 'Victoire = BONUS + accès Niveau 3',
         startLabel: '▶︎ Entrer dans le niveau 3',
         accentColor: '#38bdf8',
       });
-      const winExtra = `🌟 BONUS Gallipoli débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
+      const winExtra = `🌟 BONUS débloqué — utilise le bouton ci-dessous pour l'ouvrir.`;
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       try { unlockGallipoliBonus(); } catch {}
       try { showBonusCta(); } catch {}
@@ -857,7 +857,7 @@ export function boot(){
       link = document.createElement('button');
       link.id='__gallipoli_bonus_link';
       link.type='button';
-      link.textContent = '🗺️ BONUS Gallipoli';
+      link.textContent = '🗺️ BONUS';
       link.style.cssText = `
         margin-top:8px; width:100%;
         background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
@@ -874,7 +874,7 @@ export function boot(){
     const btn = document.createElement('button');
     btn.id = '__bonus_cta';
     btn.type = 'button';
-    btn.textContent = '🌞 BONUS Gallipoli — ouvrir';
+    btn.textContent = '🌞 BONUS — ouvrir';
     btn.style.cssText = `
       position:fixed; left:50%; transform:translateX(-50%);
       bottom:86px; z-index:10003;
@@ -1142,7 +1142,7 @@ window.__unlockOtranto = () => {
 };
 window.__openBonusMap = () => {
   location.assign('app.html#/poi/otranto/realmap');
-  console.log('🗺️ BONUS Otranto ouvert');
+  console.log('🗺️ BONUS ouvert');
 };
 
 // Migration/compat : écrit bonus_unlocked_v1.gallipoli = true + legacy
