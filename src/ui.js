@@ -275,3 +275,51 @@ export function assetFail(who, url, placeholderCb) {
   el.errText.innerHTML += (el.errText.innerHTML ? '<br>' : '') + (t.assetMissing?.(who, url) || `${who} missing: ${url}`);
   if (typeof placeholderCb === 'function') placeholderCb();
 }
+
+// —————————————————————————————
+// CTA (bonus, liens externes, etc.)
+// —————————————————————————————
+let ctaButton;
+
+export function showCTA(label, onConfirm) {
+  hideCTA();
+
+  const text = label || t.open || 'Ouvrir';
+  const btn = document.createElement('button');
+  btn.id = '__cta_prompt';
+  btn.type = 'button';
+  btn.textContent = text;
+  btn.style.cssText = `
+    position: fixed;
+    left: 50%;
+    bottom: 72px;
+    transform: translateX(-50%);
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 0;
+    font: 700 14px system-ui;
+    color: #0f172a;
+    background: linear-gradient(180deg, #fde68a, #fbbf24);
+    box-shadow: 0 10px 24px rgba(0,0,0,.22);
+    z-index: 10002;
+    cursor: pointer;
+  `;
+
+  btn.addEventListener('click', (evt) => {
+    evt.preventDefault();
+    try {
+      if (typeof onConfirm === 'function') onConfirm();
+    } finally {
+      hideCTA();
+    }
+  });
+
+  document.body.appendChild(btn);
+  ctaButton = btn;
+}
+
+export function hideCTA() {
+  if (!ctaButton) return;
+  if (ctaButton.parentNode) ctaButton.parentNode.removeChild(ctaButton);
+  ctaButton = null;
+}
