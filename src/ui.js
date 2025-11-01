@@ -331,6 +331,7 @@ function ensureCTA() {
   ctaDesc.id = 'ctaPromptDescription';
   ctaDesc.style.cssText =
     'margin: 0; font: 500 14px system-ui; color: #26374a;';
+  ctaDesc.style.cssText = 'margin: 0; font: 500 14px system-ui; color: #26374a;';
   ctaDesc.hidden = true;
   ctaNode.appendChild(ctaDesc);
 
@@ -381,7 +382,6 @@ function ensureCTA() {
  * @param {object} [options]
  * @param {string} [options.description] Texte optionnel affiché au-dessus des boutons
  * @param {string} [options.dismissLabel] Libellé pour le bouton de fermeture
- * @param {string} [options.title] Titre affiché au-dessus du texte d'action
  */
 export function showCTA(label, onConfirm, options = {}) {
   ensureCTA();
