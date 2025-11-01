@@ -482,6 +482,179 @@ function deriveSummarySnapshot(summary) {
   };
 }
 
+function buildEntrySnapshot(keys = collectHallOfFameKeys()) {
+  const aggregate = {
+    total: 0,
+    points: 0,
+    bonuses: cloneBonusTotals(),
+    perKey: {},
+    players: 0,
+  };
+
+  const playerIds = new Set();
+
+  keys.forEach((key) => {
+    const record = {
+      runs: 0,
+      points: 0,
+      bonuses: cloneBonusTotals(),
+    };
+
+    const entries = readRawList(key);
+    record.runs = entries.length;
+    aggregate.total += record.runs;
+
+    entries.forEach((entry, index) => {
+      const normalized = normalizeEntry(entry) ?? entry;
+
+      const score = coercePositiveNumber(
+        normalized?.score ?? normalized?.points ?? normalized?.total
+      );
+      if (score > 0) {
+        record.points += score;
+        aggregate.points += score;
+      }
+
+      const breakdown = normalized?.bonusBreakdown ?? normalized?.breakdown;
+      addBonusBreakdown(record.bonuses, breakdown);
+      addBonusBreakdown(aggregate.bonuses, breakdown);
+
+      const playerId = identifyEntry(normalized, key, index);
+      if (playerId) {
+        playerIds.add(playerId);
+      }
+    });
+
+    aggregate.perKey[key] = record;
+  });
+
+  aggregate.players = playerIds.size;
+  return aggregate;
+}
+
+function mergeBonusTotalsMax(base = {}, fallback = {}) {
+  return {
+    pasticciotto: Math.max(
+      coerceNonNegativeNumber(base?.pasticciotto ?? 0),
+      coerceNonNegativeNumber(fallback?.pasticciotto ?? 0)
+    ),
+    rustico: Math.max(
+      coerceNonNegativeNumber(base?.rustico ?? 0),
+      coerceNonNegativeNumber(fallback?.rustico ?? 0)
+    ),
+    caffe: Math.max(
+      coerceNonNegativeNumber(base?.caffe ?? 0),
+      coerceNonNegativeNumber(fallback?.caffe ?? 0)
+    ),
+  };
+}
+
+function mergeSnapshotWithFallback(primary, fallback) {
+  if (!fallback) {
+    return primary;
+  }
+
+  const mergedBonuses = mergeBonusTotalsMax(primary?.bonuses, fallback?.bonuses);
+  const merged = {
+    total: Math.max(coerceNonNegativeNumber(primary?.total ?? 0), coerceNonNegativeNumber(fallback?.total ?? 0)),
+    players: Math.max(coerceNonNegativeNumber(primary?.players ?? 0), coerceNonNegativeNumber(fallback?.players ?? 0)),
+    points: Math.max(coerceNonNegativeNumber(primary?.points ?? 0), coerceNonNegativeNumber(fallback?.points ?? 0)),
+    bonuses: mergedBonuses,
+    perKey: {},
+  };
+
+  const keys = new Set([
+    ...Object.keys(primary?.perKey || {}),
+    ...Object.keys(fallback?.perKey || {}),
+    ...collectHallOfFameKeys(),
+  ]);
+
+  keys.forEach((key) => {
+    const baseRecord = primary?.perKey?.[key];
+    const fallbackRecord = fallback?.perKey?.[key];
+    merged.perKey[key] = {
+      runs: Math.max(
+        coerceNonNegativeNumber(baseRecord?.runs ?? 0),
+        coerceNonNegativeNumber(fallbackRecord?.runs ?? 0)
+      ),
+      points: Math.max(
+        coerceNonNegativeNumber(baseRecord?.points ?? 0),
+        coerceNonNegativeNumber(fallbackRecord?.points ?? 0)
+      ),
+      bonuses: mergeBonusTotalsMax(baseRecord?.bonuses, fallbackRecord?.bonuses),
+    };
+  });
+
+  return merged;
+}
+
+function ensureSummaryIncludesFallback(summary, fallback) {
+  if (!summary || !fallback) {
+    return false;
+  }
+
+  let mutated = false;
+
+  const fallbackTotal = coerceNonNegativeNumber(fallback.total ?? 0);
+  if (fallbackTotal > coerceNonNegativeNumber(summary.total ?? 0)) {
+    summary.total = fallbackTotal;
+    mutated = true;
+  }
+
+  const fallbackPoints = coerceNonNegativeNumber(fallback.points ?? 0);
+  if (fallbackPoints > coerceNonNegativeNumber(summary.points ?? 0)) {
+    summary.points = fallbackPoints;
+    mutated = true;
+  }
+
+  const fallbackBonuses = mergeBonusTotalsMax(summary.bonuses, fallback.bonuses);
+  if (
+    fallbackBonuses.pasticciotto !== summary.bonuses.pasticciotto ||
+    fallbackBonuses.rustico !== summary.bonuses.rustico ||
+    fallbackBonuses.caffe !== summary.bonuses.caffe
+  ) {
+    summary.bonuses = cloneBonusTotals(fallbackBonuses);
+    mutated = true;
+  }
+
+  Object.entries(fallback.perKey || {}).forEach(([key, record]) => {
+    const holder = ensurePerKeySummary(summary, key);
+    const runs = coerceNonNegativeNumber(record?.runs ?? 0);
+    if (runs > coerceNonNegativeNumber(holder.runs ?? 0)) {
+      holder.runs = runs;
+      mutated = true;
+    }
+
+    const points = coerceNonNegativeNumber(record?.points ?? 0);
+    if (points > coerceNonNegativeNumber(holder.points ?? 0)) {
+      holder.points = points;
+      mutated = true;
+    }
+
+    const mergedPerKeyBonuses = mergeBonusTotalsMax(holder.bonuses, record?.bonuses);
+    if (
+      mergedPerKeyBonuses.pasticciotto !== holder.bonuses.pasticciotto ||
+      mergedPerKeyBonuses.rustico !== holder.bonuses.rustico ||
+      mergedPerKeyBonuses.caffe !== holder.bonuses.caffe
+    ) {
+      holder.bonuses = cloneBonusTotals(mergedPerKeyBonuses);
+      mutated = true;
+    }
+  });
+
+  const fallbackPlayers = coerceNonNegativeNumber(fallback.players ?? 0);
+  if (fallbackPlayers > coerceNonNegativeNumber(summary.playerFallback ?? 0)) {
+    summary.playerFallback = fallbackPlayers;
+    mutated = true;
+  }
+
+  if (mutated) {
+    writeSummaryRecord(summary);
+  }
+
+  return mutated;
+}
+
 export function loadHallOfFame(key = DEFAULT_KEY) {
   return readRawList(key);
 }
@@ -546,10 +719,19 @@ export const HOF_KEY = DEFAULT_KEY;
 export { HOF_SIZE };
 export function loadHallOfFameSummary() {
   const summary = ensureSummaryRecord();
-  if (!summary) {
-    return deriveSummarySnapshot(createEmptySummary());
+  const primary = summary
+    ? deriveSummarySnapshot(summary)
+    : deriveSummarySnapshot(createEmptySummary());
+  const fallback = buildEntrySnapshot();
+
+  if (summary) {
+    const mutated = ensureSummaryIncludesFallback(summary, fallback);
+    if (mutated) {
+      return mergeSnapshotWithFallback(deriveSummarySnapshot(summary), fallback);
+    }
   }
-  return deriveSummarySnapshot(summary);
+
+  return mergeSnapshotWithFallback(primary, fallback);
 }
 export function normalizeHallOfFameName(value) {
   return normalizeToken(value);

@@ -304,6 +304,53 @@ export function resetBonusProgress(): void {
   });
 
   try {
+    void import("../../level_transition.js").then((mod) => {
+      try {
+        if (typeof mod.clearLevelTransitions === "function") {
+          mod.clearLevelTransitions();
+        }
+      } catch {
+        // ignore nested failure
+      }
+    });
+  } catch {
+    // ignore dynamic import failure
+  }
+
+  try {
+    void import("../../bonus_transition.js").then((mod) => {
+      try {
+        if (typeof mod.removeVictoryCTA === "function") {
+          mod.removeVictoryCTA();
+        }
+      } catch {
+        // ignore nested failure
+      }
+    });
+  } catch {
+    // ignore dynamic import failure
+  }
+
+  if (typeof document !== "undefined") {
+    const staleIds = [
+      "__bonus_cta",
+      "__otranto_bonus_link",
+      "__gallipoli_bonus_link",
+      "__lecce_bonus_link",
+    ];
+    staleIds.forEach((id) => {
+      const node = document.getElementById(id);
+      if (node?.parentElement) {
+        try {
+          node.parentElement.removeChild(node);
+        } catch {
+          // ignore DOM removal issues
+        }
+      }
+    });
+  }
+
+  try {
     window.dispatchEvent(new CustomEvent(PASSPORT_EVENT));
   } catch {
     // ignore
