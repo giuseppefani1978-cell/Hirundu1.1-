@@ -275,3 +275,149 @@ export function assetFail(who, url, placeholderCb) {
   el.errText.innerHTML += (el.errText.innerHTML ? '<br>' : '') + (t.assetMissing?.(who, url) || `${who} missing: ${url}`);
   if (typeof placeholderCb === 'function') placeholderCb();
 }
+
+// —————————————————————————————
+// CTA (bonus, liens externes, etc.)
+// —————————————————————————————
+let ctaNode;
+let ctaLabel;
+let ctaDesc;
+let ctaActionBtn;
+let ctaDismissBtn;
+
+function ensureCTA() {
+  if (ctaNode) return;
+
+  ctaNode = document.createElement('div');
+  ctaNode.id = 'ctaPrompt';
+  ctaNode.style.cssText = `
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    transform: translate(-50%, 16px);
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 260px;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 16px 42px rgba(0,0,0,.28);
+    z-index: 10001;
+    opacity: 0;
+    transition: opacity 180ms ease, transform 180ms ease;
+    backdrop-filter: blur(12px);
+  `;
+
+  ctaLabel = document.createElement('strong');
+  ctaLabel.id = 'ctaPromptLabel';
+  ctaLabel.style.cssText = 'font: 700 16px system-ui; color: #12263a;';
+  ctaNode.appendChild(ctaLabel);
+
+  ctaDesc = document.createElement('p');
+  ctaDesc.id = 'ctaPromptDescription';
+  ctaDesc.style.cssText = 'margin: 0; font: 500 14px system-ui; color: #26374a;';
+  ctaDesc.hidden = true;
+  ctaNode.appendChild(ctaDesc);
+
+  const btnWrap = document.createElement('div');
+  btnWrap.style.cssText = 'display:flex; gap:12px; flex-wrap:wrap;';
+
+  ctaActionBtn = document.createElement('button');
+  ctaActionBtn.type = 'button';
+  ctaActionBtn.style.cssText = `
+    flex: 1 1 auto;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    font: 700 15px system-ui;
+    color: #0b2142;
+    background: linear-gradient(135deg, #ffe082, #ffd166);
+    box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    cursor: pointer;
+  `;
+  btnWrap.appendChild(ctaActionBtn);
+
+  ctaDismissBtn = document.createElement('button');
+  ctaDismissBtn.type = 'button';
+  ctaDismissBtn.style.cssText = `
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(18,38,58,.25);
+    font: 600 14px system-ui;
+    background: rgba(255,255,255,0.6);
+    color: #12263a;
+    cursor: pointer;
+  `;
+  ctaDismissBtn.textContent = t.ctaDismiss ?? 'Plus tard';
+  btnWrap.appendChild(ctaDismissBtn);
+
+  ctaNode.appendChild(btnWrap);
+
+  ctaDismissBtn.addEventListener('click', () => hideCTA());
+
+  document.body.appendChild(ctaNode);
+}
+
+/**
+ * Affiche un panneau d'appel à l'action persisté par-dessus le jeu.
+ * @param {string} label Libellé principal du CTA (texte du bouton d'action)
+ * @param {Function} onConfirm Callback appelé lors du clic sur le bouton principal
+ * @param {object} [options]
+ * @param {string} [options.description] Texte optionnel affiché au-dessus des boutons
+ * @param {string} [options.dismissLabel] Libellé pour le bouton de fermeture
+ */
+export function showCTA(label, onConfirm, options = {}) {
+  ensureCTA();
+  if (!ctaNode || !ctaLabel || !ctaActionBtn || !ctaDismissBtn) return;
+
+  const { description, dismissLabel, title } = options;
+
+  const heading = title || label || (t.ctaTitle ?? t.open ?? 'Ouvrir');
+  ctaLabel.textContent = heading;
+
+  if (ctaDesc) {
+    if (description) {
+      ctaDesc.textContent = description;
+      ctaDesc.hidden = false;
+    } else {
+      ctaDesc.textContent = '';
+      ctaDesc.hidden = true;
+    }
+  }
+
+  ctaActionBtn.textContent = label || (t.open ?? 'Ouvrir');
+  ctaActionBtn.onclick = (evt) => {
+    evt.preventDefault();
+    try {
+      onConfirm?.();
+    } catch (err) {
+      console.error('CTA handler failed', err);
+    }
+    hideCTA();
+  };
+
+  if (dismissLabel) {
+    ctaDismissBtn.textContent = dismissLabel;
+  } else {
+    ctaDismissBtn.textContent = t.ctaDismiss ?? 'Plus tard';
+  }
+
+  ctaNode.style.display = 'flex';
+  requestAnimationFrame(() => {
+    if (!ctaNode) return;
+    ctaNode.style.opacity = '1';
+    ctaNode.style.transform = 'translate(-50%, 0)';
+  });
+}
+
+export function hideCTA() {
+  if (!ctaNode) return;
+  ctaNode.style.opacity = '0';
+  ctaNode.style.transform = 'translate(-50%, 16px)';
+  setTimeout(() => {
+    if (ctaNode) ctaNode.style.display = 'none';
+  }, 200);
+}

@@ -24,3 +24,46 @@ Ce dépôt utilise des dépendances npm pour le lint, le formatage et la compila
 - Ajoutez une étape qui copie `node_modules/qr-scanner/qr-scanner-worker.min.js` vers `public/` si votre environnement ne lance pas automatiquement le script `postinstall`.
 
 Ces instructions garantissent que l'installation des dépendances se déroule correctement et que les scripts d'outillage peuvent être exécutés sans erreur.
+
+## Que signifient les sorties des scripts utilitaires ?
+
+Après l'installation, les commandes affichent plusieurs avertissements/erreurs liés au code historique du projet. Voici comment les interpréter et quoi faire :
+
+| Commande | Sortie observée | Action recommandée |
+| --- | --- | --- |
+| `npm run lint` | <small>Avertissement `@typescript-eslint/typescript-estree` sur TypeScript 5.9, suivi d'erreurs (`no-empty`, `consistent-type-definitions`, etc.)</small> | Le dépôt contient beaucoup d'anciens fichiers JS/TS qui violent les règles strictes actuelles. Pour contrôler seulement vos changements React/Vite, ciblez le dossier concerné, par exemple&nbsp;:`npm run lint -- src/features`. Vous pouvez également lever l'avertissement TypeScript en épinglant la version `npm install --save-dev typescript@5.5.4`. |
+| `npm run format` | <small>Liste de fichiers « Code style issues found »</small> | La commande tourne en mode `--check`. Pour corriger automatiquement, relancez `npm run format -- --write` puis validez les fichiers pertinents. |
+| `npm run typecheck` | <small>Erreurs dans `src/features/qr/routes/PoiMarket.tsx` et `src/features/qr/routes/QrHub.tsx`</small> | Ces erreurs existaient déjà avant votre intervention (typage incomplet des features QR). Le build Vite reste fonctionnel. Notez-les pour une dette technique future, mais elles n'empêchent pas la publication. |
+| `npm run build` | <small>Compilation Vite + avertissements éventuels</small> | Après correction des erreurs bloquantes (ex. absence de `showCTA`), la commande doit aboutir avec un résumé des fichiers générés dans `dist/`. |
+
+> ℹ️ Pour exécuter un pipeline CI minimal malgré la dette technique, lancez uniquement `npm run build`. Ajoutez `npm run lint -- src/features` si vous travaillez sur les modules modernes.
+
+## Déployer manuellement sur GitHub Pages
+
+1. **Mettre à jour la configuration locale**  
+   Assurez-vous que `index.html` contient bien l'enregistrement du service worker via `import.meta.env.BASE_URL` (déjà commité).
+
+2. **Installer et construire le site**  
+   ```bash
+   npm install
+   npm run build
+   ```
+   Le dossier `dist/` contient alors la version statique à publier.
+
+3. **Préparer une branche `gh-pages`**  
+   - Créez-la si besoin : `git checkout -B gh-pages`.
+   - Supprimez tout sauf le contenu de `dist/` (par exemple via `git rm -r .` puis `cp -R dist/* .`).
+   - Commitez le résultat (`git add . && git commit -m "build: publish"`).
+
+4. **Pousser la publication**  
+   ```bash
+   git push -u origin gh-pages
+   ```
+
+5. **Configurer GitHub Pages**  
+   Dans *Settings → Pages*, sélectionnez la branche `gh-pages` et le dossier racine (`/`). Sauvegardez.
+
+6. **Tester sur iPhone**  
+   Ouvrez l'URL `https://<votre-utilisateur>.github.io/<nom-du-depot>/` dans Safari, puis utilisez **Partager → Ajouter à l’écran d’accueil** pour installer la PWA.
+
+> 💡 Alternative : vous pouvez aussi garder le build dans `main` en copiant `dist/` vers un dossier `docs/` et en configurant Pages sur `main` + `docs/`.
