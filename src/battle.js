@@ -162,12 +162,12 @@ function __persistUnlocksForFoe(foeType){
 
 function __redirectAfterWin(foeType){
   if (foeType === 'sputacchina') {
-    location.href = withBase('app.html#/poi/lecce/realmap');
+    location.href = withBase('index.html#/poi/lecce/realmap');
   } else if (foeType === 'crow') {
-    location.href = withBase('app.html#/poi/gallipoli/realmap');
+    location.href = withBase('index.html#/poi/gallipoli/realmap');
   } else {
     // default (Otranto or unknown) → Bonus hub
-    location.href = withBase('app.html#bonus');
+    location.href = withBase('index.html#bonus');
   }
   window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
 }

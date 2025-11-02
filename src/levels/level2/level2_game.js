@@ -1142,7 +1142,7 @@ window.__unlockOtranto = () => {
   } catch {}
 };
 window.__openBonusMap = () => {
-  location.assign('app.html#/poi/otranto/realmap');
+  location.assign('index.html#/poi/otranto/realmap');
   console.log('🗺️ BONUS ouvert');
 };
 

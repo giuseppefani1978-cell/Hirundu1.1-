@@ -1,199 +1,213 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>HIRUNDU – QR & Map</title>
 
-  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+    <!-- Couleurs & PWA -->
+    <meta name="theme-color" content="#a9d6f5" />
+    <link rel="manifest" href="/Hirundu1.1-/manifest.webmanifest" />
 
-  <!-- Couleurs & PWA -->
-  <meta name="theme-color" content="#a9d6f5">
-  <link rel="manifest" href="/Hirundu1.1-/manifest.webmanifest" />
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
 
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne">
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
 
-  <!-- Apple Touch Icons -->
-  <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
-  <link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  </head>
+  <body>
+    <div id="root"></div>
 
-  <!-- Favicons -->
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+    <script type="module" src="/src/main.tsx"></script>
 
-</head>
-
-<body>
-  <!-- Badge version + host (debug) -->
-  <div id="__ver__"
-       style="position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;
-              font:12px system-ui;padding:4px 6px;border-radius:6px;pointer-events:none">
-    v2025-08-20-g • host=<span id="__host__"></span>
-  </div>
-
-  <div class="wrap">
-    <div class="game">
-      <!-- Overlay Start -->
-      <div class="overlay" id="overlay">
-        <div class="overlay-card" id="overlayCard">
-          <div class="overlay-card__badge" id="overlayBadge"></div>
-          <h1 class="overlay-card__title" id="titleH1">Le Vol d’Aracne</h1>
-          <p class="overlay-card__subtitle" id="subtitleP">Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.</p>
-          <div class="overlay-card__highlight" id="overlayHighlight" hidden></div>
-          <p class="overlay-card__description" id="overlayDescription"></p>
-          <div class="overlay-card__heroes" id="overlayHeroes">
-            <img id="heroAr" alt="Aracne">
-            <img id="heroTa" alt="Tarantula">
-          </div>
-          <p class="overlay-card__footnote" id="overlayFootnote"></p>
-          <button id="startBtn" type="button" class="overlay-card__button">▶︎ Lancer la chasse</button>
-        </div>
-      </div>
-
-      <!-- UI / HUD -->
-      <button id="musicBtn" type="button">🎵 Musique</button>
-      <button id="replayFloat" type="button">⟲ Rejouer</button>
-      <div class="err" id="err" style="display:none">
-        <b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div>
-      </div>
-
-      <canvas id="c"></canvas>
-
-      <div class="hud" id="hud">
-        <h3 id="hudLabel">Étoiles</h3>
-        <div class="score" id="score">0/10</div>
-        <div class="stars" id="stars"></div>
-      </div>
-
-      <div class="tarTop" id="tarTop">
-        <img id="tarAvatar" alt="Tarantula">
-        <div class="bdBubble">
-          <div class="bdTitle" id="bdTitle">Tarantula</div>
-          <p id="bdText"></p>
-        </div>
-      </div>
-
-      <!-- D-pad -->
-      <div class="touch" id="touch">
-        <div class="dpad">
-          <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
-          <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div> <div class="btn" data-dx="1" data-dy="0">→</div>
-          <div></div> <div class="btn" data-dx="0" data-dy="1">↓</div> <div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Debug Box -->
-  <div id="debugBox" style="display:none"></div>
-
-  <!-- Force Refresh -->
-  <button id="__force__" type="button"
-          style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;
-                 border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
-    Force Refresh
-  </button>
-
-
-  <!-- Musique Battle -->
-  <script>
-    window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';
-  </script>
-
- <script type="module">
-  (async () => {
-    const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
-    if ('serviceWorker' in navigator) {
-      if (isProd) {
-        try {
-          const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
-          const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
-          await navigator.serviceWorker.register(swUrl);
-        } catch {}
-      } else {
-        // DEV: désactive tout SW + vide les caches
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) await r.unregister();
-          if (window.caches) {
-            const keys = await caches.keys();
-            for (const k of keys) await caches.delete(k);
+    <script type="module">
+      (() => {
+        const basePath = (() => {
+          try {
+            const path = new URL('.', document.baseURI).pathname;
+            return path.endsWith('/') ? path : `${path}/`;
+          } catch {
+            return '/';
           }
-          console.log('[DEV] SW désactivé, caches vidés');
-        } catch {}
-      }
-    }
-  })();
-</script>
+        })();
 
-  <!-- Bouton d’installation Android -->
-  <script>
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const btn = document.createElement('button');
-      btn.textContent = '📲 Installer l’app';
-      btn.style.cssText = 'position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);';
-      document.body.appendChild(btn);
-      btn.addEventListener('click', async () => {
-        btn.remove();
-        deferredPrompt.prompt();
-        try { await deferredPrompt.userChoice; } catch {}
-        deferredPrompt = null;
-      });
-    });
-  </script>
+        const withBase = (path = '') => {
+          const normalized = String(path ?? '');
+          if (!normalized) {
+            return basePath;
+          }
+          const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+          return `${basePath}${trimmed}`;
+        };
 
-  <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
-  <script>
-    (function(){
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isIOS && isSafari && !isStandalone) {
-        const tip = document.createElement('div');
-        tip.innerHTML = 'Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>';
-        tip.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);';
-        document.body.appendChild(tip);
-        setTimeout(()=>tip.remove(), 8000);
-      }
-    })();
-  </script>
+        // util: lecture LS
+        const LS = (k, d = null) => {
+          try {
+            return localStorage.getItem(k) ?? d;
+          } catch {
+            return d;
+          }
+        };
 
-  <!-- Debug erreurs JS -->
-  <script>
-    window.addEventListener('error', e => {
-      console.error('JS Error:', e.message, e.error);
-      const box = document.getElementById('debugBox');
-      if (box) {
-        box.style.display = 'block';
-        box.style.position = 'fixed';
-        box.style.left = '8px'; box.style.top = '8px';
-        box.style.zIndex = 99999;
-        box.style.background = '#300';
-        box.style.color = '#fff';
-        box.style.padding = '8px 10px';
-        box.style.borderRadius = '8px';
-        box.textContent = 'Erreur: ' + e.message;
-        setTimeout(()=>{ box.style.display='none'; }, 6000);
-      } else {
-        alert('Erreur JS: ' + e.message);
-      }
-    });
-    window.addEventListener('unhandledrejection', e => {
-      console.error('Unhandled promise:', e.reason);
-      alert('Erreur async: ' + (e.reason?.message || e.reason));
-    });
-  </script>
- <script type="module" src="./src/bonus_transition.js"></script>
-<!-- index.html -->
-<script type="module" src="/src/level-loader.js"></script>
-</body>
+        // détermine la prochaine chasse jouable (niv. 3 prioritaire)
+        const nextLevelHref = () => {
+          const L3 = LS('level3_unlocked') === 'true';
+          const L2 = LS('level2_unlocked') === 'true';
+          if (L3) return withBase('index-legacy.html?level=3');
+          if (L2) return withBase('index-legacy.html?level=2');
+          return withBase('index-legacy.html');
+        };
+
+        // --- TOAST éphémère (consomme __toast_next__)
+        const toastKey = '__toast_next__';
+        const toastVal = LS(toastKey);
+        if (toastVal) {
+          const map = {
+            otranto: 'Niveau 1 terminé ! Bonus Otranto débloqué 🎉',
+            gallipoli: 'Niveau 2 terminé ! Bonus Gallipoli débloqué 🎉',
+            lecce: 'Niveau 3 terminé ! Bonus Lecce débloqué 🎉',
+          };
+          const msg = map[toastVal] || 'Bonus débloqué 🎉';
+
+          const t = document.createElement('div');
+          t.textContent = msg;
+          t.style.cssText =
+            'position:fixed;left:12px;bottom:12px;z-index:9999;' +
+            'background:#0e7a2b;color:#fff;font:700 13px system-ui;' +
+            'padding:10px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);';
+          document.addEventListener('DOMContentLoaded', () => document.body.appendChild(t));
+          setTimeout(() => {
+            try {
+              t.remove();
+            } catch {}
+          }, 2800);
+          try {
+            localStorage.removeItem(toastKey);
+          } catch {}
+        }
+
+        // --- bouton “Reprendre la chasse” si un contrôle existe déjà
+        function findBackBtn() {
+          const selectors = [
+            '#back-to-game',
+            '#back-to-map',
+            '.leaflet-control a',
+            `a[href="${withBase('index-legacy.html')}"]`,
+            'a[href="index-legacy.html"]',
+            'a[href="./"]',
+            'a[href="#"]',
+            'button.back-to-game',
+          ];
+          return document.querySelector(selectors.join(', '));
+        }
+
+        function setupBackBtn(btn) {
+          if (!btn) return;
+          btn.style.pointerEvents = 'auto';
+          btn.style.cursor = 'pointer';
+
+          const href = nextLevelHref();
+          const label = href.includes('level=3')
+            ? '↩︎ Reprendre la chasse (niv. 3)'
+            : href.includes('level=2')
+            ? '↩︎ Reprendre la chasse (niv. 2)'
+            : '↩︎ Reprendre le jeu';
+
+          if (btn.tagName === 'A') btn.setAttribute('href', href);
+          btn.textContent = label;
+
+          const go = (e) => {
+            try {
+              e && e.preventDefault();
+            } catch {}
+            try {
+              document.body.style.transition = 'opacity 220ms ease';
+              document.body.style.opacity = '0';
+            } catch {}
+            window.location.assign(href);
+          };
+          btn.addEventListener('click', go, { once: true });
+          btn.addEventListener('touchend', go, { passive: false, once: true });
+        }
+
+        let btn = findBackBtn();
+        if (btn) {
+          setupBackBtn(btn);
+        } else {
+          const mo = new MutationObserver(() => {
+            const b = findBackBtn();
+            if (b) {
+              mo.disconnect();
+              setupBackBtn(b);
+            }
+          });
+          mo.observe(document.documentElement, { childList: true, subtree: true });
+
+          // CTA de secours si aucun bouton n'existe
+          setTimeout(() => {
+            if (findBackBtn()) return;
+            if (document.getElementById('__cta_resume__')) return;
+            const href = nextLevelHref();
+            const cta = document.createElement('a');
+            cta.id = '__cta_resume__';
+            cta.textContent = href.includes('level=3')
+              ? '↩︎ Reprendre la chasse (niv. 3)'
+              : href.includes('level=2')
+              ? '↩︎ Reprendre la chasse (niv. 2)'
+              : '↩︎ Reprendre le jeu';
+            cta.href = href;
+            cta.style.cssText =
+              'position:fixed;left:12px;bottom:12px;z-index:10010;' +
+              'background:#10223c;color:#fff;font:700 14px system-ui;' +
+              'padding:10px 14px;border-radius:12px;text-decoration:none;' +
+              'box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:auto;';
+            cta.addEventListener('click', (e) => {
+              e.preventDefault();
+              window.location.assign(href);
+            });
+            document.body.appendChild(cta);
+          }, 900);
+        }
+      })();
+    </script>
+
+    <script type="module">
+      (async () => {
+        const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
+        if ('serviceWorker' in navigator) {
+          if (isProd) {
+            try {
+              const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
+              const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
+              await navigator.serviceWorker.register(swUrl);
+            } catch {}
+          } else {
+            // DEV: désactive tout SW + vide les caches
+            try {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              for (const r of regs) await r.unregister();
+              if (window.caches) {
+                const keys = await caches.keys();
+                for (const k of keys) await caches.delete(k);
+              }
+              console.log('[DEV] SW désactivé, caches vidés');
+            } catch {}
+          }
+        }
+      })();
+    </script>
+  </body>
 </html>
