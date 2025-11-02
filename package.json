@@ -2,15 +2,15 @@
   "name": "hirundu",
   "version": "1.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "node ./scripts/run-vite.mjs dev",
+    "build": "node ./scripts/run-vite.mjs build",
+    "preview": "node ./scripts/run-vite.mjs preview",
     "postinstall": "cp node_modules/qr-scanner/qr-scanner-worker.min.js public/qr-scanner-worker.min.js",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "format": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json}\"",
     "typecheck": "tsc --noEmit",
     "ci": "npm run lint && npm run build",
-    "predeploy": "vite build",
+    "predeploy": "node ./scripts/run-vite.mjs build",
     "deploy": "gh-pages -d dist -b gh-pages"
   },
   "dependencies": {
