@@ -1,7 +1,10 @@
 // src/features/qr/components/QrScanner.tsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import QrScanner from "qr-scanner";
+import workerUrl from "qr-scanner/qr-scanner-worker.min?url";
 import "./QrScanner.css";
+
+QrScanner.WORKER_PATH = workerUrl;
 
 type QrScannerProps = {
   onResult: (text: string) => void;

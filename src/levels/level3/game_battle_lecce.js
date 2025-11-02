@@ -4,8 +4,7 @@
 // Boss : la Sputacchina (l’insecte vecteur de la Xylella)
 // =====================================================
 
-const BTL_BG_SRC = 'assets/battle_bg_lecce.png'; // 🖼 fond baroque doré de Lecce
-
+import { withBase } from '../../paths';
 import {
   setupBattleInputs,
   setBattleCallbacks as setCallbacksRaw,
@@ -16,14 +15,16 @@ import {
   isBattleActive as isActiveRaw
 } from '../../battle.js';
 
+const BTL_BG_SRC = withBase('assets/battle_bg_lecce.png'); // 🖼 fond baroque doré de Lecce
+
 // ---------------------------
 // Config assets (sprites)
 // ---------------------------
 const SPRITES_SRC = {
-  bird:       'assets/aracne .PNG',            // héros (Hirundu)
-  spider:     'assets/tarantula .PNG',         // guide
-  sputacchina:'assets/sputacchina_boss.png',  // 🐞 boss insecte
-  dust:       'assets/xylella_spores.PNG'     // spores ou gouttelettes (attaques)
+  bird:       withBase('assets/aracne .PNG'),            // héros (Hirundu)
+  spider:     withBase('assets/tarantula .PNG'),         // guide
+  sputacchina:withBase('assets/sputacchina_boss.png'),  // 🐞 boss insecte
+  dust:       withBase('assets/xylella_spores.PNG')     // spores ou gouttelettes (attaques)
 };
 
 const BTL_VIRTUAL = { W: 800, H: 450 };

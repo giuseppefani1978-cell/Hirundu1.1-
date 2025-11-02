@@ -1,4 +1,5 @@
 // src/main.tsx
+import "./style.css"; // Legacy game styles moved next to the entry point
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";

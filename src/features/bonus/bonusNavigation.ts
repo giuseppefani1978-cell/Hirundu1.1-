@@ -14,7 +14,7 @@ export function openBonusMap(key: BonusKey): void {
 
   unlockBonus(key);
   if (typeof window === "undefined") return;
-  const url = `/app.html#/poi/${encodeURIComponent(key)}/realmap`;
+  const url = `/index.html#/poi/${encodeURIComponent(key)}/realmap`;
   window.location.assign(url);
 }
 
@@ -55,7 +55,7 @@ export function openBonusHub(): void {
           ${orderedUnlocked
             .map(
               (k) => `
-            <a class="btn" href="/app.html#/poi/${k}/realmap" target="_blank" rel="noopener">
+            <a class="btn" href="/index.html#/poi/${k}/realmap" target="_blank" rel="noopener">
               ${BONUS_MAPS[k].title}
             </a>`
             )

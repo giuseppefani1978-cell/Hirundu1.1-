@@ -4,6 +4,7 @@
 // (aucune dépendance vers battle.js)
 // =====================================================
 import { t, poiName, poiInfo } from './i18n.js';
+import { withBase } from './paths';
 import {
   startMusic, stopMusic, toggleMusic, isMusicOn,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
@@ -21,7 +22,7 @@ function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
 // ------------------------
 const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
-const asset = (p) => `${p}${APP_Q}`;
+const asset = (p) => `${withBase(p)}${APP_Q}`;
 
 const LS = {
   OTRANTO_BONUS_UNLOCKED: 'otranto_bonus_unlocked',
@@ -938,9 +939,9 @@ export function boot(){
   }
 
   function openBonusMap(){
-    // base = dossier courant (…/), qu’on concatène avec app.html
+    // base = dossier courant (…/), qu’on concatène avec index.html
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-    location.assign(`${base}app.html?embed=1#/poi/otranto/realmap`);
+    location.assign(`${base}index.html?embed=1#/poi/otranto/realmap`);
   }
 
 
@@ -1142,6 +1143,6 @@ window.__unlockOtranto = () => {
   } catch {}
 };
 window.__openBonusMap = () => {
-  location.assign('app.html#/poi/otranto/realmap');
+  location.assign('index.html#/poi/otranto/realmap');
   console.log('🗺️ BONUS ouvert');
 };

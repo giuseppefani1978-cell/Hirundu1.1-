@@ -79,7 +79,7 @@ export default function BonusIndex() {
   const goHunt = () => {
     if (typeof window === "undefined") return;
     const level = Math.max(1, Math.min(3, nextLevel));
-    window.location.assign(`/index.html?level=${level}`);
+    window.location.assign(`/index-legacy.html?level=${level}`);
   };
 
   const handleResetProgress = React.useCallback(() => {
@@ -223,7 +223,7 @@ function BonusCard({ card, onOpen }: BonusCardProps) {
     .join(" ");
 
   return (
-    <article className={cardClass} aria-live="polite">
+    <article className={cardClass} aria-live="polite" data-bonus-key={card.key}>
       <header className="bonus-index__card-header">
         <div>
           <div className="bonus-index__card-title">{card.title}</div>

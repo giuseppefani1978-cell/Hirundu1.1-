@@ -1,6 +1,6 @@
 // src/game_battle.js
 // Couche "battle" autonome : inputs, callbacks, tick+render, viewport bas-centré
-const BTL_BG_SRC = 'assets/battle_bg_salento.PNG';
+import { withBase } from './paths';
 import {
   setupBattleInputs,
   setBattleCallbacks as setCallbacksRaw,
@@ -11,16 +11,18 @@ import {
   isBattleActive as isActiveRaw
 } from './battle.js';
 
+const BTL_BG_SRC = withBase('assets/battle_bg_salento.PNG');
+
 // ---------------------------
 // Config assets (sprites)
 // ---------------------------
 // NB: on duplique ici les chemins pour rendre game_battle.js autonome.
 // Si tu veux garder le cache-busting, tu peux ajouter ?v=... à la fin.
 const SPRITES_SRC = {
-  bird:   'assets/aracne .PNG',      // (oui, il y a un espace dans le nom)
-  spider: 'assets/tarantula .PNG',
-  crow:   'assets/crow.PNG',
-  jelly:  'assets/jellyfish_boss.PNG'
+  bird:   withBase('assets/aracne .PNG'),      // (oui, il y a un espace dans le nom)
+  spider: withBase('assets/tarantula .PNG'),
+  crow:   withBase('assets/crow.PNG'),
+  jelly:  withBase('assets/jellyfish_boss.PNG')
 };
 
 // --- Taille logique (aspect) utilisée par battle.js (16:9 conseillé)

@@ -38,7 +38,7 @@ import {
   now,
 } from './utils.js';
 import { createHallOfFameController } from './hof.js';
-import { withBase } from '../../utils/basePath.js';
+import { withBase } from '../../paths';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
 import { setupDpad } from './input.js';
 import {
@@ -140,7 +140,7 @@ function ensureBonusQuickLinkInHud() {
         openBonusMap('otranto');
       } catch (error) {
         console.warn('[game] unable to open bonus map', error);
-        window.location.assign(withBase('app.html#/poi/otranto/realmap'));
+        window.location.assign(withBase('index.html#/poi/otranto/realmap'));
       }
     });
     hud.appendChild(link);
