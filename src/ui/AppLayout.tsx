@@ -1,10 +1,10 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import "./AppLayout.css";
 import "./styles.css";
 
 type AppLayoutProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 const NAV_LINKS = [
@@ -14,6 +14,7 @@ const NAV_LINKS = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const renderedChildren = children ?? <Outlet />;
   return (
     <div className="app-shell">
       <div className="app-shell__inner">
@@ -49,7 +50,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </nav>
         </header>
 
-        <main className="app-shell__content">{children}</main>
+        <main className="app-shell__content">{renderedChildren}</main>
       </div>
     </div>
   );

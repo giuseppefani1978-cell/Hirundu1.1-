@@ -1,0 +1,78 @@
+.bonus-hub-page {
+  min-height: 100vh;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  background: radial-gradient(circle at 10% 20%, rgba(18, 60, 120, 0.5), transparent 55%),
+    radial-gradient(circle at 90% 30%, rgba(255, 140, 60, 0.35), transparent 60%),
+    linear-gradient(180deg, #020711 0%, #030b1a 45%, #000 100%);
+  color: #f0f6ff;
+}
+
+.bonus-hub-page__toast {
+  position: sticky;
+  top: 12px;
+  z-index: 40;
+  margin: 0 auto 1.5rem;
+  max-width: 520px;
+  background: linear-gradient(120deg, rgba(53, 198, 146, 0.92), rgba(30, 115, 84, 0.9));
+  color: #05251a;
+  font: 600 0.95rem/1.4 "Inter", system-ui;
+  padding: 0.85rem 1.2rem;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(6, 30, 18, 0.35);
+}
+
+.bonus-hub-page__grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+}
+
+.bonus-hub-page__column {
+  min-width: 0;
+}
+
+.bonus-hub-page__column--qr {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bonus-hub-page__card-focus {
+  box-shadow: 0 0 0 3px rgba(255, 226, 120, 0.6), 0 24px 48px rgba(0, 0, 0, 0.45) !important;
+  transform: translateY(-4px);
+}
+
+.bonus-hub-page__panel-header {
+  background: rgba(5, 18, 35, 0.72);
+  border-radius: 18px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 22px 45px rgba(2, 12, 28, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.bonus-hub-page__panel-header > h2 {
+  margin: 0 0 0.75rem 0;
+  font: 700 1.35rem/1.2 "Barlow", system-ui;
+}
+
+.bonus-hub-page__panel-header > p {
+  margin: 0 0 1rem 0;
+  font: 400 0.95rem/1.5 "Inter", system-ui;
+  color: rgba(210, 226, 255, 0.78);
+}
+
+.bonus-hub-page__panel-next {
+  font-weight: 600;
+  color: rgba(255, 245, 196, 0.92);
+}
+
+@media (max-width: 1080px) {
+  .bonus-hub-page__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bonus-hub-page__column--qr {
+    order: -1;
+  }
+}
