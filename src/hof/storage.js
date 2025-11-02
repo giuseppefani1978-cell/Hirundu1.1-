@@ -3,7 +3,7 @@ import { withBase } from '../paths';
 const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];
 const HOF_SIZE = 10;
-const BONUS_PAGE_URL = withBase('app.html#/bonus?hof');
+const BONUS_PAGE_URL = withBase('index.html#/bonus?hof');
 const SUMMARY_STORAGE_KEY = 'salento_hof_summary_v1';
 const SUMMARY_VERSION = 1;
 

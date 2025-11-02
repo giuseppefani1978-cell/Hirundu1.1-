@@ -161,7 +161,7 @@ export function getProgressList(): BonusProgressEntry[] {
       key: "otranto",
       done: readBooleanFlag("level1_won"),
       unlocked: true,
-      href: "/app.html#otranto",
+      href: "/index.html#otranto",
     },
     {
       id: 2,
@@ -169,7 +169,7 @@ export function getProgressList(): BonusProgressEntry[] {
       key: "gallipoli",
       done: readBooleanFlag("level2_won"),
       unlocked: readBooleanFlag("bonus_gallipoli_unlocked"),
-      href: "/app.html#gallipoli",
+      href: "/index.html#gallipoli",
     },
     {
       id: 3,
@@ -177,7 +177,7 @@ export function getProgressList(): BonusProgressEntry[] {
       key: "lecce",
       done: readBooleanFlag("level3_won"),
       unlocked: readBooleanFlag("bonus_lecce_unlocked"),
-      href: "/app.html#lecce",
+      href: "/index.html#lecce",
     },
   ];
 }

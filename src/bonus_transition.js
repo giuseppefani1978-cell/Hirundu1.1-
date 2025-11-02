@@ -50,7 +50,7 @@ function buildCTA(targetKey) {
     box-shadow:0 6px 18px rgba(0,0,0,.25);
     cursor:pointer;
   `;
-  const targetHref = withBase(`app.html${config.target || ''}`);
+  const targetHref = withBase(`index.html${config.target || ''}`);
 
   btn.addEventListener('click', () => {
     try {
@@ -89,7 +89,9 @@ async function attachCTAIntoVictoryOverlay(targetKey = pendingTargetKey) {
   // Ne JAMAIS afficher sur l’accueil
   const isHome = window.location.pathname.endsWith('/') ||
                  window.location.pathname.endsWith('/index.html') ||
-                 window.location.pathname === '/index.html';
+                 window.location.pathname === '/index.html' ||
+                 window.location.pathname.endsWith('/index-legacy.html') ||
+                 window.location.pathname === '/index-legacy.html';
   if (isHome) return;
 
   const overlayCard = await waitForOverlayCard();

@@ -140,7 +140,7 @@ function ensureBonusQuickLinkInHud() {
         openBonusMap('otranto');
       } catch (error) {
         console.warn('[game] unable to open bonus map', error);
-        window.location.assign(withBase('app.html#/poi/otranto/realmap'));
+        window.location.assign(withBase('index.html#/poi/otranto/realmap'));
       }
     });
     hud.appendChild(link);

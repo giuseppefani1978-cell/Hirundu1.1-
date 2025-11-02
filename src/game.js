@@ -939,9 +939,9 @@ export function boot(){
   }
 
   function openBonusMap(){
-    // base = dossier courant (…/), qu’on concatène avec app.html
+    // base = dossier courant (…/), qu’on concatène avec index.html
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-    location.assign(`${base}app.html?embed=1#/poi/otranto/realmap`);
+    location.assign(`${base}index.html?embed=1#/poi/otranto/realmap`);
   }
 
 
@@ -1143,6 +1143,6 @@ window.__unlockOtranto = () => {
   } catch {}
 };
 window.__openBonusMap = () => {
-  location.assign('app.html#/poi/otranto/realmap');
+  location.assign('index.html#/poi/otranto/realmap');
   console.log('🗺️ BONUS ouvert');
 };
