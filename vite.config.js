@@ -17,7 +17,7 @@ function resolveBase() {
     }
   }
 
-  return '/';
+  return './';
 }
 
 function normalizeBase(value) {
