@@ -4,8 +4,7 @@
 // Boss : double corbeaux
 // =====================================================
 
-const BTL_BG_SRC = 'assets/battle_bg_gallipoli.png';  // 🖼 ton fond spécifique
-
+import { withBase } from '../../paths';
 import {
   setupBattleInputs,
   setBattleCallbacks as setCallbacksRaw,
@@ -16,15 +15,17 @@ import {
   isBattleActive as isActiveRaw
 } from '../../battle.js';
 
+const BTL_BG_SRC = withBase('assets/battle_bg_gallipoli.png');  // 🖼 ton fond spécifique
+
 // ---------------------------
 // Config assets (sprites)
 // ---------------------------
 // NB : structure identique à Otranto, seul le boss et le fond changent
 const SPRITES_SRC = {
-  bird:   'assets/aracne .PNG',      // même sprites du héros
-  spider: 'assets/tarantula .PNG',
-  crow:   'assets/crow.PNG',         // corbeaux 🪶
-  jelly:  'assets/jellyfish_boss.PNG'
+  bird:   withBase('assets/aracne .PNG'),      // même sprites du héros
+  spider: withBase('assets/tarantula .PNG'),
+  crow:   withBase('assets/crow.PNG'),         // corbeaux 🪶
+  jelly:  withBase('assets/jellyfish_boss.PNG')
 };
 
 // --- Taille logique (aspect)

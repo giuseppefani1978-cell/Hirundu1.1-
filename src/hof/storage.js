@@ -1,4 +1,4 @@
-import { withBase } from '../utils/basePath.js';
+import { withBase } from '../paths';
 
 const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];

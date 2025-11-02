@@ -5,7 +5,7 @@
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
 import { markLevelWin } from './bonus_maps.js';
-import { withBase } from './utils/basePath.js';
+import { withBase } from './paths';
 
 const BTL = {
   FLOOR_H: 0,
@@ -1061,7 +1061,7 @@ function _renderFireworks(ctx, w, h){
 // ---------- Audio ----------
 function _playBattleTheme(){
   try{
-    const url = window.__BATTLE_THEME_URL__ || 'assets/battle_loop.mp3';
+    const url = window.__BATTLE_THEME_URL__ || withBase('assets/battle_loop.mp3');
     if (!url) return;
     if (state.musicBattle){ try{state.musicBattle.pause();}catch{} }
     state.musicBattle = new Audio(url);

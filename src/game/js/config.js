@@ -1,8 +1,10 @@
+import { withBase } from '../../paths';
+
 export const DEBUG = false;
 
 export const APP_VERSION = window.APP_VERSION || 'v2025-08-20-g';
 export const APP_QUERY = `?v=${APP_VERSION}`;
-export const withVersion = (path) => `${path}${APP_QUERY}`;
+export const withVersion = (path) => `${withBase(path)}${APP_QUERY}`;
 
 export const ASSETS = {
   MAP_URL: withVersion('assets/salento-map.PNG'),
