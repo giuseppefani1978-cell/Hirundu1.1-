@@ -2,7 +2,7 @@
 // Gère l’affichage du CTA “Victoire : Bonus débloqué” uniquement après la victoire,
 // et jamais sur l’accueil. S’attache à l’overlay de victoire dès qu’il existe.
 
-import { withBase } from './utils/basePath.js';
+import { withBase } from './paths';
 
 const CTA_ID = '__victory_bonus_btn';
 

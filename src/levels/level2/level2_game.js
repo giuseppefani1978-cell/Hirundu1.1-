@@ -4,6 +4,7 @@
 // (code de base = src/game.js, avec POI L2 + HUD "Soleils" + HOF séparé)
 // =====================================================
 import { t, poiName, poiInfo } from '../../i18n.js';
+import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
   startMusic, stopMusic, toggleMusic, isMusicOn,
@@ -23,7 +24,7 @@ function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
 // ------------------------
 const APP_VERSION = (window.APP_VERSION || 'v2025-08-20-g');
 const APP_Q = `?v=${APP_VERSION}`;
-const asset = (p) => `${p}${APP_Q}`;
+const asset = (p) => `${withBase(p)}${APP_Q}`;
 
 const LS = {
   GALLIPOLI_BONUS_UNLOCKED: 'gallipoli_bonus_unlocked',

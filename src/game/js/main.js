@@ -38,7 +38,7 @@ import {
   now,
 } from './utils.js';
 import { createHallOfFameController } from './hof.js';
-import { withBase } from '../../utils/basePath.js';
+import { withBase } from '../../paths';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
 import { setupDpad } from './input.js';
 import {

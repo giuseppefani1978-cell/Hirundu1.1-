@@ -14,6 +14,24 @@
 
     <script type="module">
 (() => {
+  const basePath = (() => {
+    try {
+      const path = new URL('.', document.baseURI).pathname;
+      return path.endsWith('/') ? path : `${path}/`;
+    } catch {
+      return '/';
+    }
+  })();
+
+  const withBase = (path = '') => {
+    const normalized = String(path ?? '');
+    if (!normalized) {
+      return basePath;
+    }
+    const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+    return `${basePath}${trimmed}`;
+  };
+
   // util: lecture LS
   const LS = (k, d = null) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 
@@ -21,9 +39,9 @@
   const nextLevelHref = () => {
     const L3 = LS('level3_unlocked') === 'true';
     const L2 = LS('level2_unlocked') === 'true';
-    if (L3) return '/index.html?level=3';
-    if (L2) return '/index.html?level=2';
-    return '/index.html';
+    if (L3) return withBase('index.html?level=3');
+    if (L2) return withBase('index.html?level=2');
+    return withBase('index.html');
   };
 
   // --- TOAST éphémère (consomme __toast_next__)
@@ -50,10 +68,17 @@
 
   // --- bouton “Reprendre la chasse” si un contrôle existe déjà
   function findBackBtn() {
-    return document.querySelector(
-      '#back-to-game, #back-to-map, .leaflet-control a, ' +
-      'a[href="/index.html"], a[href="./"], a[href="#"], button.back-to-game'
-    );
+    const selectors = [
+      '#back-to-game',
+      '#back-to-map',
+      '.leaflet-control a',
+      `a[href="${withBase('index.html')}"]`,
+      'a[href="index.html"]',
+      'a[href="./"]',
+      'a[href="#"]',
+      'button.back-to-game',
+    ];
+    return document.querySelector(selectors.join(', '));
   }
 
   function setupBackBtn(btn) {
