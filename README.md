@@ -17,6 +17,28 @@ Ce dépôt utilise des dépendances npm pour le lint, le formatage et la compila
    npm run build
    ```
 
+### Dépanner une installation qui échoue
+
+Si `npm install` échoue régulièrement (par exemple avec une erreur HTTP 403 lors de la récupération de `@reduxjs/toolkit`), procédez à un nettoyage complet avant de relancer l'installation :
+
+1. **Purger les artefacts locaux**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm cache clean --force
+   ```
+2. **Vérifier l'accès au registre**
+   - Exportez un `NPM_TOKEN` valide si le registre est privé.
+   - Confirmez que les proxies (`npm config get proxy`/`npm config get https-proxy`) n'interceptent pas les requêtes.
+3. **Réinstaller en mode verbeux minimal**
+   ```bash
+   npm install --progress=false
+   ```
+   Contrôlez ensuite la présence de `node_modules/.bin/vite` avant d'exécuter `npm run build`.
+4. **Escalade en cas d'échec persistant**
+   - Récupérez le journal mentionné par npm (ex. `/root/.npm/_logs/...-debug-0.log`).
+   - Forcer temporairement le registre public : `npm config set registry https://registry.npmjs.org/`.
+   - Contactez l'administrateur du registre si l'accès à certains packages reste interdit.
+
 ## Conseils pour les environnements CI
 
 - Configurez les variables d'environnement nécessaires (comme `NPM_TOKEN`) si votre CI requiert une authentification pour accéder au registre npm.
