@@ -14,3 +14,7 @@ declare module '*.svg?url' {
   const src: string;
   export default src;
 }
+
+interface Window {
+  APP_VERSION?: string;
+}

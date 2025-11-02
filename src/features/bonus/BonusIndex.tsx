@@ -223,7 +223,7 @@ function BonusCard({ card, onOpen }: BonusCardProps) {
     .join(" ");
 
   return (
-    <article className={cardClass} aria-live="polite">
+    <article className={cardClass} aria-live="polite" data-bonus-key={card.key}>
       <header className="bonus-index__card-header">
         <div>
           <div className="bonus-index__card-title">{card.title}</div>
