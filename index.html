@@ -8,10 +8,9 @@
     />
     <title>HIRUNDU – Le Vol d’Aracne</title>
 
-    <!-- Couleur barre & PWA -->
     <meta name="theme-color" content="#a9d6f5" />
 
-    <!-- IMPORTANT pour GitHub Pages : chemins RELATIFS -->
+    <!-- Chemins RELATIFS pour GitHub Pages -->
     <link rel="manifest" href="./manifest.webmanifest" />
 
     <!-- iOS PWA -->
@@ -19,13 +18,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
 
-    <!-- Apple Touch Icons (chemins relatifs) -->
+    <!-- Apple Touch Icons (relatifs) -->
     <link rel="apple-touch-icon" sizes="120x120" href="./apple-touch-icon-120x120.png" />
     <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
     <link rel="apple-touch-icon" sizes="167x167" href="./apple-touch-icon-167x167.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-180x180.png" />
 
-    <!-- Favicons (chemins relatifs) -->
+    <!-- Favicons (relatifs) -->
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
@@ -34,10 +33,10 @@
   <body>
     <div id="root"></div>
 
-    <!-- Entrée Vite : Vite réécrit ce src au build, OK même si commence par / -->
+    <!-- Entrée Vite (Vite réécrit ce chemin au build) -->
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Désactivation & nettoyage Service Workers pour éviter le cache fantôme -->
+    <!-- Désactiver/Nettoyer d’anciens Service Workers -->
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations()
@@ -46,7 +45,6 @@
         if (window.caches && caches.keys) {
           caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
         }
-        // Astuce: forcer un no-cache côté client
         try { localStorage.setItem("sw_disabled", "true"); } catch {}
       }
     </script>
@@ -89,12 +87,11 @@
       })();
     </script>
 
-    <!-- Debug erreurs JS (utile en prod aussi) -->
+    <!-- Debug erreurs JS -->
     <script>
       window.addEventListener("error", (e) => {
         console.error("JS Error:", e.message, e.error);
         const msg = "Erreur JS: " + e.message;
-        // Evite le alert loop si erreur fréquente
         if (!window.__errShown) { window.__errShown = true; alert(msg); setTimeout(()=>{ window.__errShown=false;}, 3000); }
       });
       window.addEventListener("unhandledrejection", (e) => {
@@ -104,65 +101,66 @@
       });
     </script>
 
-    <!-- (Option) Transition/boot multi-niveaux via Vite import.meta.glob -->
+    <!-- Boot multi-niveaux SANS top-level await -->
     <script type="module">
-      // Lire le niveau depuis l'URL: ?level=1|2|3 (avec fallback #l2 historique)
-      const url = new URL(location.href);
-      const hashLevel = location.hash === "#l2" ? "2" : null;
-      const paramLevel = url.searchParams.get("level");
-      const level = (paramLevel || hashLevel || "1");
+      (async () => {
+        // Lire le niveau depuis l'URL: ?level=1|2|3 (avec fallback #l2)
+        const url = new URL(location.href);
+        const hashLevel = location.hash === "#l2" ? "2" : null;
+        const paramLevel = url.searchParams.get("level");
+        const level = (paramLevel || hashLevel || "1");
 
-      // Déclarer explicitement les modules pour Vite (analyse statique)
-      const boots = import.meta.glob([
-        "./src/game.js",
-        "./src/levels/level2/level2_game.js",
-        "./src/levels/level3/level3_game.js"
-      ]);
+        // Déclarer explicitement les modules pour Vite (analyse statique)
+        const boots = import.meta.glob([
+          "./src/game.js",
+          "./src/levels/level2/level2_game.js",
+          "./src/levels/level3/level3_game.js"
+        ]);
 
-      const BOOTS = {
-        "1": boots["./src/game.js"],
-        "2": boots["./src/levels/level2/level2_game.js"],
-        "3": boots["./src/levels/level3/level3_game.js"],
-      };
+        const BOOTS = {
+          "1": boots["./src/game.js"],
+          "2": boots["./src/levels/level2/level2_game.js"],
+          "3": boots["./src/levels/level3/level3_game.js"],
+        };
 
-      const START = {
-        "1": (m) => m?.boot?.() || m?.startLevel1?.() || m?.start?.(),
-        "2": (m) => m?.startLevel2?.() || m?.boot?.() || m?.start?.(),
-        "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.(),
-      };
+        const START = {
+          "1": (m) => m?.boot?.() || m?.startLevel1?.() || m?.start?.(),
+          "2": (m) => m?.startLevel2?.() || m?.boot?.() || m?.start?.(),
+          "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.(),
+        };
 
-      const fallbackLoader = boots["./src/game.js"];
+        const fallbackLoader = boots["./src/game.js"];
 
-      // Option: activer un flag bonus L1 ancien
-      try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
+        try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
 
-      try {
-        const loader = BOOTS[level] || fallbackLoader;
-        const mod = await loader?.();
-        const start = START[level] || START["1"];
-        start?.(mod);
-      } catch (e) {
-        console.error("Level boot error:", e);
         try {
-          const mod = await fallbackLoader?.();
-          START["1"]?.(mod);
-        } catch (e2) {
-          console.error("Fallback L1 failed:", e2);
-          alert("Erreur de chargement du niveau");
+          const loader = BOOTS[level] || fallbackLoader;
+          const mod = await loader?.();
+          const start = START[level] || START["1"];
+          start?.(mod);
+        } catch (e) {
+          console.error("Level boot error:", e);
+          try {
+            const mod = await fallbackLoader?.();
+            START["1"]?.(mod);
+          } catch (e2) {
+            console.error("Fallback L1 failed:", e2);
+            alert("Erreur de chargement du niveau");
+          }
         }
-      }
 
-      // Mini splash L2 (debug visuel court)
-      if (level === "2") {
-        const splash = document.createElement("div");
-        splash.style.cssText = `
-          position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-          background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
-          font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
-        splash.textContent = "✨ Transition — Niveau 2";
-        document.body.appendChild(splash);
-        setTimeout(() => splash.remove(), 900);
-      }
+        // Mini splash L2 (debug court)
+        if (level === "2") {
+          const splash = document.createElement("div");
+          splash.style.cssText = `
+            position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+            background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
+            font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
+          splash.textContent = "✨ Transition — Niveau 2";
+          document.body.appendChild(splash);
+          setTimeout(() => splash.remove(), 900);
+        }
+      })();
     </script>
   </body>
 </html>
