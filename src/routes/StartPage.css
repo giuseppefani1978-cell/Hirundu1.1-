@@ -16,7 +16,7 @@
   justify-content: center;
   padding: clamp(1.6rem, 4.2vw, 4rem) clamp(1.25rem, 3.6vw, 3.5rem);
   position: relative;
-  overflow: visible; /* PATCH: laissait la page "bloquée" quand hidden */
+  overflow: visible; /* PATCH: évite le blocage de scroll */
 }
 
 /* Décor uniquement : on garde l’overflow sur le pseudo-élément */
@@ -36,7 +36,55 @@
 .start-page__content {
   position: relative;
   /* PATCH: réduire la largeur cible (~75%) et centrer */
-  max-width: 560px;            /* était 720px */
+  max-width: 560px; /* anciennement 720px */
   margin-inline: auto;
   z-index: 1;
-  bac
+  background: rgba(6, 16, 33, 0.55);
+  border-radius: 24px;
+  padding: clamp(1.6rem, 3.5vw, 3rem);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 70px rgba(3, 10, 24, 0.5);
+  backdrop-filter: blur(12px) saturate(160%);
+}
+
+.start-page__eyebrow {
+  font: 700 0.85rem/1.2 "Barlow", system-ui;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(167, 220, 255, 0.95);
+  margin-bottom: 0.75rem;
+}
+
+.start-page__title {
+  font: 800 clamp(1.9rem, 4.2vw, 3rem)/1.1 "Barlow", system-ui;
+  margin: 0 0 1.25rem 0;
+}
+
+.start-page__lead {
+  font: 400 clamp(0.95rem, 2vw, 1.15rem)/1.6 "Inter", system-ui;
+  color: rgba(210, 226, 255, 0.9);
+  margin: 0 0 1.75rem 0;
+}
+
+.start-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.start-page__cta {
+  min-width: 220px;
+}
+
+/* Le Hall of Fame n’est plus inclus ici — déplacé dans BonusIndex */
+.start-page__hof {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .start-page__content {
+    padding: 1.75rem;
+  }
+
+  .start-page__actions {
+    f
