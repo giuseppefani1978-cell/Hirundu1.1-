@@ -19,19 +19,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      # Recommandé par GitHub pour Pages
       - uses: actions/configure-pages@v5
+
+      # --- DEBUG: infos env
+      - name: Print versions
+        run: |
+          node -v
+          npm -v
+          npm ls vite || true
+          npx vite --version || true
+          echo "Working dir:" && pwd
+          echo "Repo tree (top):" && ls -la
 
       - name: Install dependencies
         run: npm ci || npm install
 
       - name: Build (Vite)
         run: npm run build
+
+      # --- DEBUG: vérifier dist
+      - name: Check dist content
+        run: |
+          echo "dist tree:" && (ls -la dist || echo "dist missing")
+          test -f dist/index.html || (echo "❌ dist/index.html not found" && exit 1)
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
