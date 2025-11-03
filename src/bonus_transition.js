@@ -89,7 +89,9 @@ async function attachCTAIntoVictoryOverlay(targetKey = pendingTargetKey) {
   // Ne JAMAIS afficher sur l’accueil
   const isHome = window.location.pathname.endsWith('/') ||
                  window.location.pathname.endsWith('/index.html') ||
-                 window.location.pathname === '/index.html';
+                 window.location.pathname === '/index.html' ||
+                 window.location.pathname.endsWith('/index-legacy.html') ||
+                 window.location.pathname === '/index-legacy.html';
   if (isHome) return;
 
   const overlayCard = await waitForOverlayCard();

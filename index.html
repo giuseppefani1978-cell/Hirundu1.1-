@@ -1,130 +1,59 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>HIRUNDU – Le Vol d’Aracne</title>
 
-  <title>Le Vol d’Aracne — Salento (Chasse au trésor)</title>
+    <!-- Couleurs & PWA -->
+    <meta name="theme-color" content="#a9d6f5" />
+    <link rel="manifest" href="/Hirundu1.1-/manifest.webmanifest" />
 
-  <!-- Couleurs & PWA -->
-  <meta name="theme-color" content="#a9d6f5">
-  <link rel="manifest" href="manifest.json">
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
 
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne">
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
 
-  <!-- Apple Touch Icons -->
-  <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
-  <link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  </head>
+  <body>
+    <div id="root"></div>
 
-  <!-- Favicons -->
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+    <script type="module" src="/src/main.tsx"></script>
 
-  <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-  <!-- Badge version + host (debug) -->
-  <div id="__ver__"
-       style="position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;
-              font:12px system-ui;padding:4px 6px;border-radius:6px;pointer-events:none">
-    v2025-08-20-g • host=<span id="__host__"></span>
-  </div>
-
-  <div class="wrap">
-    <div class="game">
-      <!-- Overlay Start -->
-      <div class="overlay" id="overlay">
-        <div class="overlay-card" id="overlayCard">
-          <div class="overlay-card__badge" id="overlayBadge"></div>
-          <h1 class="overlay-card__title" id="titleH1">Le Vol d’Aracne</h1>
-          <p class="overlay-card__subtitle" id="subtitleP">Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.</p>
-          <div class="overlay-card__highlight" id="overlayHighlight" hidden></div>
-          <p class="overlay-card__description" id="overlayDescription"></p>
-          <div class="overlay-card__heroes" id="overlayHeroes">
-            <img id="heroAr" alt="Aracne">
-            <img id="heroTa" alt="Tarantula">
-          </div>
-          <p class="overlay-card__footnote" id="overlayFootnote"></p>
-          <button id="startBtn" type="button" class="overlay-card__button">▶︎ Lancer la chasse</button>
-        </div>
-      </div>
-
-      <!-- UI / HUD -->
-      <button id="musicBtn" type="button">🎵 Musique</button>
-      <button id="replayFloat" type="button">⟲ Rejouer</button>
-      <div class="err" id="err" style="display:none">
-        <b id="errTitle">⚠️ Problème d’assets</b><div id="errText"></div>
-      </div>
-
-      <canvas id="c"></canvas>
-
-      <div class="hud" id="hud">
-        <h3 id="hudLabel">Étoiles</h3>
-        <div class="score" id="score">0/10</div>
-        <div class="stars" id="stars"></div>
-      </div>
-
-      <div class="tarTop" id="tarTop">
-        <img id="tarAvatar" alt="Tarantula">
-        <div class="bdBubble">
-          <div class="bdTitle" id="bdTitle">Tarantula</div>
-          <p id="bdText"></p>
-        </div>
-      </div>
-
-      <!-- D-pad -->
-      <div class="touch" id="touch">
-        <div class="dpad">
-          <div></div> <div class="btn" data-dx="0" data-dy="-1">↑</div> <div></div>
-          <div class="btn" data-dx="-1" data-dy="0">←</div> <div></div> <div class="btn" data-dx="1" data-dy="0">→</div>
-          <div></div> <div class="btn" data-dx="0" data-dy="1">↓</div> <div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Debug Box -->
-  <div id="debugBox" style="display:none"></div>
-
-  <!-- Force Refresh -->
-  <button id="__force__" type="button"
-          style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#ffd;text-transform:uppercase;
-                 border:1px solid #cc3;border-radius:6px;padding:6px 8px;font:12px system-ui;cursor:pointer">
-    Force Refresh
-  </button>
-
-
-  <!-- Musique Battle -->
-  <script>
-    window.__BATTLE_THEME_URL__ = 'assets/battle_loop.mp3';
-  </script>
-
- <script type="module">
-  (async () => {
-    const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
-    if ('serviceWorker' in navigator) {
-      if (isProd) {
-        try {
-          const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
-          const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
-          await navigator.serviceWorker.register(swUrl);
-        } catch {}
-      } else {
-        // DEV: désactive tout SW + vide les caches
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) await r.unregister();
-          if (window.caches) {
-            const keys = await caches.keys();
-            for (const k of keys) await caches.delete(k);
+    <script type="module">
+      (async () => {
+        const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
+        if ('serviceWorker' in navigator) {
+          if (isProd) {
+            try {
+              const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
+              const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
+              await navigator.serviceWorker.register(swUrl);
+            } catch {}
+          } else {
+            // DEV: désactive tout SW + vide les caches
+            try {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              for (const r of regs) await r.unregister();
+              if (window.caches) {
+                const keys = await caches.keys();
+                for (const k of keys) await caches.delete(k);
+              }
+              console.log('[DEV] SW désactivé, caches vidés');
+            } catch {}
           }
           console.log('[DEV] SW désactivé, caches vidés');
         } catch {}

@@ -6,6 +6,7 @@
 // =====================================================
 
 import { t, poiName, poiInfo } from '../../i18n.js';
+import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
   startMusic, stopMusic, toggleMusic, isMusicOn,
@@ -25,7 +26,7 @@ function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
 // ------------------------
 const APP_VERSION = (window.APP_VERSION || 'v2025-10-28');
 const APP_Q = `?v=${APP_VERSION}`;
-const asset = (p) => `${p}${APP_Q}`;
+const asset = (p) => `${withBase(p)}${APP_Q}`;
 
 const LEVEL_ID = 'L3';
 const INVENTORY_LABEL = (t.level3?.hudLabel || 'Feuilles');
