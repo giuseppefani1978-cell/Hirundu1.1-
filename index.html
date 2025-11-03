@@ -39,13 +39,16 @@
     <!-- Désactiver/Nettoyer d’anciens Service Workers -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then(regs => regs.forEach(r => r.unregister()))
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((regs) => regs.forEach((r) => r.unregister()))
           .catch(() => {});
         if (window.caches && caches.keys) {
-          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
         }
-        try { localStorage.setItem("sw_disabled", "true"); } catch {}
+        try {
+          localStorage.setItem("sw_disabled", "true");
+        } catch {}
       }
     </script>
 
@@ -63,7 +66,9 @@
         btn.addEventListener("click", async () => {
           btn.remove();
           deferredPrompt.prompt();
-          try { await deferredPrompt.userChoice; } catch {}
+          try {
+            await deferredPrompt.userChoice;
+          } catch {}
           deferredPrompt = null;
         });
       });
@@ -74,7 +79,9 @@
       (function () {
         const ua = navigator.userAgent || "";
         const isIOS = /iphone|ipad|ipod/i.test(ua);
-        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+        const isStandalone =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone;
         const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
         if (isIOS && isSafari && !isStandalone) {
           const tip = document.createElement("div");
@@ -92,23 +99,48 @@
       window.addEventListener("error", (e) => {
         console.error("JS Error:", e.message, e.error);
         const msg = "Erreur JS: " + e.message;
-        if (!window.__errShown) { window.__errShown = true; alert(msg); setTimeout(()=>{ window.__errShown=false;}, 3000); }
+        if (!window.__errShown) {
+          window.__errShown = true;
+          alert(msg);
+          setTimeout(() => {
+            window.__errShown = false;
+          }, 3000);
+        }
       });
       window.addEventListener("unhandledrejection", (e) => {
         console.error("Unhandled promise:", e.reason);
         const msg = "Erreur async: " + (e.reason?.message || e.reason);
-        if (!window.__rejShown) { window.__rejShown = true; alert(msg); setTimeout(()=>{ window.__rejShown=false;}, 3000); }
+        if (!window.__rejShown) {
+          window.__rejShown = true;
+          alert(msg);
+          setTimeout(() => {
+            window.__rejShown = false;
+          }, 3000);
+        }
       });
     </script>
 
     <!-- Boot multi-niveaux SANS top-level await -->
     <script type="module">
       (async () => {
-        // Lire le niveau depuis l'URL: ?level=1|2|3 (avec fallback #l2)
         const url = new URL(location.href);
         const hashLevel = location.hash === "#l2" ? "2" : null;
         const paramLevel = url.searchParams.get("level");
-        const level = (paramLevel || hashLevel || "1");
+        const level = paramLevel || hashLevel || "1";
+
+        /* === PATCH Codex : ignorer le boot en mode embed ou routes SPA === */
+        const isEmbed = url.searchParams.get("embed") === "1";
+        const isSpaRoute =
+          !location.hash.startsWith("#/level/") &&
+          (location.hash.startsWith("#/bonus") ||
+            location.hash.startsWith("#/qr") ||
+            location.hash.startsWith("#/market") ||
+            location.hash.startsWith("#/realmap"));
+        if (isEmbed || isSpaRoute) {
+          console.info("Mode SPA ou embed détecté — boot du jeu ignoré.");
+          return;
+        }
+        /* ================================================================ */
 
         // Déclarer explicitement les modules pour Vite (analyse statique)
         const boots = import.meta.glob([
@@ -120,18 +152,20 @@
         const BOOTS = {
           "1": boots["./src/game.js"],
           "2": boots["./src/levels/level2/level2_game.js"],
-          "3": boots["./src/levels/level3/level3_game.js"],
+          "3": boots["./src/levels/level3/level3_game.js"]
         };
 
         const START = {
           "1": (m) => m?.boot?.() || m?.startLevel1?.() || m?.start?.(),
           "2": (m) => m?.startLevel2?.() || m?.boot?.() || m?.start?.(),
-          "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.(),
+          "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.()
         };
 
         const fallbackLoader = boots["./src/game.js"];
 
-        try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
+        try {
+          localStorage.setItem("otranto_bonus_unlocked", "true");
+        } catch {}
 
         try {
           const loader = BOOTS[level] || fallbackLoader;
