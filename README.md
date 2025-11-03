@@ -89,3 +89,22 @@ Après l'installation, les commandes affichent plusieurs avertissements/erreurs 
    Ouvrez l'URL `https://<votre-utilisateur>.github.io/<nom-du-depot>/` dans Safari, puis utilisez **Partager → Ajouter à l’écran d’accueil** pour installer la PWA.
 
 > 💡 Alternative : vous pouvez aussi garder le build dans `main` en copiant `dist/` vers un dossier `docs/` et en configurant Pages sur `main` + `docs/`.
+
+## Pipelines automatisés & nouvelles branches
+
+- La version Node de référence est définie dans [`.nvmrc`](./.nvmrc) (22.19.0). Pensez à exécuter `nvm use` avant toute commande `npm`.
+- Les workflows GitHub Actions se trouvent dans [`.github/workflows/`](./.github/workflows) :
+  - **CI** : lint, typecheck et build sur chaque push/PR.
+  - **Preview Pages** : build + déploiement temporaire pour chaque Pull Request.
+  - **Deploy Pages** : publication automatique sur GitHub Pages lorsqu'on pousse dans `version-1.0`.
+- Dans l’interface GitHub, configurez *Settings → Pages → Source = GitHub Actions* et protégez la branche `version-1.0` (PR obligatoire + workflows verts) ; optionnellement, protégez aussi `branche-test`.
+
+## Processus "dev → preview → prod"
+
+1. Travaillez sur `branche-test` ou une branche dérivée, en respectant la version Node 22.
+2. Ouvrez une Pull Request vers `version-1.0`. La CI et le déploiement de preview doivent être verts avant merge.
+3. La fusion déclenche le workflow **Deploy Pages** qui publie `dist/` sur la page `https://<org>.github.io/Hirundu1.1-/`.
+4. Réalisez un smoke test post-déploiement (chargement initial, navigation, QR/caméra, refresh sur sous-page grâce à HashRouter, vérification des assets).
+5. En cas d'incident, utilisez la branche/tag de sauvegarde `backup-YYYYMMDD-HHMM` et suivez le [runbook de release](./README_RELEASE.md) pour un rollback contrôlé.
+
+Tout futur déploiement doit passer par une PR approuvée et des checks verts. Aucune mise en production directe via `git push` n’est tolérée.

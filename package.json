@@ -1,6 +1,10 @@
 {
   "name": "hirundu",
   "version": "1.0.0",
+  "engines": {
+    "node": "^22.0.0"
+  },
+  "packageManager": "npm@11.4.2",
   "scripts": {
     "dev": "node ./scripts/run-vite.mjs dev",
     "build": "node ./scripts/run-vite.mjs build",
