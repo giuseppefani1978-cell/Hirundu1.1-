@@ -99,3 +99,60 @@
     padding: 1.5rem;
   }
 }
+
+/* =========================================================
+   PATCH CODEX — Scroll, Layout & UI Layer Fix
+   ========================================================= */
+
+/* ✅ Autoriser le scroll global sur les pages React */
+html,
+body,
+#root,
+.app-shell {
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  height: auto;
+  min-height: 100dvh;
+}
+
+/* ✅ Éviter que les wrappers hérités (wrap/game) bloquent le scroll */
+.app-shell,
+.app-shell__content {
+  position: relative;
+  z-index: 10;
+}
+
+/* ✅ HUD et pads au-dessus du canvas */
+.hud {
+  z-index: 60 !important;
+}
+.touch {
+  z-index: 70 !important;
+}
+
+/* ✅ Canvas toujours sous les éléments interactifs */
+canvas#c {
+  z-index: 1 !important;
+  pointer-events: none;
+}
+
+/* ✅ Meilleure lisibilité sur mobile (évite le "vh" fixe) */
+@supports (height: 100svh) {
+  html,
+  body,
+  .app-shell {
+    min-height: 100svh;
+  }
+}
+
+/* ✅ Ajustement esthétique des scrollbars modernes */
+body::-webkit-scrollbar {
+  width: 8px;
+}
+body::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.25);
+  border-radius: 8px;
+}
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.45);
+}
