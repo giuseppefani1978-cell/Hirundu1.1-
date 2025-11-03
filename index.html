@@ -124,23 +124,23 @@
     <script type="module">
       (async () => {
         const url = new URL(location.href);
+
+        /* === GARDE : ne booter le legacy QUE si on est explicitement sur un niveau === */
+        const isEmbed = url.searchParams.get("embed") === "1";
+        const hasLevelParam = url.searchParams.has("level");
+        const isLevelHash =
+          /^#\/level\/\d+/.test(location.hash) || /^#l[23]$/.test(location.hash);
+
+        if (isEmbed || (!hasLevelParam && !isLevelHash)) {
+          // Page d'accueil / bonus / qr / autre route SPA → React gère, pas de canvas à créer
+          return;
+        }
+        /* ========================================================================= */
+
+        // Lire le niveau (après la garde)
         const hashLevel = location.hash === "#l2" ? "2" : null;
         const paramLevel = url.searchParams.get("level");
         const level = paramLevel || hashLevel || "1";
-
-        /* === PATCH Codex : ignorer le boot en mode embed ou routes SPA === */
-        const isEmbed = url.searchParams.get("embed") === "1";
-        const isSpaRoute =
-          !location.hash.startsWith("#/level/") &&
-          (location.hash.startsWith("#/bonus") ||
-            location.hash.startsWith("#/qr") ||
-            location.hash.startsWith("#/market") ||
-            location.hash.startsWith("#/realmap"));
-        if (isEmbed || isSpaRoute) {
-          console.info("Mode SPA ou embed détecté — boot du jeu ignoré.");
-          return;
-        }
-        /* ================================================================ */
 
         // Déclarer explicitement les modules pour Vite (analyse statique)
         const boots = import.meta.glob([
