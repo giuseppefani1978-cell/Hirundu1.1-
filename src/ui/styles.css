@@ -9,7 +9,39 @@
   --app-surface: #ffffff;
   --app-border: rgba(148, 163, 184, 0.35);
   --app-border-strong: rgba(15, 23, 42, 0.12);
+
+  /* === PATCH CODEX : amélioration lisibilité et contraste === */
+  --surface-card: #ffffff;
+  --text-on-dark: rgba(240, 248, 255, 0.88);
+  --text-on-light: rgba(15, 23, 42, 0.9);
 }
+
+/* === PATCH CODEX : blocs texte bonus + contrastes === */
+
+/* Texte plus clair sur fonds sombres */
+.bonus-index__lead,
+.bonus-index__intro,
+.bonus-index__summary {
+  color: var(--text-on-dark) !important;
+}
+
+/* Blocs de texte du hub bonus sur fond clair pour lisibilité */
+.bonus-hub-page section {
+  background: var(--surface-card);
+  color: var(--text-on-light);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px -18px rgba(15, 23, 42, 0.25);
+}
+
+/* Cartes Hall of Fame sur fond clair */
+.bonus-index__hof,
+.bonus-index__card {
+  background: var(--surface-card);
+  color: var(--text-on-light);
+}
+
+/* ========================================================= */
 
 * {
   box-sizing: border-box;
