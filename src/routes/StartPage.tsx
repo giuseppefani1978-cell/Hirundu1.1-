@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { HallOfFameSection } from "../features/bonus/HallOfFameSection";
 import "./StartPage.css";
 
 export default function StartPage() {
@@ -34,10 +33,8 @@ export default function StartPage() {
           </div>
         </div>
       </div>
-
-      <div className="start-page__hof">
-        <HallOfFameSection highlight />
-      </div>
+      {/* PATCH : suppression du Hall of Fame sur la page d’accueil.
+          Il doit désormais être affiché uniquement dans la page Bonus (BonusIndex). */}
     </div>
   );
 }
