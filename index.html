@@ -8,178 +8,161 @@
     />
     <title>HIRUNDU – Le Vol d’Aracne</title>
 
-    <!-- Couleurs & PWA -->
+    <!-- Couleur barre & PWA -->
     <meta name="theme-color" content="#a9d6f5" />
-    <link rel="manifest" href="/Hirundu1.1-/manifest.webmanifest" />
+
+    <!-- IMPORTANT pour GitHub Pages : chemins RELATIFS -->
+    <link rel="manifest" href="./manifest.webmanifest" />
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
 
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167x167.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
+    <!-- Apple Touch Icons (chemins relatifs) -->
+    <link rel="apple-touch-icon" sizes="120x120" href="./apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="./apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-180x180.png" />
 
-    <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <!-- Favicons (chemins relatifs) -->
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
   </head>
+
   <body>
     <div id="root"></div>
 
+    <!-- Entrée Vite : Vite réécrit ce src au build, OK même si commence par / -->
     <script type="module" src="/src/main.tsx"></script>
 
-    <script type="module">
-      (async () => {
-        const isProd = !!(import.meta && import.meta.env && import.meta.env.PROD);
-        if ('serviceWorker' in navigator) {
-          if (isProd) {
-            try {
-              const base = import.meta?.env?.BASE_URL ?? new URL('.', document.baseURI).pathname;
-              const swUrl = `${base.replace(/\/?$/, '/')}sw.js`;
-              await navigator.serviceWorker.register(swUrl);
-            } catch {}
-          } else {
-            // DEV: désactive tout SW + vide les caches
-            try {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              for (const r of regs) await r.unregister();
-              if (window.caches) {
-                const keys = await caches.keys();
-                for (const k of keys) await caches.delete(k);
-              }
-              console.log('[DEV] SW désactivé, caches vidés');
-            } catch {}
-          }
-          console.log('[DEV] SW désactivé, caches vidés');
-        } catch {}
+    <!-- Désactivation & nettoyage Service Workers pour éviter le cache fantôme -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(regs => regs.forEach(r => r.unregister()))
+          .catch(() => {});
+        if (window.caches && caches.keys) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+        }
+        // Astuce: forcer un no-cache côté client
+        try { localStorage.setItem("sw_disabled", "true"); } catch {}
       }
-    }
-  })();
-</script>
+    </script>
 
-  <!-- Bouton d’installation Android -->
-  <script>
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const btn = document.createElement('button');
-      btn.textContent = '📲 Installer l’app';
-      btn.style.cssText = 'position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);';
-      document.body.appendChild(btn);
-      btn.addEventListener('click', async () => {
-        btn.remove();
-        deferredPrompt.prompt();
-        try { await deferredPrompt.userChoice; } catch {}
-        deferredPrompt = null;
+    <!-- Bouton d’installation Android (PWA) -->
+    <script>
+      let deferredPrompt;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const btn = document.createElement("button");
+        btn.textContent = "📲 Installer l’app";
+        btn.style.cssText =
+          "position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);";
+        document.body.appendChild(btn);
+        btn.addEventListener("click", async () => {
+          btn.remove();
+          deferredPrompt.prompt();
+          try { await deferredPrompt.userChoice; } catch {}
+          deferredPrompt = null;
+        });
       });
-    });
-  </script>
+    </script>
 
-  <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
-  <script>
-    (function(){
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isIOS && isSafari && !isStandalone) {
-        const tip = document.createElement('div');
-        tip.innerHTML = 'Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>';
-        tip.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);';
-        document.body.appendChild(tip);
-        setTimeout(()=>tip.remove(), 8000);
+    <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
+    <script>
+      (function () {
+        const ua = navigator.userAgent || "";
+        const isIOS = /iphone|ipad|ipod/i.test(ua);
+        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+        if (isIOS && isSafari && !isStandalone) {
+          const tip = document.createElement("div");
+          tip.innerHTML = "Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>";
+          tip.style.cssText =
+            "position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);";
+          document.body.appendChild(tip);
+          setTimeout(() => tip.remove(), 8000);
+        }
+      })();
+    </script>
+
+    <!-- Debug erreurs JS (utile en prod aussi) -->
+    <script>
+      window.addEventListener("error", (e) => {
+        console.error("JS Error:", e.message, e.error);
+        const msg = "Erreur JS: " + e.message;
+        // Evite le alert loop si erreur fréquente
+        if (!window.__errShown) { window.__errShown = true; alert(msg); setTimeout(()=>{ window.__errShown=false;}, 3000); }
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        console.error("Unhandled promise:", e.reason);
+        const msg = "Erreur async: " + (e.reason?.message || e.reason);
+        if (!window.__rejShown) { window.__rejShown = true; alert(msg); setTimeout(()=>{ window.__rejShown=false;}, 3000); }
+      });
+    </script>
+
+    <!-- (Option) Transition/boot multi-niveaux via Vite import.meta.glob -->
+    <script type="module">
+      // Lire le niveau depuis l'URL: ?level=1|2|3 (avec fallback #l2 historique)
+      const url = new URL(location.href);
+      const hashLevel = location.hash === "#l2" ? "2" : null;
+      const paramLevel = url.searchParams.get("level");
+      const level = (paramLevel || hashLevel || "1");
+
+      // Déclarer explicitement les modules pour Vite (analyse statique)
+      const boots = import.meta.glob([
+        "./src/game.js",
+        "./src/levels/level2/level2_game.js",
+        "./src/levels/level3/level3_game.js"
+      ]);
+
+      const BOOTS = {
+        "1": boots["./src/game.js"],
+        "2": boots["./src/levels/level2/level2_game.js"],
+        "3": boots["./src/levels/level3/level3_game.js"],
+      };
+
+      const START = {
+        "1": (m) => m?.boot?.() || m?.startLevel1?.() || m?.start?.(),
+        "2": (m) => m?.startLevel2?.() || m?.boot?.() || m?.start?.(),
+        "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.(),
+      };
+
+      const fallbackLoader = boots["./src/game.js"];
+
+      // Option: activer un flag bonus L1 ancien
+      try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
+
+      try {
+        const loader = BOOTS[level] || fallbackLoader;
+        const mod = await loader?.();
+        const start = START[level] || START["1"];
+        start?.(mod);
+      } catch (e) {
+        console.error("Level boot error:", e);
+        try {
+          const mod = await fallbackLoader?.();
+          START["1"]?.(mod);
+        } catch (e2) {
+          console.error("Fallback L1 failed:", e2);
+          alert("Erreur de chargement du niveau");
+        }
       }
-    })();
-  </script>
 
-  <!-- Debug erreurs JS -->
-  <script>
-    window.addEventListener('error', e => {
-      console.error('JS Error:', e.message, e.error);
-      const box = document.getElementById('debugBox');
-      if (box) {
-        box.style.display = 'block';
-        box.style.position = 'fixed';
-        box.style.left = '8px'; box.style.top = '8px';
-        box.style.zIndex = 99999;
-        box.style.background = '#300';
-        box.style.color = '#fff';
-        box.style.padding = '8px 10px';
-        box.style.borderRadius = '8px';
-        box.textContent = 'Erreur: ' + e.message;
-        setTimeout(()=>{ box.style.display='none'; }, 6000);
-      } else {
-        alert('Erreur JS: ' + e.message);
+      // Mini splash L2 (debug visuel court)
+      if (level === "2") {
+        const splash = document.createElement("div");
+        splash.style.cssText = `
+          position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+          background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
+          font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
+        splash.textContent = "✨ Transition — Niveau 2";
+        document.body.appendChild(splash);
+        setTimeout(() => splash.remove(), 900);
       }
-    });
-    window.addEventListener('unhandledrejection', e => {
-      console.error('Unhandled promise:', e.reason);
-      alert('Erreur async: ' + (e.reason?.message || e.reason));
-    });
-  </script>
- <script type="module" src="./src/bonus_transition.js"></script>
-<!-- index.html -->
-<script type="module">
-  // Read level from URL: ?level=1|2|3 (keeps the #l2 fallback you used)
-  const url = new URL(location.href);
-  const hashLevel = (location.hash === '#l2') ? '2' : null;
-  const paramLevel = url.searchParams.get('level');
-  const level = (paramLevel || hashLevel || '1');
-
-  const boots = import.meta.glob('./src/{game.js,levels/level2/level2_game.js,levels/level3/level3_game.js}');
-
-  // Statically analyzable imports for Vite/Rollup
-  const BOOTS = {
-    '1': boots['./src/game.js'],                        // Level 1 (legacy root)
-    '2': boots['./src/levels/level2/level2_game.js'],   // Level 2
-    '3': boots['./src/levels/level3/level3_game.js'],   // Level 3 (NEW)
-  };
-
-  // For each level, try the most likely start function; fall back gracefully.
-  const START = {
-    '1': (m) => m.boot?.() || m.startLevel1?.() || m.start?.(),
-    '2': (m) => m.startLevel2?.() || m.boot?.() || m.start?.(),
-    '3': (m) => m.startLevel3?.() || m.boot?.() || m.start?.(), // L3 exports startLevel3()
-  };
-
-  // (Optional) keep the old Otranto flag if you used it somewhere
-  try { localStorage.setItem('otranto_bonus_unlocked', 'true'); } catch {}
-
-  const fallbackLoader = boots['./src/game.js'];
-
-  // Load + start selected level; default to L1 if anything is off
-  try {
-    const loader = BOOTS[level] || fallbackLoader;
-    const mod = await loader?.();
-    const start = START[level] || START['1'];
-    start?.(mod);
-  } catch (e) {
-    console.error('Level boot error:', e);
-    try {
-      const mod = await fallbackLoader?.();
-      START['1']?.(mod);
-    } catch (e2) {
-      console.error('Fallback L1 failed:', e2);
-      alert('Erreur de chargement du niveau');
-    }
-  }
-
-  // Keep your small L2 transition if you like
-  if (level === '2') {
-    const splash = document.createElement('div');
-    splash.style.cssText = `
-      position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-      background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
-      font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
-    splash.textContent = '✨ Transition — Niveau 2';
-    document.body.appendChild(splash);
-    setTimeout(() => splash.remove(), 900);
-  }
-</script>
-</body>
+    </script>
+  </body>
 </html>
