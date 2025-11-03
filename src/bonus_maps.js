@@ -133,15 +133,42 @@ export function unlockBonus(...args) {
   updateLegacyUnlockState(key);
 }
 
+/**
+ * PATCH CODEX — version corrigée de openBonusMap
+ * Corrige la redirection et le chargement du hub bonus en mode SPA.
+ */
 export function openBonusMap(...args) {
   const key = normalizeBonusKey(args);
   if (!key) {
     console.warn("[bonus_maps] openBonusMap : clé inconnue", args);
     return;
   }
+
   unlockBonusModern(key);
   updateLegacyUnlockState(key);
-  openBonusMapModern(key);
+
+  try {
+    const spaUrl = `#/bonus/${key}`;
+    // Si on n'est pas déjà sur la page SPA du bonus
+    if (window.location.hash !== spaUrl) {
+      window.location.hash = spaUrl;
+      console.log(`[bonus_maps] Navigation vers ${spaUrl}`);
+    } else {
+      // Si déjà sur la page bonus, on recharge via la version moderne
+      openBonusMapModern(key);
+    }
+  } catch (err) {
+    console.error("[bonus_maps] Erreur openBonusMap SPA :", err);
+
+    // Fallback vers la version legacy ou intégrée
+    try {
+      openBonusHub?.(key);
+    } catch {
+      const legacyUrl = `./index.html?embed=1#/${key}`;
+      console.warn("[bonus_maps] Fallback vers legacy URL :", legacyUrl);
+      window.location.href = legacyUrl;
+    }
+  }
 }
 
 export function isBonusUnlocked(...args) {
