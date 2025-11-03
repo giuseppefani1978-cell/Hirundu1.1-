@@ -39,16 +39,11 @@
     <!-- Désactiver/Nettoyer d’anciens Service Workers -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .getRegistrations()
-          .then((regs) => regs.forEach((r) => r.unregister()))
-          .catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
         if (window.caches && caches.keys) {
-          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
         }
-        try {
-          localStorage.setItem("sw_disabled", "true");
-        } catch {}
+        try { localStorage.setItem("sw_disabled", "true"); } catch {}
       }
     </script>
 
@@ -66,9 +61,7 @@
         btn.addEventListener("click", async () => {
           btn.remove();
           deferredPrompt.prompt();
-          try {
-            await deferredPrompt.userChoice;
-          } catch {}
+          try { await deferredPrompt.userChoice; } catch {}
           deferredPrompt = null;
         });
       });
@@ -79,9 +72,7 @@
       (function () {
         const ua = navigator.userAgent || "";
         const isIOS = /iphone|ipad|ipod/i.test(ua);
-        const isStandalone =
-          window.matchMedia("(display-mode: standalone)").matches ||
-          window.navigator.standalone;
+        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
         const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
         if (isIOS && isSafari && !isStandalone) {
           const tip = document.createElement("div");
@@ -94,53 +85,42 @@
       })();
     </script>
 
-    <!-- Debug erreurs JS -->
+    <!-- Debug erreurs JS (moins intrusif) -->
     <script>
+      const __DEV__ = location.hostname.includes("localhost") || location.hostname.endsWith(".app.github.dev");
       window.addEventListener("error", (e) => {
         console.error("JS Error:", e.message, e.error);
-        const msg = "Erreur JS: " + e.message;
-        if (!window.__errShown) {
-          window.__errShown = true;
-          alert(msg);
-          setTimeout(() => {
-            window.__errShown = false;
-          }, 3000);
+        if (__DEV__) {
+          const msg = "Erreur JS: " + e.message;
+          if (!window.__errShown) { window.__errShown = true; alert(msg); setTimeout(()=>{ window.__errShown=false;}, 3000); }
         }
       });
       window.addEventListener("unhandledrejection", (e) => {
         console.error("Unhandled promise:", e.reason);
-        const msg = "Erreur async: " + (e.reason?.message || e.reason);
-        if (!window.__rejShown) {
-          window.__rejShown = true;
-          alert(msg);
-          setTimeout(() => {
-            window.__rejShown = false;
-          }, 3000);
+        if (__DEV__) {
+          const msg = "Erreur async: " + (e.reason?.message || e.reason);
+          if (!window.__rejShown) { window.__rejShown = true; alert(msg); setTimeout(()=>{ window.__rejShown=false;}, 3000); }
         }
       });
     </script>
 
-    <!-- Boot multi-niveaux SANS top-level await -->
+    <!-- Boot multi-niveaux SANS top-level await : seulement sur #/level/X ou ?level= -->
     <script type="module">
       (async () => {
         const url = new URL(location.href);
+        const hash = location.hash || "";
+        const paramLevel = url.searchParams.get("level");
+        const levelFromHash = (() => {
+          const m = hash.match(/^#\/level\/(\d+)/);
+          return m ? m[1] : null;
+        })();
+        const level = paramLevel || levelFromHash;
 
-        /* === GARDE : ne booter le legacy QUE si on est explicitement sur un niveau === */
-        const isEmbed = url.searchParams.get("embed") === "1";
-        const hasLevelParam = url.searchParams.has("level");
-        const isLevelHash =
-          /^#\/level\/\d+/.test(location.hash) || /^#l[23]$/.test(location.hash);
-
-        if (isEmbed || (!hasLevelParam && !isLevelHash)) {
-          // Page d'accueil / bonus / qr / autre route SPA → React gère, pas de canvas à créer
+        // Si on n'est pas sur une route de level, NE RIEN FAIRE (laisser React afficher la StartPage)
+        if (!level) {
+          console.info("[boot] Pas de route level détectée → on laisse la SPA gérer.");
           return;
         }
-        /* ========================================================================= */
-
-        // Lire le niveau (après la garde)
-        const hashLevel = location.hash === "#l2" ? "2" : null;
-        const paramLevel = url.searchParams.get("level");
-        const level = paramLevel || hashLevel || "1";
 
         // Déclarer explicitement les modules pour Vite (analyse statique)
         const boots = import.meta.glob([
@@ -163,9 +143,7 @@
 
         const fallbackLoader = boots["./src/game.js"];
 
-        try {
-          localStorage.setItem("otranto_bonus_unlocked", "true");
-        } catch {}
+        try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
 
         try {
           const loader = BOOTS[level] || fallbackLoader;
@@ -179,7 +157,7 @@
             START["1"]?.(mod);
           } catch (e2) {
             console.error("Fallback L1 failed:", e2);
-            alert("Erreur de chargement du niveau");
+            if (__DEV__) alert("Erreur de chargement du niveau");
           }
         }
 
