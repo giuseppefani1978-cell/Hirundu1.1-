@@ -1,7 +1,8 @@
-name: Preview Pages
+name: Pages • Preview (PR)
 
 on:
   pull_request:
+    branches: [ version-1.0 ]
 
 permissions:
   contents: read
@@ -17,23 +18,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: '22'
+          cache: 'npm'
+
+      # Recommandé pour GitHub Pages
+      - uses: actions/configure-pages@v5
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci || npm install
 
-      # ⬇️ Build Vite direct avec base Pages
-      - name: Build (Vite with base)
-        run: npx vite build --base=/Hirundu1.1-/
+      - name: Build (Vite)
+        run: npm run build
 
-      # ⬇️ Fallback SPA
       - name: Add SPA 404 fallback
-        run: cp dist/index.html dist/404.html
+        run: cp dist/index.html dist/404.html || echo "no index.html yet"
 
-      - name: Upload artifact
+      - name: Upload preview artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -45,7 +48,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages (Preview)
         id: deployment
         uses: actions/deploy-pages@v4
         with:
