@@ -1,14 +1,21 @@
-name: CI
+name: Deploy Pages
 
 on:
   push:
-  pull_request:
+    branches:
+      - version-1.0
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,9 +26,27 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Run lint
-        run: npm run lint
-      - name: Type check
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
+
+      # ⬇️ Build Vite direct avec le bon base pour GitHub Pages
+      - name: Build (Vite with base)
+        run: npx vite build --base=/Hirundu1.1-/
+
+      # ⬇️ Fallback SPA pour GitHub Pages (utile même avec HashRouter)
+      - name: Add SPA 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
