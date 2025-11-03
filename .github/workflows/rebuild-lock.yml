@@ -1,0 +1,36 @@
+name: Rebuild lockfile
+
+on:
+  workflow_dispatch: {}   # tu le lances manuellement
+
+permissions:
+  contents: write         # pour committer le package-lock.json
+
+jobs:
+  rebuild-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: version-1.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Clean old lock (if any)
+        run: rm -f package-lock.json
+
+      - name: Install (generate fresh lock)
+        run: npm install
+
+      - name: Show vite version
+        run: npx vite --version || true
+
+      - name: Commit lockfile
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(lock): regenerate package-lock for Vite 5 + plugin-react"
+          file_pattern: package-lock.json
+          branch: version-1.0
