@@ -27,16 +27,17 @@
   font-weight: 800;
 }
 
+/* --- PATCH : texte plus clair pour contraste sur fond sombre --- */
 .bonus-index__lead {
   margin: 0;
   max-width: 48ch;
-  color: rgba(15, 23, 42, 0.68);
+  color: rgba(240, 248, 255, 0.88); /* ancien: rgba(15, 23, 42, 0.68) */
 }
 
 .bonus-index__intro {
   margin: 0;
   max-width: 52ch;
-  color: rgba(15, 23, 42, 0.6);
+  color: rgba(240, 248, 255, 0.85); /* ancien: rgba(15, 23, 42, 0.6) */
 }
 
 .bonus-index__summary {
@@ -45,7 +46,7 @@
   flex-wrap: wrap;
   gap: 0.65rem;
   font-size: 0.92rem;
-  color: rgba(15, 23, 42, 0.62);
+  color: rgba(240, 248, 255, 0.78); /* ancien: rgba(15, 23, 42, 0.62) */
 }
 
 .bonus-index__summary-badge {
@@ -54,8 +55,8 @@
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.14);
-  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.22);
+  color: #e0eaff;
   font-weight: 600;
 }
 
@@ -70,7 +71,7 @@
 
 .bonus-index__summary-next {
   font-weight: 600;
-  color: #1d4ed8;
+  color: #a3c8ff;
 }
 
 .bonus-index__actions {
@@ -153,7 +154,7 @@
   padding: 0.85rem 1rem;
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(255, 255, 255, 0.08); /* plus lisible sur fond sombre */
   transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -205,24 +206,20 @@
 
 .bonus-index__itinerary-title {
   font-weight: 700;
+  color: #f0f6ff; /* plus lisible */
 }
 
 .bonus-index__itinerary-status {
   font-size: 0.82rem;
   letter-spacing: 0.02em;
-  color: rgba(15, 23, 42, 0.65);
+  color: rgba(240, 248, 255, 0.8);
 }
 
-.bonus-index__empty {
-  font-weight: 600;
-  background: linear-gradient(120deg, #0f172a 0%, #111827 60%, #0b1020 100%);
-  color: #f8fafc;
-}
-
-.bonus-index__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.1rem;
+/* --- PATCH : cartes plus claires pour meilleure lisibilité sur fond sombre --- */
+.bonus-index__card,
+.bonus-index__hof {
+  background: var(--surface-card, #ffffff);
+  color: #0b1220;
 }
 
 .bonus-index__card {
@@ -237,6 +234,7 @@
   box-shadow: 0 32px 68px -30px rgba(37, 99, 235, 0.36);
 }
 
+/* Cartes Bonus lisibles même sur fond sombre */
 .bonus-index__card-header {
   display: flex;
   justify-content: space-between;
@@ -301,207 +299,11 @@
   --button-shadow-hover: none;
 }
 
-@media (max-width: 640px) {
-  .bonus-index__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .bonus-index__resume-button {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .bonus-index__summary {
-    justify-content: flex-start;
-  }
-}
-
-.bonus-index__hof {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  position: relative;
-}
-
+/* HOF conservé intact + léger éclaircissement */
 .bonus-index__hof--highlight {
   box-shadow: 0 40px 90px -36px rgba(37, 99, 235, 0.4);
   border-color: rgba(37, 99, 235, 0.5);
 }
 
-.bonus-index__hof--pulse {
-  animation: bonus-index__hof-pulse 1.8s ease-out;
-}
-
-@keyframes bonus-index__hof-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.28);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(37, 99, 235, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
-  }
-}
-
-.bonus-index__hof-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.bonus-index__hof-title {
-  margin: 0;
-  font-size: clamp(1.45rem, 0.9vw + 1.1rem, 1.9rem);
-  font-weight: 800;
-}
-
 .bonus-index__hof-lead {
-  margin: 0;
-  color: rgba(15, 23, 42, 0.62);
-}
-
-.bonus-index__hof-meta {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.6rem;
-  margin: 0.15rem 0 0;
-}
-
-.bonus-index__hof-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 12px;
-  background: rgba(148, 163, 184, 0.12);
-  border: 1px solid rgba(148, 163, 184, 0.24);
-}
-
-.bonus-index__hof-stat--accent {
-  background: rgba(37, 99, 235, 0.14);
-  border-color: rgba(37, 99, 235, 0.32);
-}
-
-.bonus-index__hof-stat--accent .bonus-index__hof-stat-label {
-  color: rgba(37, 99, 235, 0.78);
-}
-
-.bonus-index__hof-stat--accent .bonus-index__hof-stat-value {
-  color: #1d4ed8;
-}
-
-.bonus-index__hof-stat--bonus {
-  background: rgba(16, 185, 129, 0.14);
-  border-color: rgba(16, 185, 129, 0.32);
-}
-
-.bonus-index__hof-stat--bonus .bonus-index__hof-stat-label {
-  color: rgba(4, 120, 87, 0.72);
-}
-
-.bonus-index__hof-stat--bonus .bonus-index__hof-stat-value {
-  color: #047857;
-}
-
-.bonus-index__hof-stat-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: rgba(15, 23, 42, 0.58);
-}
-
-.bonus-index__hof-stat-value {
-  font-size: 1.15rem;
-  font-variant-numeric: tabular-nums;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.bonus-index__hof-stat-suffix {
-  font-size: 1rem;
-  opacity: 0.7;
-}
-
-.bonus-index__hof-empty {
-  margin: 0;
-  font-weight: 600;
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.bonus-index__hof-table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.03);
-}
-
-.bonus-index__hof-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 780px;
-  font-size: 0.9rem;
-}
-
-.bonus-index__hof-table thead th {
-  position: sticky;
-  top: 0;
-  background: rgba(15, 23, 42, 0.05);
-  backdrop-filter: saturate(140%) blur(4px);
-  text-align: left;
-  padding: 0.65rem 0.75rem;
-  font-weight: 700;
-  color: rgba(15, 23, 42, 0.82);
-}
-
-.bonus-index__hof-table tbody td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.bonus-index__hof-table tbody tr:nth-child(odd) {
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.bonus-index__hof-table tbody tr:nth-child(even) {
-  background: rgba(148, 163, 184, 0.04);
-}
-
-.bonus-index__hof-score {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.bonus-index__hof-mode {
-  font-weight: 600;
-  color: rgba(15, 23, 42, 0.65);
-}
-
-.bonus-index__hof-player {
-  max-width: 180px;
-}
-
-.bonus-index__hof-footer {
-  font-size: 0.8rem;
-  color: rgba(15, 23, 42, 0.55);
-}
-
-@media (max-width: 640px) {
-  .bonus-index__hof-table {
-    min-width: 640px;
-    font-size: 0.82rem;
-  }
-
-  .bonus-index__hof-table thead th,
-  .bonus-index__hof-table tbody td {
-    padding: 0.5rem 0.6rem;
-  }
-}
+  color: rgba(240, 248
