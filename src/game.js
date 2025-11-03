@@ -609,15 +609,9 @@ export function boot(){
           running = false;
           mode = 'battle';
 
-          // 2) lazy-load robuste (Vite dev vs prod)
-          const isDev =
-            (import.meta?.env && import.meta.env.DEV) ||
-            location.hostname.endsWith('.app.github.dev');
-
-          const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
-
-          // @vite-ignore pour laisser le chemin dynamique tel quel
-          const mod = await import(/* @vite-ignore */ modUrl);
+          // 2) lazy-load robuste (Vite dev & prod avec base GitHub Pages)
+          //    → URL déterministe relative à CE fichier, sans @vite-ignore
+          const mod = await import(new URL('./game_battle.js', import.meta.url).href);
           const { startBattleFlow } = mod;
 
           await startBattleFlow(
