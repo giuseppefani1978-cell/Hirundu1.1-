@@ -2,20 +2,19 @@
   "name": "hirundu",
   "version": "1.0.0",
   "engines": {
-    "node": "^22.0.0"
+    "node": ">=20.19 || >=22.12"
   },
   "packageManager": "npm@11.4.2",
+  "type": "module",
   "scripts": {
     "dev": "node ./scripts/run-vite.mjs dev",
     "build": "node ./scripts/run-vite.mjs build",
-    "preview": "node ./scripts/run-vite.mjs preview",
+    "preview": "node ./scripts/run-vite.mjs preview --host",
     "postinstall": "cp node_modules/qr-scanner/qr-scanner-worker.min.js public/qr-scanner-worker.min.js",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
     "format": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json}\"",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run lint && npm run build",
-    "predeploy": "node ./scripts/run-vite.mjs build",
-    "deploy": "gh-pages -d dist -b gh-pages"
+    "ci": "npm run lint && npm run build"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",
@@ -33,14 +32,14 @@
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "gh-pages": "^6.3.0",
     "prettier": "^3.3.3",
     "typescript": "^5.9.3",
-    "vite": "^7.1.10"
+    "vite": "^5.4.10"
   },
   "main": "sw.js",
   "keywords": [],
