@@ -17,7 +17,6 @@ const BTL_BG_SRC = withBase('assets/battle_bg_salento.PNG');
 // Config assets (sprites)
 // ---------------------------
 // NB: on duplique ici les chemins pour rendre game_battle.js autonome.
-// Si tu veux garder le cache-busting, tu peux ajouter ?v=... à la fin.
 const SPRITES_SRC = {
   bird:   withBase('assets/aracne .PNG'),      // (oui, il y a un espace dans le nom)
   spider: withBase('assets/tarantula .PNG'),
@@ -76,7 +75,7 @@ function _sizeCanvas() {
   const rect = _canvas.getBoundingClientRect();
   const cssW = Math.max(1, Math.round(rect.width));
   const cssH = Math.max(1, Math.round(rect.height));
-  const dpr  = _pickDPR(); // (1..2) chez toi
+  const dpr  = _pickDPR(); // (1..2)
 
   // Backing store = CSS * DPR (pour un rendu net)
   const pxW = Math.max(1, Math.floor(cssW * dpr));
@@ -85,7 +84,6 @@ function _sizeCanvas() {
   if (_canvas.width  !== pxW) _canvas.width  = pxW;
   if (_canvas.height !== pxH) _canvas.height = pxH;
 
-  // Le CSS (fixed/inset:0) contrôle déjà la taille visible, on ne touche pas style.width/height ici
   _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 function _onResize() {
@@ -103,23 +101,23 @@ function _loadSprites() {
     const spiderImg = new Image();
     const crowImg   = new Image();
     const jellyImg  = new Image();
-    const bgImg     = new Image();   // ✅ ajouté
+    const bgImg     = new Image();
 
-    let left = 5;  // était 4 → maintenant 5 images à charger
+    let left = 5;  // 5 images à charger
     const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg, bgImg }); };
 
     birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
     jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC;  // ✅ ajouté
+    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC;
   });
 }
 
 // ---------------------------
 // Boucle & rendu battle
 // ---------------------------
-function _loop(ts) {
+function _loop() {
   _raf = requestAnimationFrame(_loop);
 
   const now = performance.now();
@@ -130,15 +128,13 @@ function _loop(ts) {
   // ticks internes de la battle
   tickBattle(dt, _ctx);
 
-  // viewport bas-centré, collé au bas de l’écran
+  // viewport bas-centré, collé au bas de l’écran, respectant bottomExtra
   const rect = _canvas.getBoundingClientRect();
   const W = Math.max(1, Math.round(rect.width));
   const H = Math.max(1, Math.round(rect.height));
-  // viewport plein écran sans bandes
-const vp = { ox:0, oy:0, dw:W, dh:H };
-renderBattle(_ctx, vp, _sprites);
+  const vp = computeBattleViewportBottom(W, H, { sideExtra: 0, bottomExtra: _bottomExtra });
 
-  // rendu battle
+  // rendu battle (une seule fois)
   renderBattle(_ctx, vp, _sprites);
 }
 
@@ -156,7 +152,6 @@ function _enterCanvasFullscreen() {
   _canvas.style.bottom = '0';
   _canvas.style.margin = '0';
   _canvas.style.zIndex = '10002'; // sous les pads (10003)
-  // width/height sont gérées par _sizeCanvas() via _onResize()
 }
 
 function _exitCanvasFullscreen() {
@@ -208,13 +203,14 @@ export async function startBattleFlow(
       _onLose && _onLose();
     }
   });
-  // munitions
+
+  // 5) Munitions
   setAmmoRaw(ammo || {});
 
-  // sprites
+  // 6) Sprites
   _sprites = await _loadSprites();
 
-  // sizing + listeners
+  // 7) sizing + listeners
   _onResize();
   window.addEventListener('resize', _onResize, { passive:true });
   if (window.visualViewport) {
@@ -225,7 +221,7 @@ export async function startBattleFlow(
     setTimeout(_onResize, 220);
   }, { passive:true });
 
-  // go!
+  // 8) go!
   startBattleRaw('jelly');   // si tu as plusieurs niveaux, passe la clé en param
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(_loop);
@@ -239,8 +235,11 @@ export function stopBattleFlow() {
   }
   try { window.removeEventListener('resize', _onResize); } catch {}
 
-  // --- AJOUT : on restaure le style initial du canvas
+  // --- Restaure le style initial du canvas
   _exitCanvasFullscreen();
 }
 
 export function isBattleActive() { return isActiveRaw(); }
+
+// ✅ Compat chargeur : export par défaut = la fonction
+export default startBattleFlow;
