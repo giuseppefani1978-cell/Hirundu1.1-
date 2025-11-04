@@ -1,4 +1,4 @@
-// src/game.js
+/ src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
 // (aucune dépendance vers battle.js)
@@ -961,6 +961,7 @@ try {
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
     location.assign(`${base}index.html?embed=1#/poi/otranto/realmap`);
   }
+
 
   function isPlayerOnPoiKey(key){
     const p = POIS.find(p=>p.key===key);
