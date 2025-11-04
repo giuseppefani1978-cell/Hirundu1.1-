@@ -1,4 +1,4 @@
-/ src/game.js
+// src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
 // (aucune dépendance vers battle.js)
