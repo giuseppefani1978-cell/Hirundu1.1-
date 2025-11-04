@@ -174,11 +174,7 @@ function __redirectAfterWin(foeType){
     // Level 1 (jelly / default) → Otranto
     location.href = `${hub}/poi/otranto/realmap`;
   }
-
   // optional telemetry/event
-  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
-}
-
   window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
 }
 
