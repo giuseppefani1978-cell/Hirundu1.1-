@@ -610,13 +610,14 @@ export function boot(){
           mode = 'battle';
 
 // Lazy-loader Vite-friendly (dev + prod GitHub Pages)
-const battleLoaders = import.meta.glob(['./game_battle.js'], { eager: false });
+const isDev =
+  (import.meta?.env && import.meta.env.DEV) ||
+  location.hostname.endsWith('.app.github.dev');
 
-// Si le module existe, on le charge dynamiquement
-const loadBattle = battleLoaders['./game_battle.js'];
-if (!loadBattle) throw new Error('game_battle.js non bundlé');
-
-const { startBattleFlow } = await loadBattle();
+const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
+// @vite-ignore
+const mod = await import(/* @vite-ignore */ modUrl);
+const { startBattleFlow } = mod;
 
           await startBattleFlow(
             {
