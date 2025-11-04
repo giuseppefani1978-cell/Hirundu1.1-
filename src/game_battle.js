@@ -196,18 +196,45 @@ export async function startBattleFlow(
   // 4) Callbacks (on injecte notre nettoyage + ceux fournis)
   _onWin  = onWin;
   _onLose = onLose;
-  setCallbacksRaw({
-    onWin: () => {
-      stopBattleFlow();
-      try { document.body.classList.remove('mode-battle'); } catch {}
-      _onWin && _onWin();
-    },
-    onLose: () => {
-      stopBattleFlow();
-      try { document.body.classList.remove('mode-battle'); } catch {}
-      _onLose && _onLose();
+ setCallbacksRaw({
+  onWin: () => {
+    console.log('[battle] onWin triggered');
+    try {
+      stopBattleFlow(); // Arrête proprement la boucle
+      document.body.classList.remove('mode-battle');
+      // ✅ Empêche écran blanc en s’assurant que le canvas reste en place
+      const c = document.getElementById('c');
+      if (c) {
+        c.style.position = 'absolute';
+        c.style.inset = '0';
+        c.style.zIndex = '1';
+      }
+    } catch (e) {
+      console.warn('[battle] cleanup onWin failed', e);
     }
-  });
+    // ✅ Laisse game.js reprendre la main
+    try {
+      _onWin && _onWin();
+    } catch (e) {
+      console.error('[battle] _onWin() failed', e);
+    }
+  },
+  onLose: () => {
+    console.log('[battle] onLose triggered');
+    try {
+      stopBattleFlow();
+      document.body.classList.remove('mode-battle');
+    } catch (e) {
+      console.warn('[battle] cleanup onLose failed', e);
+    }
+    try {
+      _onLose && _onLose();
+    } catch (e) {
+      console.error('[battle] _onLose() failed', e);
+    }
+  }
+});
+
   // munitions
   setAmmoRaw(ammo || {});
 
