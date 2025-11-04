@@ -1,4 +1,3 @@
-// src/levels/level3/level3_game.js
 // =====================================================
 // NIVEAU 3 — SALENTO NORD / LECCE (structure identique au N2)
 // Objectif : Collecter 10 FEUILLES D’OLIVIER -> Boss "Esprit de pierre" à Lecce
@@ -30,15 +29,17 @@ const asset = (p) => `${withBase(p)}${APP_Q}`;
 
 const LEVEL_ID = 'L3';
 const INVENTORY_LABEL = (t.level3?.hudLabel || 'Feuilles');
+
+// ⚠️ PATCH: retirer les espaces des noms de fichiers (et renommer les fichiers dans /assets)
 const ASSETS = {
-  MAP_URL:       asset('assets/salento-map.PNG'),
-  BIRD_URL:      asset('assets/aracne .PNG'),
-  TARANTULA_URL: asset('assets/tarantula .PNG'),
-  CROW_URL:      asset('assets/crow.PNG'),
-  JELLY_URL:     asset('assets/jellyfish.PNG'),
+  MAP_URL:            asset('assets/salento-map.PNG'),
+  BIRD_URL:           asset('assets/aracne .PNG'),           // PATCH
+  TARANTULA_URL:      asset('assets/tarantula .PNG'),        // PATCH
+  CROW_URL:           asset('assets/crow.PNG'),
+  JELLY_URL:          asset('assets/jellyfish.PNG'),
   BONUS_PASTICCIOTTO: asset('assets/bonus-pasticciotto.PNG'),
-  BONUS_RUSTICO: asset('assets/rustico.PNG'),
-  BONUS_CAFFE:   asset('assets/caffeleccese .PNG'),
+  BONUS_RUSTICO:      asset('assets/rustico.PNG'),
+  BONUS_CAFFE:        asset('assets/caffeleccese .PNG'),     // PATCH
 };
 
 // UI carte
@@ -536,82 +537,80 @@ export function boot(){
         caffe:        pickedCounts.caffe|0,
         stars:        leavesPicked|0
       },
-onProceed: async () => {
-  try {
-    running = false;
-    mode = 'battle';
+      onProceed: async () => {
+        try {
+          running = false;
+          mode = 'battle';
 
-    // Laisse Vite voir ces imports => il génère et réécrit les URLs
-    let mod;
-    try {
-      // module spécifique Lecce (même dossier)
-      mod = await import('./game_battle_lecce.js');
-    } catch (e1) {
-      // fallback vers moteur commun (2 dossiers au-dessus)
-      mod = await import('../../game_battle.js');
-    }
+          // --- PATCH: fallback robuste avec URL absolue calculée par Vite
+          let mod;
+          try {
+            mod = await import('./game_battle_lecce.js');
+          } catch (e1) {
+            const url = new URL('../../game_battle.js', import.meta.url);
+            mod = await import(url.href);
+          }
 
-    const { startBattleL3, startBattleFlow } = mod;
+          const { startBattleL3, startBattleFlow } = mod;
 
-    if (typeof startBattleL3 === 'function') {
-      await startBattleL3('golem', {
-        ammo: {
-          pasticciotto: pickedCounts.pasticciotto|0,
-          rustico:      pickedCounts.rustico|0,
-          caffe:        pickedCounts.caffe|0,
-          stars:        leavesPicked|0
-        },
-        onWin: () => {
+          if (typeof startBattleL3 === 'function') {
+            await startBattleL3('golem', {
+              ammo: {
+                pasticciotto: pickedCounts.pasticciotto|0,
+                rustico:      pickedCounts.rustico|0,
+                caffe:        pickedCounts.caffe|0,
+                stars:        leavesPicked|0
+              },
+              onWin: () => {
+                document.body.classList.remove('mode-battle');
+                mode = 'win';
+                running = true;
+                requestAnimationFrame(draw);
+                triggerWin();
+              },
+              onLose: () => {
+                document.body.classList.remove('mode-battle');
+                triggerGameOver();
+              }
+            });
+          } else if (typeof startBattleFlow === 'function') {
+            await startBattleFlow(
+              {
+                pasticciotto: pickedCounts.pasticciotto | 0,
+                rustico:      pickedCounts.rustico | 0,
+                caffe:        pickedCounts.caffe | 0,
+                stars:        leavesPicked | 0,
+                boss:        'baroque_golem',
+                backdrop:    'lecce',
+              },
+              {
+                bottomExtra: 0,
+                onWin: () => {
+                  document.body.classList.remove('mode-battle');
+                  mode = 'win';
+                  running = true;
+                  requestAnimationFrame(draw);
+                  triggerWin();
+                },
+                onLose: () => {
+                  document.body.classList.remove('mode-battle');
+                  triggerGameOver();
+                },
+              }
+            );
+          } else {
+            throw new Error('Battle module not compatible');
+          }
+
+        } catch (err) {
+          console.error('Battle module load error:', err);
+          alert('Impossible de charger la battle. Retour à la carte.');
           document.body.classList.remove('mode-battle');
-          mode = 'win';
+          mode = 'play';
           running = true;
           requestAnimationFrame(draw);
-          triggerWin();
-        },
-        onLose: () => {
-          document.body.classList.remove('mode-battle');
-          triggerGameOver();
         }
-      });
-    } else if (typeof startBattleFlow === 'function') {
-      await startBattleFlow(
-        {
-          pasticciotto: pickedCounts.pasticciotto | 0,
-          rustico:      pickedCounts.rustico | 0,
-          caffe:        pickedCounts.caffe | 0,
-          stars:        leavesPicked | 0,
-          boss:        'baroque_golem',
-          backdrop:    'lecce',
-        },
-        {
-          bottomExtra: 0,
-          onWin: () => {
-            document.body.classList.remove('mode-battle');
-            mode = 'win';
-            running = true;
-            requestAnimationFrame(draw);
-            triggerWin();
-          },
-          onLose: () => {
-            document.body.classList.remove('mode-battle');
-            triggerGameOver();
-          },
-        }
-      );
-    } else {
-      throw new Error('Battle module not compatible');
-    }
-
-  } catch (err) {
-    console.error('Battle module load error:', err);
-    alert('Impossible de charger la battle. Retour à la carte.');
-    document.body.classList.remove('mode-battle');
-    mode = 'play';
-    running = true;
-    requestAnimationFrame(draw);
-  }
-}
-
+      }
     });
   }
 
