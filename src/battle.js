@@ -167,7 +167,7 @@ function __redirectAfterWin(foeType){
     location.href = withBase('app.html#/poi/gallipoli/realmap');
   } else {
     // default (Otranto or unknown) → Bonus hub
-    location.href = withBase('app.html#/poi/otranto/realmap');
+    location.href = withBase('index.html?embed=1#/poi/otranto/realmap');
   }
   window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
 }
