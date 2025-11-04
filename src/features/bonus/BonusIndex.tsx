@@ -76,11 +76,11 @@ export default function BonusIndex() {
     }
   };
 
-  const goHunt = () => {
-    if (typeof window === "undefined") return;
-    const level = Math.max(1, Math.min(3, nextLevel));
-    window.location.assign(`/index-legacy.html?level=${level}`);
-  };
+const goHunt = () => {
+  const level = Math.max(1, Math.min(3, nextLevel));
+  const base = (import.meta.env.BASE_URL || '/'); // gère /Hirundu1.1-/ sur GH Pages
+  window.location.assign(`${base}index.html#/level/${level}`);
+};
 
   const handleResetProgress = React.useCallback(() => {
     if (typeof window === "undefined") return;
