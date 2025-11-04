@@ -161,14 +161,24 @@ function __persistUnlocksForFoe(foeType){
 }
 
 function __redirectAfterWin(foeType){
+  // Always bounce back into the React HashRouter
+  const hub = withBase('index.html?embed=1#');
+
   if (foeType === 'sputacchina') {
-    location.href = withBase('app.html#/poi/lecce/realmap');
+    // Level 3 → Lecce
+    location.href = `${hub}/poi/lecce/realmap`;
   } else if (foeType === 'crow') {
-    location.href = withBase('app.html#/poi/gallipoli/realmap');
+    // Level 2 → Gallipoli
+    location.href = `${hub}/poi/gallipoli/realmap`;
   } else {
-    // default (Otranto or unknown) → Bonus hub
-    location.href = withBase('index.html?embed=1#/poi/otranto/realmap');
+    // Level 1 (jelly / default) → Otranto
+    location.href = `${hub}/poi/otranto/realmap`;
   }
+
+  // optional telemetry/event
+  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
+}
+
   window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
 }
 
