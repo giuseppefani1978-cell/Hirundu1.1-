@@ -956,11 +956,27 @@ try {
     }
   }
 
-  function openBonusMap(){
-    // base = dossier courant (…/), qu’on concatène avec index.html
+function openBonusMap() {
+  try {
+    // Détection du niveau actuel pour router dynamiquement
+    const stored = localStorage.getItem('current_level');
+    const level = stored ? parseInt(stored) : 1;
+
+    // Base du site (répertoire courant)
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-    location.assign(`${base}index.html?embed=1#/poi/otranto/realmap`);
+
+    // URL de la page bonus correspondante
+    let target = `${base}index.html?embed=1#/poi/otranto/realmap`;
+    if (level === 2) target = `${base}index.html?embed=1#/poi/gallipoli/realmap`;
+    if (level === 3) target = `${base}index.html?embed=1#/poi/lecce/realmap`;
+
+    console.log(`[GAME] openBonusMap → redirection vers ${target}`);
+    location.assign(target);
+  } catch (e) {
+    console.error('[GAME] openBonusMap failed', e);
   }
+}
+
 
 
   function isPlayerOnPoiKey(key){
