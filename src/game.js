@@ -614,12 +614,8 @@ const isDev =
   (import.meta?.env && import.meta.env.DEV) ||
   location.hostname.endsWith('.app.github.dev');
 
-// En dev, on garde le chemin relatif classique
-// En prod, on construit une URL absolue à partir du fichier courant
-const modUrl = isDev
-  ? './game_battle.js'
-  : new URL('./game_battle.js', import.meta.url).href;
-
+const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
+// @vite-ignore
 const mod = await import(/* @vite-ignore */ modUrl);
 const { startBattleFlow } = mod;
 
