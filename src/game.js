@@ -609,15 +609,18 @@ export function boot(){
           running = false;
           mode = 'battle';
 
-// Chargement robuste dev + prod (GitHub Pages compatible)
-const isDev =
-  (import.meta?.env && import.meta.env.DEV) ||
-  location.hostname.endsWith('.app.github.dev');
+// ✅ Version compatible DEV + PROD
+console.log('[battle] Loading battle module...');
+try {
+  const mod = await import('./game_battle.js');
+  const { startBattleFlow } = mod;
+  console.log('[battle] Module loaded OK:', !!startBattleFlow);
+  startBattleFlow?.();
+} catch (err) {
+  console.error('Battle module load error:', err);
+  alert('Erreur de chargement du module de bataille');
+}
 
-const modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
-// @vite-ignore
-const mod = await import(/* @vite-ignore */ modUrl);
-const { startBattleFlow } = mod;
 
           await startBattleFlow(
             {
