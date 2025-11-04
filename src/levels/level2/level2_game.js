@@ -571,64 +571,60 @@ export function boot(){
         caffe:        pickedCounts.caffe|0,
         stars:        starsPicked|0
       },
-      onProceed: async () => {
-        try {
-          running = false;
-          mode = 'battle';
+onProceed: async () => {
+  try {
+    running = false;
+    mode = 'battle';
 
-          const isDev =
-            (import.meta?.env && import.meta.env.DEV) ||
-            location.hostname.endsWith('.app.github.dev');
+    // ❌ PAS de @vite-ignore, PAS de query string → laisse Vite bundle les chunks
+    // 1) version spécifique Gallipoli (dans le même dossier)
+    let mod;
+    try {
+      mod = await import('./game_battle_gallipoli.js');
+    } catch (e1) {
+      // 2) fallback vers le moteur commun de L1 (2 dossiers au-dessus)
+      mod = await import('../../game_battle.js');
+    }
+    const { startBattleFlow } = mod;
 
-          let modUrl = isDev ? './game_battle_gallipoli.js' : `./game_battle_gallipoli.js?v=${APP_VERSION}`;
-          let mod;
-          try {
-            mod = await import(/* @vite-ignore */ modUrl);
-          } catch {
-            modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
-            mod = await import(/* @vite-ignore */ modUrl);
-          }
-          const { startBattleFlow } = mod;
-
-          await startBattleFlow(
-            {
-              pasticciotto: pickedCounts.pasticciotto | 0,
-              rustico:      pickedCounts.rustico | 0,
-              caffe:        pickedCounts.caffe | 0,
-              stars:        starsPicked | 0,
-              boss:        'double_crow',
-              backdrop:    'gallipoli',
-            },
-            {
-              bottomExtra: 0,
-              onWin: () => {
-                try { unlockGallipoliBonus(); } catch {}
-                document.body.classList.remove('mode-battle');
-                mode = 'win';
-                running = true;
-                requestAnimationFrame(draw);
-                try { triggerWin(); } catch (err) { console.error(err); }
-              },
-              onLose: () => {
-                document.body.classList.remove('mode-battle');
-                mode = 'dead';
-                updatePadAVisibilityForMode();
-                running = false;
-                try { triggerGameOver(); } catch {}
-              },
-            }
-          );
-
-        } catch (err) {
-          console.error('Battle module load error:', err);
-          alert('Impossible de charger la battle. Retour à la carte.');
+    await startBattleFlow(
+      {
+        pasticciotto: pickedCounts.pasticciotto | 0,
+        rustico:      pickedCounts.rustico | 0,
+        caffe:        pickedCounts.caffe | 0,
+        stars:        starsPicked | 0,
+        boss:        'double_crow',   // ou 'crow' selon battle.js
+        backdrop:    'gallipoli',
+      },
+      {
+        bottomExtra: 0,
+        onWin: () => {
+          try { unlockGallipoliBonus(); } catch {}
           document.body.classList.remove('mode-battle');
-          mode = 'play';
-          updatePadAVisibilityForMode();
+          mode = 'win';
           running = true;
           requestAnimationFrame(draw);
-        }
+          try { triggerWin(); } catch (err) { console.error(err); }
+        },
+        onLose: () => {
+          document.body.classList.remove('mode-battle');
+          mode = 'dead';
+          running = false;
+          try { triggerGameOver(); } catch {}
+        },
       }
+    );
+
+  } catch (err) {
+    console.error('Battle module load error:', err);
+    alert('Impossible de charger la battle. Retour à la carte.');
+    document.body.classList.remove('mode-battle');
+    mode = 'play';
+    running = true;
+    requestAnimationFrame(draw);
+  }
+}
+
     });
   }
 
