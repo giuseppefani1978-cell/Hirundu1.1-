@@ -536,77 +536,82 @@ export function boot(){
         caffe:        pickedCounts.caffe|0,
         stars:        leavesPicked|0
       },
-      onProceed: async () => {
-        try {
-          running = false;
-          mode = 'battle';
+onProceed: async () => {
+  try {
+    running = false;
+    mode = 'battle';
 
-          const isDev =
-            (import.meta?.env && import.meta.env.DEV) ||
-            location.hostname.endsWith('.app.github.dev');
+    // Laisse Vite voir ces imports => il génère et réécrit les URLs
+    let mod;
+    try {
+      // module spécifique Lecce (même dossier)
+      mod = await import('./game_battle_lecce.js');
+    } catch (e1) {
+      // fallback vers moteur commun (2 dossiers au-dessus)
+      mod = await import('../../game_battle.js');
+    }
 
-          let modUrl = isDev ? './game_battle_lecce.js' : `./game_battle_lecce.js?v=${APP_VERSION}`;
-          let mod;
-          try {
-            mod = await import(/* @vite-ignore */ modUrl);
-          } catch {
-            modUrl = isDev ? './game_battle.js' : `./game_battle.js?v=${APP_VERSION}`;
-            mod = await import(/* @vite-ignore */ modUrl);
-          }
-          const { startBattleL3, startBattleFlow } = mod;
+    const { startBattleL3, startBattleFlow } = mod;
 
-          if (typeof startBattleL3 === 'function') {
-            await startBattleL3('golem', {
-              onWin: () => {
-                document.body.classList.remove('mode-battle');
-                mode = 'win';
-                running = true;
-                requestAnimationFrame(draw);
-                triggerWin();
-              },
-              onLose: () => {
-                document.body.classList.remove('mode-battle');
-                triggerGameOver();
-              }
-            });
-          } else if (typeof startBattleFlow === 'function') {
-            await startBattleFlow(
-              {
-                pasticciotto: pickedCounts.pasticciotto | 0,
-                rustico:      pickedCounts.rustico | 0,
-                caffe:        pickedCounts.caffe | 0,
-                stars:        leavesPicked | 0,
-                boss:        'baroque_golem',
-                backdrop:    'lecce',
-              },
-              {
-                bottomExtra: 0,
-                onWin: () => {
-                  document.body.classList.remove('mode-battle');
-                  mode = 'win';
-                  running = true;
-                  requestAnimationFrame(draw);
-                  triggerWin();
-                },
-                onLose: () => {
-                  document.body.classList.remove('mode-battle');
-                  triggerGameOver();
-                },
-              }
-            );
-          } else {
-            throw new Error('Battle module not compatible');
-          }
-
-        } catch (err) {
-          console.error('Battle module load error:', err);
-          alert('Impossible de charger la battle. Retour à la carte.');
+    if (typeof startBattleL3 === 'function') {
+      await startBattleL3('golem', {
+        ammo: {
+          pasticciotto: pickedCounts.pasticciotto|0,
+          rustico:      pickedCounts.rustico|0,
+          caffe:        pickedCounts.caffe|0,
+          stars:        leavesPicked|0
+        },
+        onWin: () => {
           document.body.classList.remove('mode-battle');
-          mode = 'play';
+          mode = 'win';
           running = true;
           requestAnimationFrame(draw);
+          triggerWin();
+        },
+        onLose: () => {
+          document.body.classList.remove('mode-battle');
+          triggerGameOver();
         }
-      }
+      });
+    } else if (typeof startBattleFlow === 'function') {
+      await startBattleFlow(
+        {
+          pasticciotto: pickedCounts.pasticciotto | 0,
+          rustico:      pickedCounts.rustico | 0,
+          caffe:        pickedCounts.caffe | 0,
+          stars:        leavesPicked | 0,
+          boss:        'baroque_golem',
+          backdrop:    'lecce',
+        },
+        {
+          bottomExtra: 0,
+          onWin: () => {
+            document.body.classList.remove('mode-battle');
+            mode = 'win';
+            running = true;
+            requestAnimationFrame(draw);
+            triggerWin();
+          },
+          onLose: () => {
+            document.body.classList.remove('mode-battle');
+            triggerGameOver();
+          },
+        }
+      );
+    } else {
+      throw new Error('Battle module not compatible');
+    }
+
+  } catch (err) {
+    console.error('Battle module load error:', err);
+    alert('Impossible de charger la battle. Retour à la carte.');
+    document.body.classList.remove('mode-battle');
+    mode = 'play';
+    running = true;
+    requestAnimationFrame(draw);
+  }
+}
+
     });
   }
 
