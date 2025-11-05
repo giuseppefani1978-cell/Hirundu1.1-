@@ -610,43 +610,71 @@ export function boot(){
           mode = 'battle';
 
 // ✅ Version compatible DEV + PROD
-console.log('[battle] Loading battle module...');
-try {
-  const mod = await import('./game_battle.js');
-  const { startBattleFlow } = mod;
-  console.log('[battle] Module loaded OK:', !!startBattleFlow);
-  startBattleFlow?.();
-} catch (err) {
-  console.error('Battle module load error:', err);
-  alert('Erreur de chargement du module de bataille');
+onProceed: async () => {
+  // anti double-clic/touche
+  if (window.__battleBooting) return;
+  window.__battleBooting = true;
+
+  try {
+    // figer la chasse et basculer en mode battle
+    running = false;
+    mode = 'battle';
+    ui.showTouch(false);
+    document.body.classList.add('mode-battle');
+
+    // Import unique du module de battle N1
+    // (ajoute un fallback si tu as un moteur commun)
+    let mod;
+    try {
+      mod = await import('./game_battle.js');
+    } catch (e1) {
+      // facultatif : fallback vers un moteur commun
+      mod = await import('./game_battle.js'); // garde le même si pas de fallback
+    }
+    const { startBattleFlow } = mod;
+    if (typeof startBattleFlow !== 'function') {
+      throw new Error('startBattleFlow non exporté par ./game_battle.js');
+    }
+
+    await startBattleFlow(
+      {
+        pasticciotto: pickedCounts.pasticciotto | 0,
+        rustico:      pickedCounts.rustico | 0,
+        caffe:        pickedCounts.caffe | 0,
+        stars:        starsPicked | 0,
+        backdrop:     'otranto',   // si ton moteur l’utilise
+        boss:         'sputacchina'// idem (optionnel)
+      },
+      {
+        bottomExtra: 0,
+        onWin: () => {
+          document.body.classList.remove('mode-battle');
+          mode = 'win';
+          running = true;
+          requestAnimationFrame(draw);
+          try { triggerWin(); } catch {}
+        },
+        onLose: () => {
+          document.body.classList.remove('mode-battle');
+          mode = 'dead';
+          running = false;
+          try { triggerGameOver(); } catch {}
+        },
+      }
+    );
+  } catch (err) {
+    console.error('[battle L1] boot failed:', err);
+    // rollback doux (pas d'alert bloquante)
+    document.body.classList.remove('mode-battle');
+    mode = 'play';
+    running = true;
+    requestAnimationFrame(draw);
+    ui.showSuccess('⚠️ La bataille n’a pas pu être chargée. Retour à la carte.');
+  } finally {
+    window.__battleBooting = false;
+  }
 }
 
-
-          await startBattleFlow(
-            {
-              pasticciotto: pickedCounts.pasticciotto | 0,
-              rustico:      pickedCounts.rustico | 0,
-              caffe:        pickedCounts.caffe | 0,
-              stars:        starsPicked | 0,
-            },
-            {
-              bottomExtra: 0,
-              onWin: () => {
-                document.body.classList.remove('mode-battle');
-                mode = 'win';
-                updatePadAVisibilityForMode(); // re-montre en win
-                running = true;
-                requestAnimationFrame(draw);
-                try { triggerWin(); } catch {}
-              },
-              onLose: () => {
-                document.body.classList.remove('mode-battle');
-                mode = 'dead';
-                updatePadAVisibilityForMode(); // cache en game over
-                running = false;
-                try { triggerGameOver(); } catch {}
-              },
-            }
           );
 
         } catch (err) {
