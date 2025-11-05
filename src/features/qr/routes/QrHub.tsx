@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+// src/features/qr/routes/QrHub.tsx
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { NavigateFunction } from "react-router-dom";
 import QrScanner from "../components/QrScanner";
@@ -27,15 +28,34 @@ import "./QrHub.css";
 const SCENARIOS = getAllQrScenarios();
 const PARTNERS = getAllPartners();
 const PARTNER_BY_ID = new Map(PARTNERS.map((partner) => [partner.id, partner]));
-const PARTNER_BY_NAME = new Map(
-  PARTNERS.map((partner) => [normalizeToken(partner.name), partner])
-);
+const PARTNER_BY_NAME = new Map(PARTNERS.map((partner) => [normalizeToken(partner.name), partner]));
+
+// --- Filet de sécurité global : coupe tous les flux média restants (webcam/micro) ---
+function stopAllMediaStreamsSafely() {
+  try {
+    const medias = Array.from(document.querySelectorAll("video, audio")) as Array<
+      HTMLVideoElement & { srcObject?: MediaStream }
+    >;
+    for (const el of medias) {
+      const stream = (el as any).srcObject as MediaStream | undefined;
+      if (stream?.getTracks) {
+        for (const t of stream.getTracks()) {
+          try { t.stop(); } catch {}
+        }
+      }
+      try { (el as any).srcObject = null; el.pause?.(); } catch {}
+    }
+  } catch {}
+}
 
 export default function QrHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { lastScan, error, status } = useAppSelector((state) => state.qr);
+
   const [scannerOpen, setScannerOpen] = useState(false);
+  // Remount “dur” du composant scanner à chaque ouverture pour éviter tout overlay zombie.
+  const [scannerKey, setScannerKey] = useState(0);
 
   const enrichedPois = useMemo(() => getEnrichedPois(), []);
 
@@ -45,13 +65,40 @@ export default function QrHub() {
   }, [lastScan, navigate, enrichedPois]);
 
   const openScanner = useCallback(() => {
+    setScannerKey((k) => k + 1); // force remount
     setScannerOpen(true);
     dispatch(scanStarted());
   }, [dispatch]);
 
   const closeScanner = useCallback(() => {
     setScannerOpen(false);
-  }, []);
+    // coupe tout flux résiduel au cas où
+    stopAllMediaStreamsSafely();
+    // on efface l'erreur éventuelle pour éviter un bandeau persistant
+    if (error) {
+      dispatch(clearLastScan());
+    }
+  }, [dispatch, error]);
+
+  // Verrouille/relâche le scroll de la page quand le scanner est ouvert
+  useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    if (scannerOpen) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    }
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [scannerOpen]);
+
+  // Coupe les médias quand ce composant se démonte
+  useEffect(() => () => stopAllMediaStreamsSafely(), []);
 
   const handlePayload = useCallback(
     (payload: string) => {
@@ -92,8 +139,8 @@ export default function QrHub() {
 
   const handleScanResult = useCallback(
     (payload: string) => {
-      closeScanner();
-      handlePayload(payload);
+      closeScanner();        // ferme l’UI
+      handlePayload(payload); // puis traite l’action
     },
     [closeScanner, handlePayload]
   );
@@ -218,6 +265,7 @@ export default function QrHub() {
 
       {scannerOpen ? (
         <QrScanner
+          key={scannerKey}
           onResult={handleScanResult}
           onError={handleScanError}
           onClose={closeScanner}
@@ -355,9 +403,7 @@ function describeAction(
 
 function markPartnerVisit(partnerId: string, pois: ReturnType<typeof getEnrichedPois>): void {
   const partner = PARTNER_BY_ID.get(partnerId) || findPartnerById(partnerId);
-  if (!partner) {
-    return;
-  }
+  if (!partner) return;
 
   const targets = pois.filter((poi) => poi.partner?.id === partner.id);
   applyPassportVisits(targets);
@@ -365,9 +411,7 @@ function markPartnerVisit(partnerId: string, pois: ReturnType<typeof getEnriched
 
 function markBadgeVisit(name: string, pois: ReturnType<typeof getEnrichedPois>): void {
   const normalizedName = normalizeToken(name);
-  if (!normalizedName) {
-    return;
-  }
+  if (!normalizedName) return;
 
   const partner = PARTNER_BY_NAME.get(normalizedName) || findPartnerByName(name);
   if (partner) {
@@ -380,9 +424,7 @@ function markBadgeVisit(name: string, pois: ReturnType<typeof getEnrichedPois>):
 }
 
 function applyPassportVisits(targets: ReturnType<typeof getEnrichedPois>): void {
-  if (!targets.length) {
-    return;
-  }
+  if (!targets.length) return;
 
   const seen = new Set<string>();
   targets.forEach((poi) => {
@@ -426,9 +468,7 @@ function resolveBonusKey(poi: ReturnType<typeof getEnrichedPois>[number] | undef
 }
 
 function normalizeToken(value: string | undefined | null): string {
-  if (!value) {
-    return "";
-  }
+  if (!value) return "";
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
