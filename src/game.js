@@ -675,18 +675,6 @@ onProceed: async () => {
   }
 }
 
-          );
-
-        } catch (err) {
-          console.error('Battle module load error:', err);
-          alert('Impossible de charger la battle. Retour à la carte.');
-          document.body.classList.remove('mode-battle');
-          mode = 'play';
-          updatePadAVisibilityForMode();
-          running = true;
-          requestAnimationFrame(draw);
-        }
-      }
     });
   }
 
