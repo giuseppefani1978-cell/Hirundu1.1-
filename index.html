@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
   <head>
+    <script>
+  (function () {
+    var base = "/Hirundu1.1-/";
+    var p = location.pathname;
+    // 1) Si quelqu’un arrive sur .../index.html → redirige vers .../
+    if (p.endsWith("/index.html") || p === "/index.html") {
+      location.replace(base + (location.hash || ""));
+      return;
+    }
+    // 2) Si on est sur le dépôt mais sans le slash final, normalise
+    if (p === "/Hirundu1.1-" ) {
+      location.replace(base + (location.hash || ""));
+    }
+  })();
+</script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
