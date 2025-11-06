@@ -1,6 +1,6 @@
 // src/routes/BonusHubPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BonusIndex from "../features/bonus/BonusIndex";
 import QrHub from "../features/qr/routes/QrHub";
 import "./BonusHubPage.css";
@@ -31,15 +31,26 @@ function toastMessage(key: string | null): string | null {
   }
 }
 
+/** Coupe proprement tous les flux média encore actifs (caméra/micro). */
 function stopAllMediaStreams() {
   try {
     const medias = Array.from(
       document.querySelectorAll("video, audio")
     ) as Array<HTMLVideoElement & { srcObject?: MediaStream }>;
+
     for (const el of medias) {
       const stream = (el as any).srcObject as MediaStream | undefined;
-      if (stream?.getTracks) stream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
-      try { (el as any).srcObject = null; el.pause?.(); } catch {}
+      if (stream?.getTracks) {
+        stream.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+        });
+      }
+      try {
+        (el as any).srcObject = null;
+        el.pause?.();
+      } catch {}
     }
   } catch {}
 }
@@ -55,12 +66,14 @@ export default function BonusHubPage() {
   const [toastKey, setToastKey] = useState<string | null>(() => consumeToast());
   const message = useMemo(() => toastMessage(toastKey), [toastKey]);
 
+  // Récupère un éventuel unlockedKey poussé via navigate(..., { state })
   useEffect(() => {
     if (location.state && (location.state as { unlockedKey?: string }).unlockedKey) {
       setToastKey((location.state as { unlockedKey?: string }).unlockedKey ?? null);
     }
   }, [location.state]);
 
+  // Auto-hide du toast
   useEffect(() => {
     if (!message) return;
     const id = window.setTimeout(() => setToastKey(null), 4200);
@@ -70,15 +83,17 @@ export default function BonusHubPage() {
   // Scroll automatique sur une carte bonus ciblée via .../bonus/:bonusId
   useEffect(() => {
     if (!params.bonusId) return;
-    const target = document.querySelector(`[data-bonus-key="${params.bonusId.toLowerCase()}"]`);
+    const target = document.querySelector(
+      `[data-bonus-key="${params.bonusId.toLowerCase()}"]`
+    );
     if (target && "scrollIntoView" in target) {
       (target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
       target.classList.add("bonus-hub-page__card-focus");
-      return () => target.classList.remove("bonus-hub-page__card-focus");
+      return () => (target as HTMLElement).classList.remove("bonus-hub-page__card-focus");
     }
   }, [params.bonusId]);
 
-  // Autorise le scroll ici + coupe la caméra à la sortie
+  // Toujours autoriser le scroll vertical ici + cleanup caméra à la sortie
   useEffect(() => {
     const prev = document.body.style.overflowY;
     document.body.style.overflowY = "auto";
@@ -88,12 +103,57 @@ export default function BonusHubPage() {
     };
   }, []);
 
-  // ⛔️ Important: on enlève les intercepteurs globaux (click/hashchange)
-  // qui bloquaient le onClose du scanner.
+  // Filet de sécurité : intercepter les clics "fermer" et certains hash
+  useEffect(() => {
+    function handleClick(ev: Event) {
+      const el = ev.target as HTMLElement | null;
+      if (!el) return;
+
+      const closeEl =
+        el.closest?.(
+          `[data-qr-close],
+           .qr-modal__close,
+           .scanner-close,
+           button[aria-label="Fermer"],
+           button[aria-label="Close"],
+           a[href="#"]`
+        ) || null;
+
+      if (closeEl) {
+        ev.preventDefault?.();
+        ev.stopPropagation?.();
+        stopAllMediaStreams();
+        // masque un éventuel overlay interne sans changer de page
+        (document.querySelector(".qr-modal, .qr-overlay") as HTMLElement | null)?.classList.remove(
+          "is-open"
+        );
+      }
+    }
+
+    function handleHash(e: HashChangeEvent) {
+      // si un composant tente de pousser "#", on annule et on coupe la caméra
+      if (location.hash === "#") {
+        e.preventDefault();
+        stopAllMediaStreams();
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    }
+
+    document.addEventListener("click", handleClick, true);
+    window.addEventListener("hashchange", handleHash, true);
+    return () => {
+      document.removeEventListener("click", handleClick, true);
+      window.removeEventListener("hashchange", handleHash, true);
+    };
+  }, [location.pathname, location.search, location.hash]);
 
   return (
     <div className="bonus-hub-page">
-      {message ? <div className="bonus-hub-page__toast" role="status">{message}</div> : null}
+      {message ? (
+        <div className="bonus-hub-page__toast" role="status">
+          {message}
+        </div>
+      ) : null}
 
       <div className="bonus-hub-page__grid">
         <div className="bonus-hub-page__column bonus-hub-page__column--primary">
@@ -113,8 +173,10 @@ export default function BonusHubPage() {
                   Prochaine étape débloquée : niveau {nextLevel} de la chasse.
                 </p>
               ) : null}
+              {/* Bouton “Retour au jeu” supprimé volontairement */}
             </header>
 
+            {/* QrHub tel quel — nos hooks gèrent la fermeture propre */}
             <QrHub />
           </div>
         </aside>
