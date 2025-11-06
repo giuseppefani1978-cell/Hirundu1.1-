@@ -27,15 +27,15 @@ import "./QrHub.css";
 
 const SCENARIOS = getAllQrScenarios();
 const PARTNERS = getAllPartners();
-const PARTNER_BY_ID = new Map(PARTNERS.map((partner) => [partner.id, partner]));
-const PARTNER_BY_NAME = new Map(PARTNERS.map((partner) => [normalizeToken(partner.name), partner]));
+const PARTNER_BY_ID = new Map(PARTNERS.map((p) => [p.id, p]));
+const PARTNER_BY_NAME = new Map(PARTNERS.map((p) => [normalizeToken(p.name), p]));
 
-// --- Filet de sécurité global : coupe tous les flux média restants (webcam/micro) ---
+// --- coupe tous les flux média restants (webcam/micro) ---
 function stopAllMediaStreamsSafely() {
   try {
-    const medias = Array.from(document.querySelectorAll("video, audio")) as Array<
-      HTMLVideoElement & { srcObject?: MediaStream }
-    >;
+    const medias = Array.from(
+      document.querySelectorAll("video, audio")
+    ) as Array<HTMLVideoElement & { srcObject?: MediaStream }>;
     for (const el of medias) {
       const stream = (el as any).srcObject as MediaStream | undefined;
       if (stream?.getTracks) {
@@ -51,7 +51,7 @@ function stopAllMediaStreamsSafely() {
 export default function QrHub() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { lastScan, error, status } = useAppSelector((state) => state.qr);
+  const { lastScan, error, status } = useAppSelector((s) => s.qr);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   // Remount “dur” du composant scanner à chaque ouverture pour éviter tout overlay zombie.
@@ -71,6 +71,7 @@ export default function QrHub() {
   }, [dispatch]);
 
   const closeScanner = useCallback(() => {
+    // ferme l’UI
     setScannerOpen(false);
     // coupe tout flux résiduel au cas où
     stopAllMediaStreamsSafely();
@@ -99,6 +100,45 @@ export default function QrHub() {
 
   // Coupe les médias quand ce composant se démonte
   useEffect(() => () => stopAllMediaStreamsSafely(), []);
+
+  // 🛡️ Filet de sécurité LOCAL (iOS/propagation capricieuse) :
+  // quand le scanner est ouvert, on intercepte en capture les taps/clics sur
+  // - le bouton .qr-overlay__close
+  // - le backdrop .qr-overlay (hors carte)
+  // et on force closeScanner() pour que l’overlay s’unmonte toujours.
+  useEffect(() => {
+    if (!scannerOpen) return;
+
+    const onAnyClose = (ev: Event) => {
+      const t = ev.target as HTMLElement | null;
+      if (!t) return;
+
+      // si on clique dans la carte, on ignore
+      if (t.closest(".qr-overlay__card")) return;
+
+      // croix explicite
+      if (t.closest(".qr-overlay__close")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeScanner();
+        return;
+      }
+
+      // clic/tap sur le backdrop (en dehors de la carte)
+      if (t.closest(".qr-overlay")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeScanner();
+      }
+    };
+
+    document.addEventListener("click", onAnyClose, true);
+    document.addEventListener("touchend", onAnyClose, true);
+    return () => {
+      document.removeEventListener("click", onAnyClose, true);
+      document.removeEventListener("touchend", onAnyClose, true);
+    };
+  }, [scannerOpen, closeScanner]);
 
   const handlePayload = useCallback(
     (payload: string) => {
@@ -413,7 +453,7 @@ function markBadgeVisit(name: string, pois: ReturnType<typeof getEnrichedPois>):
   const normalizedName = normalizeToken(name);
   if (!normalizedName) return;
 
-  const partner = PARTNER_BY_NAME.get(normalizedName) || findPartnerByName(name);
+  const partner = PARTNER_BY_NAME.get(normalizeToken(name)) || findPartnerByName(name);
   if (partner) {
     markPartnerVisit(partner.id, pois);
     return;
