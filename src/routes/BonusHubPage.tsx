@@ -1,5 +1,6 @@
+// src/routes/BonusHubPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import BonusIndex from "../features/bonus/BonusIndex";
 import QrHub from "../features/qr/routes/QrHub";
 import "./BonusHubPage.css";
@@ -19,18 +20,22 @@ function consumeToast(): string | null {
 
 function toastMessage(key: string | null): string | null {
   switch (key) {
-    case "otranto":   return "Niveau 1 terminé ! Bonus Otranto débloqué 🎉";
-    case "gallipoli": return "Niveau 2 terminé ! Bonus Gallipoli débloqué 🎉";
-    case "lecce":     return "Niveau 3 terminé ! Bonus Lecce débloqué 🎉";
-    default:          return null;
+    case "otranto":
+      return "Niveau 1 terminé ! Bonus Otranto débloqué 🎉";
+    case "gallipoli":
+      return "Niveau 2 terminé ! Bonus Gallipoli débloqué 🎉";
+    case "lecce":
+      return "Niveau 3 terminé ! Bonus Lecce débloqué 🎉";
+    default:
+      return null;
   }
 }
 
 function stopAllMediaStreams() {
   try {
-    const medias = Array.from(document.querySelectorAll("video, audio")) as Array<
-      HTMLVideoElement & { srcObject?: MediaStream }
-    >;
+    const medias = Array.from(
+      document.querySelectorAll("video, audio")
+    ) as Array<HTMLVideoElement & { srcObject?: MediaStream }>;
     for (const el of medias) {
       const stream = (el as any).srcObject as MediaStream | undefined;
       if (stream?.getTracks) stream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
@@ -42,6 +47,7 @@ function stopAllMediaStreams() {
 export default function BonusHubPage() {
   const location = useLocation();
   const params = useParams<{ bonusId?: string }>();
+
   const rawNextLevel = (location.state as { nextLevel?: number } | null)?.nextLevel;
   const hasNextLevel = typeof rawNextLevel === "number" && rawNextLevel >= 1;
   const nextLevel = hasNextLevel ? Math.max(1, Math.min(3, rawNextLevel ?? 1)) : 3;
@@ -72,7 +78,7 @@ export default function BonusHubPage() {
     }
   }, [params.bonusId]);
 
-  // Toujours autoriser le scroll vertical ici + cleanup caméra à la sortie
+  // Autorise le scroll ici + coupe la caméra à la sortie
   useEffect(() => {
     const prev = document.body.style.overflowY;
     document.body.style.overflowY = "auto";
@@ -82,46 +88,8 @@ export default function BonusHubPage() {
     };
   }, []);
 
-  // Renforce la fermeture « sécurisée » du scanner (croix, overlay, #, etc.)
-  useEffect(() => {
-    function handleClick(ev: Event) {
-      const el = ev.target as HTMLElement | null;
-      if (!el) return;
-      const closeEl =
-        el.closest?.(
-          `[data-qr-close],
-           .qr-modal__close,
-           .scanner-close,
-           button[aria-label="Fermer"],
-           button[aria-label="Close"],
-           a[href="#"]`
-        ) || null;
-
-      if (closeEl) {
-        ev.preventDefault?.();
-        ev.stopPropagation?.();
-        stopAllMediaStreams();
-        // masque un éventuel overlay interne sans changer de page
-        (document.querySelector(".qr-modal, .qr-overlay") as HTMLElement | null)?.classList.remove("is-open");
-      }
-    }
-
-    function handleHash(e: HashChangeEvent) {
-      // si un composant tente de pousser "#", on annule et on coupe la caméra
-      if (location.hash === "#") {
-        e.preventDefault();
-        stopAllMediaStreams();
-        history.replaceState(null, "", location.pathname + location.search);
-      }
-    }
-
-    document.addEventListener("click", handleClick, true);
-    window.addEventListener("hashchange", handleHash, true);
-    return () => {
-      document.removeEventListener("click", handleClick, true);
-      window.removeEventListener("hashchange", handleHash, true);
-    };
-  }, [location.pathname, location.search, location.hash]);
+  // ⛔️ Important: on enlève les intercepteurs globaux (click/hashchange)
+  // qui bloquaient le onClose du scanner.
 
   return (
     <div className="bonus-hub-page">
@@ -145,10 +113,8 @@ export default function BonusHubPage() {
                   Prochaine étape débloquée : niveau {nextLevel} de la chasse.
                 </p>
               ) : null}
-              {/* Bouton “Retour au jeu” supprimé volontairement */}
             </header>
 
-            {/* QrHub tel quel — nos hooks gèrent la fermeture propre */}
             <QrHub />
           </div>
         </aside>
