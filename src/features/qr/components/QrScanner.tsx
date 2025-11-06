@@ -186,7 +186,6 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
 
   return (
     <div
-      id="__qr_overlay_root"
       role="dialog"
       aria-modal="true"
       aria-label="Scanner un QR"
