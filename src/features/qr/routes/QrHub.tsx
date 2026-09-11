@@ -503,7 +503,7 @@ function normalizePath(path: string): string {
 function resolveBonusKey(poi: ReturnType<typeof getEnrichedPois>[number] | undefined): BonusKey {
   if (!poi) return "otranto";
   const entries = Object.entries(BONUS_MAPS) as [BonusKey, (typeof BONUS_MAPS)[BonusKey]][];
-  const found = entries.find(([, cfg]) => cfg.poiIds.includes(poi.id));
+  const found = entries.find(([, cfg]) => cfg.poiIds.some((id) => id === poi.id));
   return found?.[0] ?? "otranto";
 }
 

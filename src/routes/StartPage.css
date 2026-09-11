@@ -87,4 +87,11 @@
   }
 
   .start-page__actions {
-    f
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .start-page__cta {
+    min-width: 0;
+  }
+}

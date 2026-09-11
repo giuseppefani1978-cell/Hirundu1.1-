@@ -36,7 +36,7 @@ export default function PoiMarket() {
     const ids = cfg.partnerIds ?? [];
     if (!ids.length) return [];
     return ids
-      .map((partnerId) => {
+      .map((partnerId): MarketEntry | undefined => {
         const partner = findPartnerById(partnerId);
         if (!partner) return undefined;
         const poi = allPois.find((p) => p.partner?.id === partner.id);
@@ -180,4 +180,3 @@ function rewardSubtitle(reward: PartnerReward): string {
       return "Avantage fourni par le partenaire.";
   }
 }
-
