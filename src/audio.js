@@ -9,10 +9,15 @@ let masterGain = null;
 let musicOn = false;
 let loopTimer = null;
 let finaleLoopTimer = null;
+let musicRequest = 0;
+const musicVoices = new Set();
 
 // ---------- Init ----------
 export function createAudioOnce() {
-  if (audioCtx) return;
+  if (audioCtx) {
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+    return;
+  }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.58;
@@ -24,18 +29,19 @@ export function createAudioOnce() {
   s.buffer = b;
   s.connect(masterGain);
   s.start(0);
+  audioCtx.resume().catch(() => {});
 }
 
 // ---------- Ensure Contexte actif ----------
 function ensureCtxActive() {
   if (!audioCtx) createAudioOnce();
   if (audioCtx && audioCtx.state === "suspended") {
-    try { audioCtx.resume(); } catch {}
+    try { audioCtx.resume().catch(() => {}); } catch {}
   }
 }
 
 // ---------- Utils osc carrée ----------
-function scheduleSquare(freq, start, dur = 0.25, amp = 0.30) {
+function scheduleSquare(freq, start, dur = 0.25, amp = 0.30, music = false) {
   if (!audioCtx || !masterGain) return;
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -44,6 +50,12 @@ function scheduleSquare(freq, start, dur = 0.25, amp = 0.30) {
   g.gain.setValueAtTime(amp, start);
   g.gain.exponentialRampToValueAtTime(0.001, start + dur);
   o.connect(g).connect(masterGain);
+  if (music) {
+    musicVoices.add(o);
+    o.onended = () => { musicVoices.delete(o); o.disconnect(); g.disconnect(); };
+  } else {
+    o.onended = () => { o.disconnect(); g.disconnect(); };
+  }
   o.start(start);
   o.stop(start + dur);
 }
@@ -80,28 +92,38 @@ function playPhrase() {
   const notes = [262, 294, 330, 349, 392, 440, 494, 523];
   let t = audioCtx.currentTime;
   notes.forEach(f => {
-    scheduleSquare(f, t, 0.24, 0.28);
+    scheduleSquare(f, t, 0.24, 0.28, true);
     t += 0.28;
   });
   loopTimer = setTimeout(playPhrase, 2800);
 }
 
 export async function startMusic() {
-  ensureCtxActive();
-  // petit bip de feedback
-  ping(720, 0.20);
-  musicOn = true;
-  playPhrase();
+  if (musicOn) return;
+  const request = ++musicRequest;
+  try {
+    createAudioOnce();
+    await audioCtx.resume();
+    if (request !== musicRequest || audioCtx.state !== 'running') return;
+    musicOn = true;
+    if (loopTimer) clearTimeout(loopTimer);
+    playPhrase();
+  } catch (error) {
+    musicOn = false;
+    console.warn('Audio unavailable', error);
+  }
 }
 
 export function stopMusic() {
+  ++musicRequest;
   musicOn = false;
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  // ⚠️ Ne pas suspendre le contexte : on garde les SFX actifs
+  musicVoices.forEach((o) => { try { o.stop(); } catch {} });
+  musicVoices.clear();
 }
 
-export function toggleMusic() {
-  if (musicOn) stopMusic(); else startMusic();
+export async function toggleMusic() {
+  if (musicOn) stopMusic(); else await startMusic();
 }
 
 export function isMusicOn() { return musicOn; }
@@ -154,8 +176,7 @@ let _wasPlayingBeforeBattle = false;
 export function pauseBgForBattle() {
   _wasPlayingBeforeBattle = musicOn === true;
   // coupe SEULEMENT la boucle (pas le contexte, sinon plus de SFX)
-  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  musicOn = false;
+  stopMusic();
   stopFinaleLoop();
 }
 

@@ -1,0 +1,3 @@
+.language-select{display:flex;align-items:center;gap:.65rem;font:500 1rem/1.5 system-ui;flex-wrap:wrap}
+.language-select select{font:inherit;padding:.55rem .7rem;border-radius:10px;background:#fff;color:#10243e;border:1px solid #7591ad;min-height:44px}
+.start-page .language-select{margin-bottom:1.5rem;justify-content:flex-end}

@@ -197,11 +197,11 @@ export function setMusicLabel(isOn) {
 }
 
 export function onClickMusic(handler) {
-  el.musicBtn?.addEventListener('click', handler);
+  if (el.musicBtn) el.musicBtn.onclick = handler;
 }
 
 export function onClickReplay(handler) {
-  el.replayBtn?.addEventListener('click', handler);
+  if (el.replayBtn) el.replayBtn.onclick = handler;
 }
 
 // —————————————————————————————

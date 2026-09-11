@@ -239,7 +239,10 @@ export function startBattleIntro({
     onProceed && onProceed();
   }
 
+  let cleaned = false;
   function cleanup(){
+    if (cleaned) return;
+    cleaned = true;
     clearTimeout(unlockDelay);
     clearTimeout(autoTimer);
     window.removeEventListener('keydown', onKey);
@@ -250,4 +253,5 @@ export function startBattleIntro({
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     document.body.style.overflow = prevOverflow;
   }
+  return cleanup;
 }

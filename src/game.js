@@ -1,3 +1,5 @@
+import { copy } from './ui/copy.js';
+import { createLevelSession, setupHuntControls } from './legacy/levelSession.js';
 // src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
@@ -6,7 +8,7 @@
 import { t, poiName, poiInfo } from './i18n.js';
 import { withBase } from './paths';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn,
+  startMusic, stopMusic, toggleMusic, isMusicOn, createAudioOnce, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from './audio.js';
 import * as ui from './ui.js';
@@ -142,13 +144,17 @@ export function boot(){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  let cleanupIntro = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
 
   // UI init
   ui.initUI();
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
-  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
   ui.onClickReplay(() => startGame());
 
@@ -199,19 +205,10 @@ export function boot(){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 1,
-    theme: 'otranto',
-    badge: 'Niveau 1',
-    title: 'Le Vol d\'Aracne',
-    subtitle: 'Chasse aux 10 étoiles de la côte d\'Otranto',
-    description:
-      'Fais planer Aracne au-dessus des villages d\'Otranto pour récupérer les étoiles et ouvrir la suite de l\'aventure.',
-    footnote: 'Victoire = BONUS débloqué',
-    startLabel: '▶︎ Lancer la chasse',
-    highlight: {
-      title: 'Briefing',
-      body: 'Capture chaque étoile pour préparer la prochaine étape de la mission.',
-    },
+    level: 1, theme: 'otranto', badge: `${copy.level} 1`,
+    title: t.title, subtitle: t.subtitle, description: copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#f97316',
   });
 
@@ -247,11 +244,11 @@ export function boot(){
   // 1er resize
   resize();
 
-  window.addEventListener('resize', resize, { passive:true });
+  session.listen(window, 'resize', resize, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
+  session.listen(window, 'orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
@@ -330,11 +327,11 @@ export function boot(){
   }
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(player, () => getSpeed(), () => mode === 'play');
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play', session);
   
   // Start button
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (startBtn) session.listen(startBtn, 'click', startGame);
 
   // Première question
   askQuestionAt(0);
@@ -389,7 +386,7 @@ export function boot(){
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
 
     const entry = {
-      name: playerName || 'Joueur',
+      name: playerName || copy.player,
       country,
       score: total,
       stars: starsPicked,
@@ -456,7 +453,8 @@ export function boot(){
 
   // ---------- Game loop (chasse) ----------
   function draw(ts){
-    if(!running) return;
+    if(!running || !session.active) return;
+    if (document.hidden) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
@@ -464,6 +462,7 @@ export function boot(){
       lastTS = ts;
 
       if (mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
@@ -596,7 +595,7 @@ export function boot(){
       }
     } catch {}
 
-startBattleIntro({
+cleanupIntro = startBattleIntro({
   ammo: {
     pasticciotto: pickedCounts.pasticciotto | 0,
     rustico:      pickedCounts.rustico      | 0,
@@ -604,6 +603,7 @@ startBattleIntro({
     stars:        starsPicked               | 0,
   },
   onProceed: async () => {
+    if (!session.active) return;
     // anti double-clic
     if (window.__battleBooting) return;
     window.__battleBooting = true;
@@ -623,7 +623,8 @@ startBattleIntro({
         throw new Error('startBattleFlow non exporté par ./game_battle.js');
       }
 
-      await startBattleFlow(
+      if (!session.active) return;
+    await startBattleFlow(
         {
           pasticciotto: pickedCounts.pasticciotto | 0,
           rustico:      pickedCounts.rustico      | 0,
@@ -635,6 +636,7 @@ startBattleIntro({
         {
           bottomExtra: 0,
           onWin: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'win';
             updatePadAVisibilityForMode();
@@ -643,6 +645,7 @@ startBattleIntro({
             try { triggerWin(); } catch {}
           },
           onLose: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'dead';
             updatePadAVisibilityForMode();
@@ -804,6 +807,7 @@ startBattleIntro({
 
   // ---------- controls ----------
   function startGame(){
+    createAudioOnce();
     try{
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
       const storedName = playerName && playerName.trim() ? playerName : getStoredPlayerName();
@@ -814,8 +818,8 @@ startBattleIntro({
           try { lsSet && lsSet('player_name', playerName); } catch {}
         }
       } else {
-        const response = prompt("Ton nom/pseudo ?") || "Joueur";
-        playerName = (response||'').trim() || "Joueur";
+        const response = prompt(copy.name) || copy.player;
+        playerName = (response||'').trim() || copy.player;
         try { localStorage.setItem('player_name', playerName); } catch {}
         try { lsSet && lsSet('player_name', playerName); } catch {}
       }
@@ -824,7 +828,7 @@ startBattleIntro({
 
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
       gameStartAt = performance.now();
@@ -884,7 +888,7 @@ startBattleIntro({
       openBonusMap();
     }
   };
-  window.addEventListener('hashchange', handleHash);
+  session.listen(window, 'hashchange', handleHash);
   handleHash();
 
   // helpers UI
@@ -925,7 +929,7 @@ startBattleIntro({
         font:700 12px system-ui; cursor:pointer;
       `;
       hud.appendChild(link);
-      link.addEventListener('click', openBonusMap);
+      session.listen(link, 'click', openBonusMap);
     }
   }
 
@@ -945,7 +949,7 @@ startBattleIntro({
       padding:12px 18px; font:700 14px system-ui; box-shadow:0 8px 18px rgba(0,0,0,.2);
     `;
     document.body.appendChild(btn);
-    btn.addEventListener('click', () => {
+    session.listen(btn, 'click', () => {
       lsSet(LS.OTRANTO_BONUS_SEEN, true);
       openBonusMap();
     });
@@ -976,6 +980,15 @@ startBattleIntro({
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
+  return () => {
+    running = false;
+    session.dispose();
+    cleanupIntro?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+  };
 }
 
 // ------------------------
@@ -1133,28 +1146,7 @@ function shuffle(arr){
 /**
  * D-pad tactile/souris. Ne bouge que si canMove() === true
  */
-function setupDpad(player, getSpeed, canMove){
-  document.querySelectorAll('.btn').forEach((el) => {
-    const dx = parseFloat(el.dataset.dx);
-    const dy = parseFloat(el.dataset.dy);
-    if (isNaN(dx) || isNaN(dy)) return;
-    let press = false, rafId = null;
 
-    const step = () => {
-      if (!press) return;
-      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
-      const s = getSpeed();
-      player.x = Math.max(0, Math.min(1, player.x + dx * s));
-      player.y = Math.max(0, Math.min(1, player.y + dy * s));
-      rafId = requestAnimationFrame(step);
-    };
-
-    el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
-    el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
-  });
-}
 
 // =====================================================
 // DEBUG HELPERS (optionnel pendant le dev)

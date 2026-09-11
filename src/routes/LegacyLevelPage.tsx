@@ -1,3 +1,4 @@
+import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/bonus/bonusStorage';
 import React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -56,9 +57,12 @@ export default function LegacyLevelPage() {
     const cleanupChrome = initLegacyChrome();
 
     let cancelled = false;
+    const controller = new AbortController();
+    let cleanupLevel: (() => void) | undefined;
     const boot = async () => {
       try {
-        await bootLegacyLevel(level);
+        cleanupLevel = await bootLegacyLevel(level, controller.signal);
+        if (cancelled) cleanupLevel?.();
       } catch (error) {
         console.error("Unable to boot legacy level", error);
       }
@@ -73,7 +77,12 @@ export default function LegacyLevelPage() {
 
     const { bonusKey, event } = LEVEL_EVENTS[level];
 
+    let handledWin = false;
     const handleWin = () => {
+      if (handledWin || cancelled) return;
+      handledWin = true;
+      markLevelWin(level);
+      unlockBonus(bonusKey as BonusProgressEntry["key"]);
       storeToast(bonusKey);
       const next = getNextLevelId(level);
       navigate(`/bonus/${bonusKey}`, {
@@ -85,6 +94,8 @@ export default function LegacyLevelPage() {
 
     return () => {
       cancelled = true;
+      controller.abort();
+      cleanupLevel?.();
       window.cancelAnimationFrame(raf);
       document.removeEventListener(event, handleWin);
       cleanupChrome?.();
