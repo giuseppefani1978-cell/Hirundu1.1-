@@ -4,8 +4,8 @@
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
+import { copy } from './ui/copy.js';
 import { markLevelWin } from './bonus_maps.js';
-import { withBase } from './utils/basePath.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -161,21 +161,17 @@ function __persistUnlocksForFoe(foeType){
 }
 
 function __redirectAfterWin(foeType){
-  // Always bounce back into the React HashRouter
-  const hub = withBase('index.html?embed=1#');
+  const key = foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto';
+  window.location.hash = `/bonus/${key}`;
+}
 
-  if (foeType === 'sputacchina') {
-    // Level 3 → Lecce
-    location.href = `${hub}/poi/lecce/realmap`;
-  } else if (foeType === 'crow') {
-    // Level 2 → Gallipoli
-    location.href = `${hub}/poi/gallipoli/realmap`;
-  } else {
-    // Level 1 (jelly / default) → Otranto
-    location.href = `${hub}/poi/otranto/realmap`;
-  }
-  // optional telemetry/event
-  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
+export function disposeBattle() {
+  state.active = false;
+  _stopBattleTheme();
+  _stopVictoryMusic();
+  window.removeEventListener('keydown', _onKeyDown, true);
+  window.removeEventListener('keyup', _onKeyUp, true);
+  if (state.ui.root) state.ui.root.style.display = 'none';
 }
 
 // ---------------------------------------------------------
@@ -653,11 +649,12 @@ function _endBattle(victory){
   // 3) Overlay de fin + bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
-    if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
+    if (t) t.textContent = victory ? copy.won : copy.defeat;
 
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
-      btn.textContent = victory ? 'Continuer' : 'Réessayer';
+      btn.disabled = false;
+      btn.textContent = victory ? copy.bonus : copy.replay;
       btn.style.padding = '12px 16px';
       btn.style.fontSize = '16px';
       btn.style.transform = 'none';
@@ -665,8 +662,13 @@ function _endBattle(victory){
       btn.onclick = () => {
         try {
           if (victory) {
-            __persistUnlocksForFoe(state.foeType);
-            __redirectAfterWin(state.foeType);
+            btn.disabled = true;
+            const foe = state.foeType;
+            __persistUnlocksForFoe(foe);
+            try { state.onWin(); } finally {
+              disposeBattle();
+              __redirectAfterWin(foe);
+            }
           } else {
             state.ui.endOverlay.style.display = 'none';
             startBattle(state.foeType);

@@ -146,6 +146,7 @@ export function boot(){
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
   let cleanupIntro = null;
+  let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
   const setTimeout = session.timeout;
 
@@ -619,6 +620,7 @@ cleanupIntro = startBattleIntro({
       // import unique
       const mod = await import('./game_battle.js');
       const { startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
       if (typeof startBattleFlow !== 'function') {
         throw new Error('startBattleFlow non exporté par ./game_battle.js');
       }
@@ -781,23 +783,8 @@ cleanupIntro = startBattleIntro({
     stopMusic();
     playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
-   // 🟢 Nouvelle logique : handoff vers la page Bonus (ou transition)
-  setTimeout(() => {
-    try {
-      // Si le bonus Otranto est débloqué, on ouvre la page bonus
-      if (localStorage.getItem('otranto_bonus_unlocked') === 'true') {
-        console.log('[GAME] triggerWin → ouverture bonus Otranto');
-        location.hash = '#bonus-otranto';
-      } else {
-        // sinon, simple transition vers la page d’intro du niveau suivant
-        console.log('[GAME] triggerWin → transition vers niveau 2');
-        location.hash = '#/transition';
-      }
-    } catch (e) {
-      console.warn('[GAME] triggerWin navigation error', e);
-    }
-  }, 800); // délai d’une seconde pour laisser l’écran Win s’afficher
-}
+    location.hash = '#/bonus/otranto';
+  }
   function triggerGameOver(){
     mode = 'dead';
     running = false;
@@ -984,6 +971,7 @@ cleanupIntro = startBattleIntro({
     running = false;
     session.dispose();
     cleanupIntro?.();
+    cleanupBattle?.();
     stopMusic();
     stopFinaleLoop();
     ui.onClickMusic(null);

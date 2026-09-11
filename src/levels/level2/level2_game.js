@@ -127,6 +127,7 @@ export function boot(){
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
   let cleanupIntro = null;
+  let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
   const setTimeout = session.timeout;
 
@@ -412,9 +413,7 @@ export function boot(){
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       try { unlockGallipoliBonus(); } catch {}
       try { showBonusCta(); } catch {}
-      setTimeout(() => {
-        try { document.dispatchEvent(new Event('otranto:unlocked')); } catch {}
-      }, 360);
+
     }
   }
 
@@ -586,6 +585,7 @@ onProceed: async () => {
       mod = await import('../../game_battle.js');
     }
     const { startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
 
     if (!session.active) return;
     await startBattleFlow(
@@ -924,6 +924,7 @@ onProceed: async () => {
     running = false;
     session.dispose();
     cleanupIntro?.();
+    cleanupBattle?.();
     stopMusic();
     stopFinaleLoop();
     ui.onClickMusic(null);

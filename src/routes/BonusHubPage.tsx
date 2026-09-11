@@ -5,7 +5,8 @@ import { BONUS_MAPS } from '../features/bonus/bonusData';
 import LanguageSelect from '../ui/LanguageSelect';
 import { copy } from '../ui/copy.js';
 import './BonusHubPage.css';
-const BonusIndex = lazy(() => import('../features/bonus/BonusIndex'));
+const Rankings = lazy(() => import('../features/bonus/HallOfFameSection'));
+import '../features/bonus/BonusIndex.css';
 
 export default function BonusHubPage() {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export default function BonusHubPage() {
     </section>
     <details className="discoveries__more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
       <summary>{copy.more}</summary>
-      {more && <Suspense fallback={<p>{copy.loading}</p>}><BonusIndex /></Suspense>}
+      {more && <Suspense fallback={<p>{copy.loading}</p>}><Rankings /></Suspense>}
     </details>
   </main>;
 }

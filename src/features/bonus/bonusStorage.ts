@@ -150,7 +150,7 @@ export function markLevelWin(levelId: number): void {
 }
 
 function readBooleanFlag(key: string): boolean {
-  return readRaw(key) === "true";
+  return ["true", "1"].includes(readRaw(key) ?? "");
 }
 
 export function getProgressList(): BonusProgressEntry[] {
@@ -168,7 +168,7 @@ export function getProgressList(): BonusProgressEntry[] {
       name: "Gallipoli",
       key: "gallipoli",
       done: readBooleanFlag("level2_won"),
-      unlocked: readBooleanFlag("bonus_gallipoli_unlocked"),
+      unlocked: readBooleanFlag("level1_won") || readBooleanFlag("level2_unlocked") || readBooleanFlag("bonus_gallipoli_unlocked"),
       href: "/index.html#gallipoli",
     },
     {
@@ -176,7 +176,7 @@ export function getProgressList(): BonusProgressEntry[] {
       name: "Lecce",
       key: "lecce",
       done: readBooleanFlag("level3_won"),
-      unlocked: readBooleanFlag("bonus_lecce_unlocked"),
+      unlocked: readBooleanFlag("level2_won") || readBooleanFlag("level3_unlocked") || readBooleanFlag("bonus_lecce_unlocked"),
       href: "/index.html#lecce",
     },
   ];

@@ -124,6 +124,7 @@ export function boot(){
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
   let cleanupIntro = null;
+  let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
   const setTimeout = session.timeout;
 
@@ -556,6 +557,7 @@ export function boot(){
     }
 
     const { startBattleL3, startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
 
     if (!session.active) return;
     if (typeof startBattleL3 === 'function') {
@@ -890,6 +892,7 @@ export function boot(){
     running = false;
     session.dispose();
     cleanupIntro?.();
+    cleanupBattle?.();
     stopMusic();
     stopFinaleLoop();
     ui.onClickMusic(null);

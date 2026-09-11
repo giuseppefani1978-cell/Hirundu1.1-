@@ -1,5 +1,6 @@
 import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/bonus/bonusStorage';
 import React from "react";
+import { disposeBattle } from "../battle.js";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import LegacyGameShell from "../legacy/LegacyGameShell";
@@ -96,6 +97,7 @@ export default function LegacyLevelPage() {
       cancelled = true;
       controller.abort();
       cleanupLevel?.();
+      disposeBattle();
       window.cancelAnimationFrame(raf);
       document.removeEventListener(event, handleWin);
       cleanupChrome?.();
