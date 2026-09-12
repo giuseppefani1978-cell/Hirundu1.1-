@@ -11,6 +11,10 @@ let loopTimer = null;
 let finaleLoopTimer = null;
 let musicRequest = 0;
 const musicVoices = new Set();
+export const AUDIO_STATE_EVENT = 'hirundu:audio-state';
+function notifyAudioState() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(AUDIO_STATE_EVENT));
+}
 
 // ---------- Init ----------
 export function createAudioOnce() {
@@ -19,6 +23,7 @@ export function createAudioOnce() {
     return;
   }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.onstatechange = notifyAudioState;
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.58;
   masterGain.connect(audioCtx.destination);
@@ -34,9 +39,13 @@ export function createAudioOnce() {
 
 // ---------- Ensure Contexte actif ----------
 function ensureCtxActive() {
-  if (!audioCtx) createAudioOnce();
-  if (audioCtx && audioCtx.state === "suspended") {
-    try { audioCtx.resume().catch(() => {}); } catch {}
+  try {
+    if (!audioCtx) createAudioOnce();
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(notifyAudioState);
+    return true;
+  } catch {
+    notifyAudioState();
+    return false;
   }
 }
 
@@ -62,15 +71,13 @@ function scheduleSquare(freq, start, dur = 0.25, amp = 0.30, music = false) {
 
 // ---------- SFX publics ----------
 export function ping(freq = 440, amp = 0.2) {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(freq, t, 0.16, amp);
 }
 
 export function starEmphasis() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const base = audioCtx.currentTime;
   [784, 880, 988, 1175].forEach((f, i) =>
     scheduleSquare(f, base + i * 0.08, 0.18, 0.46)
@@ -78,8 +85,7 @@ export function starEmphasis() {
 }
 
 export function failSfx() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(196, t, 0.20, 0.42);
   scheduleSquare(165, t + 0.18, 0.20, 0.36);
@@ -99,18 +105,22 @@ function playPhrase() {
 }
 
 export async function startMusic() {
-  if (musicOn) return;
+  if (isMusicOn()) return;
   const request = ++musicRequest;
   try {
     createAudioOnce();
     await audioCtx.resume();
     if (request !== musicRequest || audioCtx.state !== 'running') return;
     musicOn = true;
+    musicVoices.forEach((o) => { try { o.stop(); } catch {} });
+    musicVoices.clear();
     if (loopTimer) clearTimeout(loopTimer);
     playPhrase();
   } catch (error) {
     musicOn = false;
     console.warn('Audio unavailable', error);
+  } finally {
+    notifyAudioState();
   }
 }
 
@@ -120,18 +130,18 @@ export function stopMusic() {
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   musicVoices.forEach((o) => { try { o.stop(); } catch {} });
   musicVoices.clear();
+  notifyAudioState();
 }
 
 export async function toggleMusic() {
-  if (musicOn) stopMusic(); else await startMusic();
+  if (isMusicOn()) stopMusic(); else await startMusic();
 }
 
-export function isMusicOn() { return musicOn; }
+export function isMusicOn() { return musicOn && audioCtx?.state === 'running'; }
 
 // ---------- Finale longue ----------
 export function playFinaleLong() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
 
   // on coupe la boucle courte si active
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }

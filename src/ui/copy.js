@@ -1,6 +1,9 @@
 import { LANG } from '../i18n.js';
 const messages = {
   fr: {
+    musicStart: "Activer la musique",
+    musicStop: "Couper la musique",
+
     hofLead: "Les meilleurs scores sont enregistrés sur cet appareil.",
     points: "Points cumulés",
     runs: "Parties enregistrées",
@@ -26,6 +29,9 @@ const messages = {
     battleHint: 'En paysage : ← / → pour bouger, ↑ pour sauter, A pour attaquer, B pour le spécial.',
   },
   it: {
+    musicStart: "Attiva la musica",
+    musicStop: "Disattiva la musica",
+
     hofLead: "I migliori punteggi sono salvati su questo dispositivo.",
     points: "Punti totali",
     runs: "Partite salvate",
@@ -51,6 +57,9 @@ const messages = {
     battleHint: 'In orizzontale: ← / → per muoverti, ↑ per saltare, A per attaccare, B per lo speciale.',
   },
   en: {
+    musicStart: "Enable music",
+    musicStop: "Mute music",
+
     hofLead: "Best scores are saved on this device.",
     points: "Total points",
     runs: "Saved games",
@@ -76,6 +85,9 @@ const messages = {
     battleHint: 'In landscape: ← / → to move, ↑ to jump, A to attack, B for the special move.',
   },
   es: {
+    musicStart: "Activar la música",
+    musicStop: "Silenciar la música",
+
     hofLead: "Las mejores puntuaciones se guardan en este dispositivo.",
     points: "Puntos totales",
     runs: "Partidas guardadas",

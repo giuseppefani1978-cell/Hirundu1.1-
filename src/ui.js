@@ -3,6 +3,7 @@
 // UI/HUD : score, étoiles, barre d'énergie, boutons, bulle
 // ---------------------------------------------------------
 import { t } from './i18n.js';
+import { copy } from './ui/copy.js';
 
 const qs = (sel) => document.querySelector(sel);
 
@@ -62,7 +63,7 @@ function buildEnergyBar() {
   `;
 
   const label = document.createElement('div');
-  label.textContent = 'NRJ';
+  label.textContent = t.energy;
   label.style.cssText = 'font: 700 11px system-ui; color:#0e2b4a;';
 
   const battery = document.createElement('div');
@@ -189,7 +190,7 @@ export function showReplay(show = true) {
 
 export function setMusicLabel(isOn) {
   if (!el.musicBtn) return;
-  const txt = isOn ? t.musicOn || 'Musique ON' : t.musicOff || 'Musique OFF';
+  const txt = isOn ? copy.musicStop : copy.musicStart;
   const icon = isOn ? '🔊' : '🔈';
   el.musicBtn.innerHTML = `<span aria-hidden="true">${icon}</span> ${txt}`;
   el.musicBtn.setAttribute('aria-pressed', String(!!isOn));
@@ -434,4 +435,11 @@ export function hideCTA() {
   setTimeout(() => {
     if (ctaNode) ctaNode.style.display = 'none';
   }, 200);
+}
+
+// Read the inline name field during the start gesture; never open a blocking dialog.
+export function readPlayerName() {
+  const name = (document.getElementById('playerName')?.value || '').trim().slice(0, 40);
+  try { if (name) localStorage.setItem('player_name', name); } catch {}
+  return name;
 }

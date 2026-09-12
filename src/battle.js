@@ -5,6 +5,7 @@
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
 import { copy } from './ui/copy.js';
+import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
 
 const BTL = {
@@ -171,6 +172,9 @@ export function disposeBattle() {
   _stopVictoryMusic();
   window.removeEventListener('keydown', _onKeyDown, true);
   window.removeEventListener('keyup', _onKeyUp, true);
+  window.removeEventListener('orientationchange', _updateRotateOverlay);
+  window.removeEventListener('resize', _updateRotateOverlay);
+  state.input = { left:false, right:false, up:false, atk:false, spc:false };
   if (state.ui.root) state.ui.root.style.display = 'none';
 }
 

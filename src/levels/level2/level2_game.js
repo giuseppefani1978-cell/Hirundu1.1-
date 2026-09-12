@@ -9,7 +9,7 @@ import { t, poiName, poiInfo } from '../../i18n.js';
 import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn, createAudioOnce, stopFinaleLoop,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from '../../audio.js';
 import * as ui from '../../ui.js';
@@ -138,13 +138,14 @@ export function boot(){
 
   // Titres L2 + HUD "Soleils"
   const hudLabel = document.getElementById('hudLabel');
-  if (hudLabel) hudLabel.textContent = 'Soleils';
+  if (hudLabel) hudLabel.textContent = t.level2.hudLabel;
 
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
   ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live
@@ -382,7 +383,7 @@ export function boot(){
     };
     addHallOfFameEntry(entry, HOF_KEY);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Soleils: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -755,10 +756,9 @@ onProceed: async () => {
 
   // ---------- controls ----------
   function startGame() {
-    createAudioOnce();
     try {
       document.body.classList.remove('mode-battle');
-      playerName = getStoredPlayerName() || copy.player;
+      playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
       lsSet('player_name', playerName);
       ui.hideOverlay();

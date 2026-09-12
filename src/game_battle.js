@@ -34,6 +34,7 @@ const BTL_VIRTUAL = { W: 800, H: 450 };
 let _canvas = null;
 let _ctx = null;
 let _raf = 0;
+let _generation = 0;
 let _lastTS = 0;
 let _bottomExtra = 16;
 let _sprites = null;
@@ -177,6 +178,7 @@ export async function startBattleFlow(
   { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0 } = {}
 ){
   // Canvas / contexte
+  const generation = ++_generation;
   _canvas = document.getElementById('c');
   if (!_canvas) { alert("Canvas #c introuvable pour la battle."); return; }
   _ctx = _canvas.getContext('2d', { alpha:true });
@@ -240,6 +242,7 @@ export async function startBattleFlow(
 
   // sprites
   _sprites = await _loadSprites();
+  if (generation !== _generation) return;
 
   // sizing + listeners
   _onResize();
@@ -247,10 +250,7 @@ export async function startBattleFlow(
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', _onResize, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
-    setTimeout(_onResize, 60);
-    setTimeout(_onResize, 220);
-  }, { passive:true });
+  window.addEventListener('orientationchange', _onResize, { passive:true });
 
   // go!
   startBattleRaw('jelly');   // si tu as plusieurs niveaux, passe la clé en param
@@ -259,6 +259,8 @@ export async function startBattleFlow(
 }
 
 export function stopBattleFlow() {
+  ++_generation;
+  window.removeEventListener('orientationchange', _onResize);
   cancelAnimationFrame(_raf); _raf = 0;
   _lastTS = 0;
   if (window.visualViewport) {

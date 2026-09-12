@@ -8,7 +8,7 @@ import { createLevelSession, setupHuntControls } from './legacy/levelSession.js'
 import { t, poiName, poiInfo } from './i18n.js';
 import { withBase } from './paths';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn, createAudioOnce, stopFinaleLoop,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from './audio.js';
 import * as ui from './ui.js';
@@ -157,6 +157,7 @@ export function boot(){
   ui.updateEnergy(100);
   ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live
@@ -401,7 +402,7 @@ export function boot(){
     };
     addHallOfFameEntry(entry);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -794,22 +795,9 @@ cleanupIntro = startBattleIntro({
 
   // ---------- controls ----------
   function startGame(){
-    createAudioOnce();
     try{
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
-      const storedName = playerName && playerName.trim() ? playerName : getStoredPlayerName();
-      if (storedName) {
-        playerName = storedName.trim();
-        if (playerName !== storedName) {
-          try { localStorage.setItem('player_name', playerName); } catch {}
-          try { lsSet && lsSet('player_name', playerName); } catch {}
-        }
-      } else {
-        const response = prompt(copy.name) || copy.player;
-        playerName = (response||'').trim() || copy.player;
-        try { localStorage.setItem('player_name', playerName); } catch {}
-        try { lsSet && lsSet('player_name', playerName); } catch {}
-      }
+      playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
 
 
