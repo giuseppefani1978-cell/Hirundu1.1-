@@ -922,6 +922,7 @@ cleanupIntro = startBattleIntro({
   return () => {
     running = false;
     session.dispose();
+    document.getElementById("__score_live")?.remove();
     cleanupIntro?.();
     cleanupBattle?.();
     stopMusic();

@@ -874,6 +874,7 @@ export function boot(options = {}){
   return () => {
     running = false;
     session.dispose();
+    document.getElementById("__score_live")?.remove();
     cleanupIntro?.();
     cleanupBattle?.();
     stopMusic();

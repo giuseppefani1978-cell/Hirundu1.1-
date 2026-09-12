@@ -20,7 +20,7 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v5 · TEST";
+const DEFAULT_VERSION = "v6 · TEST";
 
 function storeToast(target: string) {
   try {

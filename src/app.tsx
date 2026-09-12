@@ -16,6 +16,7 @@ const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
+    if (!pathname.startsWith("/level/")) document.getElementById("__score_live")?.remove();
     // If there is an anchor, let the browser handle it
     if (hash) return;
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });

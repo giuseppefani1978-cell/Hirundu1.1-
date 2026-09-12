@@ -1,3 +1,4 @@
+import { bt, LANG } from "../i18n/bonusLocale";
 import { copy } from '../../../ui/copy.js';
 import { passportCopy as pc } from '../passport/passportCopy';
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -150,8 +151,8 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
 
   if (passportOnly) return (
     <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
-      <nav className="real-map__actions">
-        <button className="app-button" onClick={goToBonusHub}>← {copy.bonus}</button>
+      <nav className="real-map__actions passport-page__navigation">
+        <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
         {(['otranto','gallipoli','lecce'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{city[0].toUpperCase()+city.slice(1)}</button>)}
       </nav>
       <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
@@ -164,21 +165,17 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
 
   return (
     <div className="real-map">
-      <nav className="real-map__actions" aria-label="Navigation bonus">
+      <nav className="real-map__actions" aria-label={bt("Navigation bonus")}>
         <button
           type="button"
           className="real-map__action-button real-map__action-button--bonus"
           onClick={goToBonusHub}
-        >
-          🎁 Voir les bonus
-        </button>
+        >🎁 {bt("Voir les bonus")}</button>
         <button
           type="button"
           className="real-map__action-button real-map__action-button--market"
           onClick={goToMarket}
-        >
-          🛒 Marché &amp; Souvenirs
-        </button>
+        >🛒 {bt("Marché & Souvenirs")}</button>
       </nav>
       <MapContainer
         key={key}
@@ -197,7 +194,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           <Popup>
             <strong>{cfg.title}</strong>
             <br />
-            {cfg.markerText || "Carte bonus"}
+            {bt("Carte bonus")}
           </Popup>
         </Marker>
 
@@ -239,16 +236,8 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
         <FitAndRestrict lat={center[0]} lng={center[1]} radiusKm={RADIUS_KM} />
       </MapContainer>
 
-      <PassportSalentino
-        mapTitle={cfg.title}
-        itinerary={itinerary}
-        pois={relevantPois}
-        visitedPoiIds={passport.visited}
-        progress={passportProgress}
-      />
-
-      <button type="button" className="real-map__back" onClick={handleBack}>
-        ↩️ Retour à la page bonus
+      <button type="button" className="real-map__back" onClick={() => navigate(`/passport/${key}`)}>
+        📔 {copy.passportOpen}
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+import { bt, LANG } from "../i18n/bonusLocale";
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import QrBadge from "../components/QrBadge";
@@ -17,12 +18,12 @@ interface MarketEntry {
 }
 
 const CATEGORY_LABELS: Record<PartnerCategory, string> = {
-  monument: "Monument",
-  restaurant: "Restaurant",
-  bar: "Bar",
-  hotel: "Hôtel",
-  shop: "Boutique",
-  beach: "Plage",
+  monument: bt("Monument"),
+  restaurant: bt("Restaurant"),
+  bar: bt("Bar"),
+  hotel: bt("Hôtel"),
+  shop: bt("Boutique"),
+  beach: bt("Plage"),
 };
 
 export default function PoiMarket() {
@@ -61,35 +62,24 @@ export default function PoiMarket() {
     <section className="app-section poi-market">
       <header className="poi-market__header">
         <div className="poi-market__header-copy">
-          <h1 className="poi-market__title">🛒 Marché &amp; Souvenirs de {cfg.title}</h1>
-          <p className="poi-market__subtitle">
-            Retrouve ici tous les partenaires fictifs associés à la carte bonus et leurs récompenses
-            pour préparer les tests terrain.
-          </p>
+          <h1 className="poi-market__title">🛒 {bt("Marché & Souvenirs")} · {cfg.title}</h1>
+          <p className="poi-market__subtitle">{bt("Partenaires de démonstration et récompenses de cette carte.")}</p>
           {summary ? (
             <p className="poi-market__summary">
-              {summary.count} partenaire{summary.count > 1 ? "s" : ""} — {summary.categories.join(", ")}
+              {bt("Partenaires")} : {summary.count} — {summary.categories.join(", ")}
             </p>
           ) : (
-            <p className="poi-market__summary poi-market__summary--empty">
-              Aucun partenaire n’est encore défini pour cette carte.
-            </p>
+            <p className="poi-market__summary poi-market__summary--empty">{bt("Aucun partenaire n’est encore défini pour cette carte.")}</p>
           )}
         </div>
         <div className="poi-market__header-actions">
-          <button type="button" className="app-button app-button--ghost" onClick={goToScanner}>
-            ↩︎ Retour au scanner
-          </button>
-          <button type="button" className="app-button app-button--dark" onClick={goToMap}>
-            🗺️ Voir la carte
-          </button>
+          <button type="button" className="app-button app-button--ghost" onClick={goToScanner}>↩︎ {bt("Retour au scanner")}</button>
+          <button type="button" className="app-button app-button--dark" onClick={goToMap}>🗺️ {bt("Voir la carte")}</button>
         </div>
       </header>
 
       {!entries.length ? (
-        <div className="surface-card poi-market__empty" role="status">
-          Ajoute des partenaires à la configuration pour alimenter cette vue marché.
-        </div>
+        <div className="surface-card poi-market__empty" role="status">{bt("Aucun partenaire n’est encore défini pour cette carte.")}</div>
       ) : (
         <div className="poi-market__grid">
           {entries.map((entry) => (
@@ -120,7 +110,7 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
         <span className="poi-market__qr-id">{partner.qr_id}</span>
       </header>
 
-      <p className="poi-market__card-description">{partner.description}</p>
+      <p className="poi-market__card-description">{bt(partner.description)}</p>
 
       <QrBadge
         icon={partner.reward.type === "bonus" ? "🎁" : partner.reward.type === "stars" ? "⭐" : "🏆"}
@@ -132,7 +122,7 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
       <dl className="poi-market__details">
         {poi ? (
           <div>
-            <dt>Localisation</dt>
+            <dt>{bt("Localisation")}</dt>
             <dd>
               {poi.label}
               <span aria-hidden> · </span>
@@ -141,15 +131,13 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
           </div>
         ) : null}
         <div>
-          <dt>QR à scanner</dt>
+          <dt>{bt("QR à scanner")}</dt>
           <dd>{partner.qr_id}</dd>
         </div>
       </dl>
 
       <div className="poi-market__card-actions">
-        <button type="button" className="app-button app-button--ghost" onClick={onOpenMap}>
-          📍 Voir sur la carte
-        </button>
+        <button type="button" className="app-button app-button--ghost" onClick={onOpenMap}>📍 {bt("Voir sur la carte")}</button>
       </div>
     </article>
   );
@@ -158,25 +146,25 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
 function rewardTitle(reward: PartnerReward): string {
   switch (reward.type) {
     case "stars":
-      return `${reward.value} étoile${reward.value > 1 ? "s" : ""} à gagner`;
+      return `${bt("Étoiles à gagner")} : ${reward.value}`;
     case "score":
-      return `+${reward.value} points de score`;
+      return `${bt("Points de score")} : +${reward.value}`;
     case "bonus":
       return `${reward.value}× ${reward.item}`;
     default:
-      return "Récompense partenaire";
+      return bt("Récompense partenaire");
   }
 }
 
 function rewardSubtitle(reward: PartnerReward): string {
   switch (reward.type) {
     case "stars":
-      return "Fais progresser ta guilde dans la chasse au trésor.";
+      return bt("Fais progresser ta guilde dans la chasse au trésor.");
     case "score":
-      return "Ajoute du score à ton équipe principale.";
+      return bt("Ajoute du score à ton équipe principale.");
     case "bonus":
-      return "Débloque un bonus utilisable en jeu.";
+      return bt("Débloque un bonus utilisable en jeu.");
     default:
-      return "Avantage fourni par le partenaire.";
+      return bt("Avantage fourni par le partenaire.");
   }
 }

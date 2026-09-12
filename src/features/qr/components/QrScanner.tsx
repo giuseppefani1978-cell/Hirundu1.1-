@@ -1,3 +1,4 @@
+import { bt, LANG } from "../i18n/bonusLocale";
 // src/features/qr/components/QrScanner.tsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import QrScanner from "qr-scanner";
@@ -84,7 +85,7 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
 
     if (pref === "never") {
       setPhase("blocked");
-      setMsg("Le scanner est désactivé (préférence : jamais).");
+      setMsg(bt("Le scanner est désactivé (préférence : jamais)."));
       return;
     }
 
@@ -93,7 +94,7 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
 
     try {
       const hasCam = await QrScanner.hasCamera();
-      if (!hasCam) throw new Error("Aucune caméra disponible.");
+      if (!hasCam) throw new Error(bt("Aucune caméra disponible."));
 
       const scanner = new QrScanner(
         videoRef.current!,
@@ -117,7 +118,7 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
       } catch {}
     } catch (err: any) {
       const error = err instanceof Error ? err : new Error(String(err));
-      setMsg(error.message || "La lecture vidéo a été bloquée.");
+      setMsg(error.message || bt("La lecture vidéo a été bloquée."));
       setPhase("blocked");
       onError?.(error);
     }
@@ -129,7 +130,7 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
       if (chosen !== "never") startCamera();
       else {
         setPhase("blocked");
-        setMsg("Le scanner est désactivé (préférence : jamais).");
+        setMsg(bt("Le scanner est désactivé (préférence : jamais)."));
       }
     },
     [startCamera]
@@ -178,7 +179,7 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
     if (pref === "once") setPhase("consent");
     else if (pref === "never") {
       setPhase("blocked");
-      setMsg("Le scanner est désactivé (préférence : jamais).");
+      setMsg(bt("Le scanner est désactivé (préférence : jamais)."));
     } else {
       startCamera();
     }
@@ -188,14 +189,14 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Scanner un QR"
+      aria-label={bt("Scanner un QR")}
       className="qr-overlay"
       onClick={handleClose}
     >
       <div className="qr-overlay__card" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          aria-label="Fermer"
+          aria-label={bt("Fermer")}
           className="qr-overlay__close"
           onClick={handleClose}
         >
@@ -207,9 +208,9 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
             type="button"
             onClick={toggleFlash}
             className={`qr-overlay__flash ${flashOn ? "qr-overlay__flash--on" : ""}`}
-            title="Lampe"
+            title={bt("Lampe")}
           >
-            {flashOn ? "Lampe ON" : "Lampe OFF"}
+            {flashOn ? bt("Lampe ON") : bt("Lampe OFF")}
           </button>
         ) : null}
 
@@ -219,55 +220,39 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
         <div className="qr-overlay__hud" aria-live="polite">
           {phase === "consent" && (
             <div className="qr-overlay__message qr-overlay__message--info">
-              <p>Utiliser le scanner&nbsp;?</p>
+              <p>{bt("Utiliser le scanner ?")}</p>
               <div className="qr-overlay__consent">
-                <button className="app-button" onClick={() => askConsentThenStart("once")}>
-                  Une fois
-                </button>
-                <button className="app-button app-button--dark" onClick={() => askConsentThenStart("active")}>
-                  Tant que l’app est ouverte
-                </button>
-                <button className="app-button app-button--ghost" onClick={() => askConsentThenStart("never")}>
-                  Jamais
-                </button>
+                <button className="app-button" onClick={() => askConsentThenStart("once")}>{bt("Une fois")}</button>
+                <button className="app-button app-button--dark" onClick={() => askConsentThenStart("active")}>{bt("Tant que l’app est ouverte")}</button>
+                <button className="app-button app-button--ghost" onClick={() => askConsentThenStart("never")}>{bt("Jamais")}</button>
               </div>
             </div>
           )}
 
           {phase === "starting" && (
-            <p className="qr-overlay__message qr-overlay__message--info">
-              Initialisation de la caméra…
-            </p>
+            <p className="qr-overlay__message qr-overlay__message--info">{bt("Initialisation de la caméra…")}</p>
           )}
 
           {phase === "running" && (
-            <p className="qr-overlay__message qr-overlay__message--success">
-              Scanner actif — aligne un QR dans le cadre lumineux.
-            </p>
+            <p className="qr-overlay__message qr-overlay__message--success">{bt("Scanner actif — aligne un QR dans le cadre lumineux.")}</p>
           )}
 
           {phase === "blocked" && (
             <div className="qr-overlay__message qr-overlay__message--warning">
-              <span>La lecture vidéo a été bloquée.</span>
+              <span>{bt("La lecture vidéo a été bloquée.")}</span>
               {msg ? <small>{msg}</small> : null}
-              <button type="button" className="app-button qr-overlay__action" onClick={retry}>
-                Réessayer
-              </button>
+              <button type="button" className="app-button qr-overlay__action" onClick={retry}>{bt("Réessayer")}</button>
             </div>
           )}
 
           {phase === "fail" && (
             <div className="qr-overlay__message qr-overlay__message--error">
-              <span>{msg || "Erreur caméra."}</span>
-              <button type="button" className="app-button qr-overlay__action" onClick={retry}>
-                Réessayer
-              </button>
+              <span>{msg || bt("Erreur caméra.")}</span>
+              <button type="button" className="app-button qr-overlay__action" onClick={retry}>{bt("Réessayer")}</button>
             </div>
           )}
 
-          <p className="qr-overlay__privacy">
-            Aucune image n’est enregistrée et aucune donnée personnelle n’est collectée.
-          </p>
+          <p className="qr-overlay__privacy">{bt("Aucune image n’est enregistrée et aucune donnée personnelle n’est collectée.")}</p>
         </div>
       </div>
     </div>
