@@ -354,12 +354,15 @@ export function setLang(langCode){
   const lc = String(langCode||"").trim().toLowerCase();
   const alias = LOCALE_ALIASES[lc] || lc.split("-")[0];
   const final = SUPPORTED.includes(alias) ? alias : "en";
-  localStorage.setItem("__lang__", final);
-  location.reload();
+  try { localStorage.setItem("__lang__", final); } catch {}
+  const url = new URL(location.href);
+  url.searchParams.set("lang", final);
+  location.assign(url.toString());
 }
 
 // ---------- Helpers d’accès ----------
 export const LANG = detectLang();
+if (typeof document !== "undefined") document.documentElement.lang = LANG;
 
 // t = fonction **et** objet (compat descendante)
 function _resolvePath(dict, path) {

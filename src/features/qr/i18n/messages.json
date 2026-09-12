@@ -1,0 +1,668 @@
+{
+  "QR Hub": {
+    "fr": "QR Hub",
+    "it": "Scanner QR",
+    "en": "QR scanner",
+    "es": "Escáner QR"
+  },
+  "Module QR & cartes bonus": {
+    "fr": "Module QR & cartes bonus",
+    "it": "QR e scoperte",
+    "en": "QR and discoveries",
+    "es": "QR y descubrimientos"
+  },
+  "Accède rapidement au scanner, au hub des bonus ou aux cartes partenaires.": {
+    "fr": "Accède rapidement au scanner, au hub des bonus ou aux cartes partenaires.",
+    "it": "Accedi allo scanner, alle scoperte e ai partner.",
+    "en": "Open the scanner, discoveries and partners.",
+    "es": "Accede al escáner, los descubrimientos y los socios."
+  },
+  "Navigation principale": {
+    "fr": "Navigation principale",
+    "it": "Navigazione principale",
+    "en": "Main navigation",
+    "es": "Navegación principal"
+  },
+  "Navigation bonus": {
+    "fr": "Navigation bonus",
+    "it": "Navigazione delle scoperte",
+    "en": "Discoveries navigation",
+    "es": "Navegación de descubrimientos"
+  },
+  "Marché & Souvenirs": {
+    "fr": "Marché & Souvenirs",
+    "it": "Mercato e souvenir",
+    "en": "Market and souvenirs",
+    "es": "Mercado y recuerdos"
+  },
+  "Monument": {
+    "fr": "Monument",
+    "it": "Monumento",
+    "en": "Monument",
+    "es": "Monumento"
+  },
+  "Restaurant": {
+    "fr": "Restaurant",
+    "it": "Ristorante",
+    "en": "Restaurant",
+    "es": "Restaurante"
+  },
+  "Bar": {
+    "fr": "Bar",
+    "it": "Bar",
+    "en": "Bar",
+    "es": "Bar"
+  },
+  "Hôtel": {
+    "fr": "Hôtel",
+    "it": "Hotel",
+    "en": "Hotel",
+    "es": "Hotel"
+  },
+  "Boutique": {
+    "fr": "Boutique",
+    "it": "Negozio",
+    "en": "Shop",
+    "es": "Tienda"
+  },
+  "Plage": {
+    "fr": "Plage",
+    "it": "Spiaggia",
+    "en": "Beach",
+    "es": "Playa"
+  },
+  "Partenaires de démonstration et récompenses de cette carte.": {
+    "fr": "Partenaires de démonstration et récompenses de cette carte.",
+    "it": "Partner dimostrativi e ricompense di questa mappa.",
+    "en": "Demo partners and rewards for this map.",
+    "es": "Socios de demostración y recompensas de este mapa."
+  },
+  "Partenaires": {
+    "fr": "Partenaires",
+    "it": "Partner",
+    "en": "Partners",
+    "es": "Socios"
+  },
+  "Aucun partenaire n’est encore défini pour cette carte.": {
+    "fr": "Aucun partenaire n’est encore défini pour cette carte.",
+    "it": "Nessun partner disponibile per questa mappa.",
+    "en": "No partners are available for this map yet.",
+    "es": "Todavía no hay socios para este mapa."
+  },
+  "Retour au scanner": {
+    "fr": "Retour au scanner",
+    "it": "Torna allo scanner",
+    "en": "Back to scanner",
+    "es": "Volver al escáner"
+  },
+  "Voir la carte": {
+    "fr": "Voir la carte",
+    "it": "Vedi la mappa",
+    "en": "View map",
+    "es": "Ver el mapa"
+  },
+  "Localisation": {
+    "fr": "Localisation",
+    "it": "Posizione",
+    "en": "Location",
+    "es": "Ubicación"
+  },
+  "QR à scanner": {
+    "fr": "QR à scanner",
+    "it": "QR da scansionare",
+    "en": "QR to scan",
+    "es": "QR para escanear"
+  },
+  "Voir sur la carte": {
+    "fr": "Voir sur la carte",
+    "it": "Vedi sulla mappa",
+    "en": "Show on map",
+    "es": "Ver en el mapa"
+  },
+  "Étoiles à gagner": {
+    "fr": "Étoiles à gagner",
+    "it": "Stelle da guadagnare",
+    "en": "Stars to earn",
+    "es": "Estrellas por ganar"
+  },
+  "Points de score": {
+    "fr": "Points de score",
+    "it": "Punti",
+    "en": "Score points",
+    "es": "Puntos"
+  },
+  "Récompense partenaire": {
+    "fr": "Récompense partenaire",
+    "it": "Ricompensa del partner",
+    "en": "Partner reward",
+    "es": "Recompensa del socio"
+  },
+  "Fais progresser ta guilde dans la chasse au trésor.": {
+    "fr": "Fais progresser ta guilde dans la chasse au trésor.",
+    "it": "Fai avanzare la tua squadra nella caccia al tesoro.",
+    "en": "Help your team progress in the treasure hunt.",
+    "es": "Haz avanzar a tu equipo en la búsqueda del tesoro."
+  },
+  "Ajoute du score à ton équipe principale.": {
+    "fr": "Ajoute du score à ton équipe principale.",
+    "it": "Aggiungi punti alla tua squadra.",
+    "en": "Add points to your team’s score.",
+    "es": "Añade puntos al marcador de tu equipo."
+  },
+  "Débloque un bonus utilisable en jeu.": {
+    "fr": "Débloque un bonus utilisable en jeu.",
+    "it": "Sblocca un bonus da usare nel gioco.",
+    "en": "Unlock a bonus to use in the game.",
+    "es": "Desbloquea un bonus para usar en el juego."
+  },
+  "Avantage fourni par le partenaire.": {
+    "fr": "Avantage fourni par le partenaire.",
+    "it": "Vantaggio offerto dal partner.",
+    "en": "Benefit offered by the partner.",
+    "es": "Ventaja ofrecida por el socio."
+  },
+  "Scanner un QR": {
+    "fr": "Scanner un QR",
+    "it": "Scansiona un QR",
+    "en": "Scan a QR code",
+    "es": "Escanear un QR"
+  },
+  "Scanne un QR partenaire pour valider une visite ou découvrir une récompense.": {
+    "fr": "Scanne un QR partenaire pour valider une visite ou découvrir une récompense.",
+    "it": "Scansiona il QR di un partner per convalidare una visita o scoprire una ricompensa.",
+    "en": "Scan a partner QR to validate a visit or discover a reward.",
+    "es": "Escanea el QR de un socio para validar una visita o descubrir una recompensa."
+  },
+  "Lancer le scanner": {
+    "fr": "Lancer le scanner",
+    "it": "Avvia lo scanner",
+    "en": "Start scanner",
+    "es": "Iniciar escáner"
+  },
+  "Réinitialiser": {
+    "fr": "Réinitialiser",
+    "it": "Reimposta",
+    "en": "Reset",
+    "es": "Restablecer"
+  },
+  "Dernier scan": {
+    "fr": "Dernier scan",
+    "it": "Ultima scansione",
+    "en": "Last scan",
+    "es": "Último escaneo"
+  },
+  "Scanner encore": {
+    "fr": "Scanner encore",
+    "it": "Scansiona di nuovo",
+    "en": "Scan again",
+    "es": "Escanear de nuevo"
+  },
+  "Effacer l’historique": {
+    "fr": "Effacer l’historique",
+    "it": "Cancella la cronologia",
+    "en": "Clear history",
+    "es": "Borrar historial"
+  },
+  "Aucun scan pour l’instant. Lance le lecteur ou choisis un scénario dans la liste.": {
+    "fr": "Aucun scan pour l’instant. Lance le lecteur ou choisis un scénario dans la liste.",
+    "it": "Nessuna scansione. Avvia lo scanner o scegli una prova dall’elenco.",
+    "en": "No scans yet. Start the scanner or choose a test from the list.",
+    "es": "Todavía no hay escaneos. Inicia el escáner o elige una prueba de la lista."
+  },
+  "Activer le scanner": {
+    "fr": "Activer le scanner",
+    "it": "Attiva lo scanner",
+    "en": "Enable scanner",
+    "es": "Activar escáner"
+  },
+  "QR fictifs disponibles": {
+    "fr": "QR fictifs disponibles",
+    "it": "QR dimostrativi disponibili",
+    "en": "Available demo QR codes",
+    "es": "Códigos QR de demostración disponibles"
+  },
+  "Scénarios de test": {
+    "fr": "Scénarios de test",
+    "it": "Scenari di prova",
+    "en": "Test scenarios",
+    "es": "Escenarios de prueba"
+  },
+  "Essaie ces QR de démonstration pour explorer les cartes, partenaires et badges.": {
+    "fr": "Essaie ces QR de démonstration pour explorer les cartes, partenaires et badges.",
+    "it": "Prova questi QR dimostrativi per esplorare mappe, partner e distintivi.",
+    "en": "Try these demo QR codes to explore maps, partners and badges.",
+    "es": "Prueba estos QR de demostración para explorar mapas, socios e insignias."
+  },
+  "Déclencher": {
+    "fr": "Déclencher",
+    "it": "Avvia",
+    "en": "Run",
+    "es": "Iniciar"
+  },
+  "Scanner actif": {
+    "fr": "Scanner actif",
+    "it": "Scanner attivo",
+    "en": "Scanner active",
+    "es": "Escáner activo"
+  },
+  "Succès": {
+    "fr": "Succès",
+    "it": "Operazione riuscita",
+    "en": "Success",
+    "es": "Éxito"
+  },
+  "Erreur": {
+    "fr": "Erreur",
+    "it": "Errore",
+    "en": "Error",
+    "es": "Error"
+  },
+  "En attente": {
+    "fr": "En attente",
+    "it": "In attesa",
+    "en": "Waiting",
+    "es": "En espera"
+  },
+  "Carte": {
+    "fr": "Carte",
+    "it": "Mappa",
+    "en": "Map",
+    "es": "Mapa"
+  },
+  "Marché": {
+    "fr": "Marché",
+    "it": "Mercato",
+    "en": "Market",
+    "es": "Mercado"
+  },
+  "Navigation": {
+    "fr": "Navigation",
+    "it": "Navigazione",
+    "en": "Navigation",
+    "es": "Navegación"
+  },
+  "Badge": {
+    "fr": "Badge",
+    "it": "Distintivo",
+    "en": "Badge",
+    "es": "Insignia"
+  },
+  "Partenaire": {
+    "fr": "Partenaire",
+    "it": "Partner",
+    "en": "Partner",
+    "es": "Socio"
+  },
+  "Inconnu": {
+    "fr": "Inconnu",
+    "it": "Sconosciuto",
+    "en": "Unknown",
+    "es": "Desconocido"
+  },
+  "Le QR ne contient pas de valeur exploitable.": {
+    "fr": "Le QR ne contient pas de valeur exploitable.",
+    "it": "Il QR non contiene dati utilizzabili.",
+    "en": "The QR code contains no usable data.",
+    "es": "El QR no contiene datos utilizables."
+  },
+  "Ce QR n’est pas encore reconnu. Vérifie le scénario ou la configuration.": {
+    "fr": "Ce QR n’est pas encore reconnu. Vérifie le scénario ou la configuration.",
+    "it": "QR non riconosciuto. Prova un altro codice.",
+    "en": "QR not recognised. Try another code.",
+    "es": "QR no reconocido. Prueba otro código."
+  },
+  "Carte d’Otrante prête à s’ouvrir": {
+    "fr": "Carte d’Otrante prête à s’ouvrir",
+    "it": "Mappa di Otranto pronta",
+    "en": "Otranto map ready",
+    "es": "Mapa de Otranto listo"
+  },
+  "Navigue sur la carte réelle pour visualiser les partenaires localisés.": {
+    "fr": "Navigue sur la carte réelle pour visualiser les partenaires localisés.",
+    "it": "Esplora la mappa reale per trovare i partner.",
+    "en": "Explore the real map to find partners.",
+    "es": "Explora el mapa real para encontrar socios."
+  },
+  "Accès au marché d’Otrante": {
+    "fr": "Accès au marché d’Otrante",
+    "it": "Mercato di Otranto",
+    "en": "Otranto market",
+    "es": "Mercado de Otranto"
+  },
+  "Consulte la liste des partenaires et de leurs récompenses.": {
+    "fr": "Consulte la liste des partenaires et de leurs récompenses.",
+    "it": "Consulta i partner e le loro ricompense.",
+    "en": "Browse partners and their rewards.",
+    "es": "Consulta los socios y sus recompensas."
+  },
+  "Explorer le marché": {
+    "fr": "Explorer le marché",
+    "it": "Esplora il mercato",
+    "en": "Explore market",
+    "es": "Explorar el mercado"
+  },
+  "Navigation générique": {
+    "fr": "Navigation générique",
+    "it": "Apri un collegamento",
+    "en": "Open a link",
+    "es": "Abrir un enlace"
+  },
+  "Cible": {
+    "fr": "Cible",
+    "it": "Destinazione",
+    "en": "Destination",
+    "es": "Destino"
+  },
+  "Suivre le lien": {
+    "fr": "Suivre le lien",
+    "it": "Apri il collegamento",
+    "en": "Follow link",
+    "es": "Abrir enlace"
+  },
+  "Badge débloqué": {
+    "fr": "Badge débloqué",
+    "it": "Distintivo sbloccato",
+    "en": "Badge unlocked",
+    "es": "Insignia desbloqueada"
+  },
+  "Badge fictif pour valider le flux de progression.": {
+    "fr": "Badge fictif pour valider le flux de progression.",
+    "it": "Distintivo dimostrativo per provare la progressione.",
+    "en": "Demo badge for testing progress.",
+    "es": "Insignia de demostración para probar el progreso."
+  },
+  "Voir les bonus": {
+    "fr": "Voir les bonus",
+    "it": "Torna alle scoperte",
+    "en": "Back to discoveries",
+    "es": "Volver a descubrimientos"
+  },
+  "Scanné": {
+    "fr": "Scanné",
+    "it": "Scansionato",
+    "en": "Scanned",
+    "es": "Escaneado"
+  },
+  "Partenaire reconnu": {
+    "fr": "Partenaire reconnu",
+    "it": "Partner riconosciuto",
+    "en": "Partner recognised",
+    "es": "Socio reconocido"
+  },
+  "Le QR correspond à un partenaire fictif. Vérifie la carte pour valider l’emplacement.": {
+    "fr": "Le QR correspond à un partenaire fictif. Vérifie la carte pour valider l’emplacement.",
+    "it": "QR di un partner dimostrativo. Controlla la posizione sulla mappa.",
+    "en": "Demo partner QR. Check the location on the map.",
+    "es": "QR de un socio de demostración. Comprueba su ubicación en el mapa."
+  },
+  "QR inconnu": {
+    "fr": "QR inconnu",
+    "it": "QR sconosciuto",
+    "en": "Unknown QR",
+    "es": "QR desconocido"
+  },
+  "Ajoute ce QR dans le fichier des scénarios ou complète le service d’interprétation.": {
+    "fr": "Ajoute ce QR dans le fichier des scénarios ou complète le service d’interprétation.",
+    "it": "Questo QR non è supportato. Prova un altro codice.",
+    "en": "This QR is not supported. Try another code.",
+    "es": "Este QR no es compatible. Prueba otro código."
+  },
+  "Récompense non renseignée": {
+    "fr": "Récompense non renseignée",
+    "it": "Ricompensa non specificata",
+    "en": "Reward not specified",
+    "es": "Recompensa no especificada"
+  },
+  "Étoiles": {
+    "fr": "Étoiles",
+    "it": "Stelle",
+    "en": "Stars",
+    "es": "Estrellas"
+  },
+  "Points d’expérience": {
+    "fr": "Points d’expérience",
+    "it": "Punti esperienza",
+    "en": "Experience points",
+    "es": "Puntos de experiencia"
+  },
+  "Le scanner est désactivé (préférence : jamais).": {
+    "fr": "Le scanner est désactivé (préférence : jamais).",
+    "it": "Lo scanner è disattivato (preferenza: mai).",
+    "en": "The scanner is disabled (preference: never).",
+    "es": "El escáner está desactivado (preferencia: nunca)."
+  },
+  "Aucune caméra disponible.": {
+    "fr": "Aucune caméra disponible.",
+    "it": "Nessuna fotocamera disponibile.",
+    "en": "No camera available.",
+    "es": "No hay cámara disponible."
+  },
+  "La lecture vidéo a été bloquée.": {
+    "fr": "La lecture vidéo a été bloquée.",
+    "it": "Accesso alla fotocamera bloccato. Controlla le autorizzazioni del browser.",
+    "en": "Camera access was blocked. Check your browser permissions.",
+    "es": "Acceso a la cámara bloqueado. Comprueba los permisos del navegador."
+  },
+  "Fermer": {
+    "fr": "Fermer",
+    "it": "Chiudi",
+    "en": "Close",
+    "es": "Cerrar"
+  },
+  "Lampe": {
+    "fr": "Lampe",
+    "it": "Torcia",
+    "en": "Flashlight",
+    "es": "Linterna"
+  },
+  "Lampe ON": {
+    "fr": "Lampe ON",
+    "it": "Torcia accesa",
+    "en": "Flashlight on",
+    "es": "Linterna encendida"
+  },
+  "Lampe OFF": {
+    "fr": "Lampe OFF",
+    "it": "Torcia spenta",
+    "en": "Flashlight off",
+    "es": "Linterna apagada"
+  },
+  "Utiliser le scanner ?": {
+    "fr": "Utiliser le scanner ?",
+    "it": "Usare lo scanner?",
+    "en": "Use the scanner?",
+    "es": "¿Usar el escáner?"
+  },
+  "Une fois": {
+    "fr": "Une fois",
+    "it": "Una volta",
+    "en": "Once",
+    "es": "Una vez"
+  },
+  "Tant que l’app est ouverte": {
+    "fr": "Tant que l’app est ouverte",
+    "it": "Mentre l’app è aperta",
+    "en": "While the app is open",
+    "es": "Mientras la app esté abierta"
+  },
+  "Jamais": {
+    "fr": "Jamais",
+    "it": "Mai",
+    "en": "Never",
+    "es": "Nunca"
+  },
+  "Initialisation de la caméra…": {
+    "fr": "Initialisation de la caméra…",
+    "it": "Avvio della fotocamera…",
+    "en": "Starting camera…",
+    "es": "Iniciando cámara…"
+  },
+  "Scanner actif — aligne un QR dans le cadre lumineux.": {
+    "fr": "Scanner actif — aligne un QR dans le cadre lumineux.",
+    "it": "Scanner attivo: inquadra un QR nel riquadro luminoso.",
+    "en": "Scanner active — align a QR within the highlighted frame.",
+    "es": "Escáner activo: coloca un QR dentro del marco iluminado."
+  },
+  "Réessayer": {
+    "fr": "Réessayer",
+    "it": "Riprova",
+    "en": "Try again",
+    "es": "Reintentar"
+  },
+  "Erreur caméra.": {
+    "fr": "Erreur caméra.",
+    "it": "Errore della fotocamera.",
+    "en": "Camera error.",
+    "es": "Error de cámara."
+  },
+  "Aucune image n’est enregistrée et aucune donnée personnelle n’est collectée.": {
+    "fr": "Aucune image n’est enregistrée et aucune donnée personnelle n’est collectée.",
+    "it": "Non vengono salvate immagini né raccolti dati personali.",
+    "en": "No images are saved and no personal data is collected.",
+    "es": "No se guardan imágenes ni se recopilan datos personales."
+  },
+  "Carte bonus": {
+    "fr": "Carte bonus",
+    "it": "Mappa sbloccata",
+    "en": "Unlocked map",
+    "es": "Mapa desbloqueado"
+  },
+  "Retour à la page bonus": {
+    "fr": "Retour à la page bonus",
+    "it": "Torna alle scoperte",
+    "en": "Back to discoveries",
+    "es": "Volver a descubrimientos"
+  },
+  "Forteresse emblématique d’Otranto, témoin des batailles historiques du XVe siècle.": {
+    "fr": "Forteresse emblématique d’Otranto, témoin des batailles historiques du XVe siècle.",
+    "it": "Fortezza simbolo di Otranto, testimone delle battaglie del XV secolo.",
+    "en": "Otranto’s landmark fortress, witness to historic 15th-century battles.",
+    "es": "Fortaleza emblemática de Otranto, testigo de las batallas del siglo XV."
+  },
+  "Célèbre pour sa mosaïque médiévale représentant l’arbre de la vie.": {
+    "fr": "Célèbre pour sa mosaïque médiévale représentant l’arbre de la vie.",
+    "it": "Celebre per il mosaico medievale che raffigura l’albero della vita.",
+    "en": "Famous for its medieval mosaic depicting the tree of life.",
+    "es": "Famosa por su mosaico medieval que representa el árbol de la vida."
+  },
+  "Plage dorée bordée de pinèdes, parfaite pour la baignade et la détente.": {
+    "fr": "Plage dorée bordée de pinèdes, parfaite pour la baignade et la détente.",
+    "it": "Spiaggia dorata circondata da pinete, ideale per nuotare e rilassarsi.",
+    "en": "Golden beach bordered by pine woods, ideal for swimming and relaxing.",
+    "es": "Playa dorada rodeada de pinares, ideal para nadar y descansar."
+  },
+  "Restaurant familial réputé pour sa cuisine traditionnelle du Salento.": {
+    "fr": "Restaurant familial réputé pour sa cuisine traditionnelle du Salento.",
+    "it": "Ristorante familiare noto per la cucina tradizionale salentina.",
+    "en": "Family restaurant known for traditional Salento cuisine.",
+    "es": "Restaurante familiar conocido por su cocina tradicional del Salento."
+  },
+  "Institution locale pour déguster un vrai caffè leccese glacé.": {
+    "fr": "Institution locale pour déguster un vrai caffè leccese glacé.",
+    "it": "Un punto di riferimento locale per gustare un autentico caffè leccese con ghiaccio.",
+    "en": "A local favourite for an authentic iced caffè leccese.",
+    "es": "Un referente local para degustar un auténtico caffè leccese con hielo."
+  },
+  "Hôtel de charme face à la mer, parfait pour une pause entre deux batailles.": {
+    "fr": "Hôtel de charme face à la mer, parfait pour une pause entre deux batailles.",
+    "it": "Hotel di charme sul mare, ideale per una pausa tra due battaglie.",
+    "en": "Charming seaside hotel, ideal for a break between battles.",
+    "es": "Hotel con encanto frente al mar, ideal para descansar entre batallas."
+  },
+  "Atelier artisanal vendant des céramiques et objets traditionnels du Salento.": {
+    "fr": "Atelier artisanal vendant des céramiques et objets traditionnels du Salento.",
+    "it": "Bottega artigiana con ceramiche e oggetti tradizionali salentini.",
+    "en": "Artisan workshop selling ceramics and traditional Salento crafts.",
+    "es": "Taller artesanal de cerámica y objetos tradicionales del Salento."
+  },
+  "Terrasse panoramique sur la baie, spécialités de poissons et vins locaux.": {
+    "fr": "Terrasse panoramique sur la baie, spécialités de poissons et vins locaux.",
+    "it": "Terrazza panoramica sulla baia, specialità di pesce e vini locali.",
+    "en": "Panoramic bay terrace, fish specialities and local wines.",
+    "es": "Terraza panorámica sobre la bahía, especialidades de pescado y vinos locales."
+  },
+  "Petit café typique à l’entrée des remparts, parfait pour un apéro salentino.": {
+    "fr": "Petit café typique à l’entrée des remparts, parfait pour un apéro salentino.",
+    "it": "Piccolo bar tipico all’ingresso delle mura, ideale per un aperitivo salentino.",
+    "en": "Small traditional café by the city walls, ideal for a Salento aperitif.",
+    "es": "Pequeño café tradicional junto a las murallas, ideal para un aperitivo salentino."
+  },
+  "Piscine naturelle spectaculaire à quelques kilomètres au nord d’Otranto.": {
+    "fr": "Piscine naturelle spectaculaire à quelques kilomètres au nord d’Otranto.",
+    "it": "Spettacolare piscina naturale a pochi chilometri a nord di Otranto.",
+    "en": "Spectacular natural pool a few kilometres north of Otranto.",
+    "es": "Espectacular piscina natural a pocos kilómetros al norte de Otranto."
+  },
+  "Accès direct à la carte d’Otranto": {
+    "fr": "Accès direct à la carte d’Otranto",
+    "it": "Accesso diretto alla mappa di Otranto",
+    "en": "Open Otranto map directly",
+    "es": "Acceso directo al mapa de Otranto"
+  },
+  "Ouvre la carte Leaflet centrée sur les POI d’Otranto.": {
+    "fr": "Ouvre la carte Leaflet centrée sur les POI d’Otranto.",
+    "it": "Apri la mappa dei luoghi di Otranto.",
+    "en": "Open the map of places in Otranto.",
+    "es": "Abre el mapa de los lugares de Otranto."
+  },
+  "Accès direct au marché": {
+    "fr": "Accès direct au marché",
+    "it": "Accesso diretto al mercato",
+    "en": "Open market directly",
+    "es": "Acceso directo al mercado"
+  },
+  "Redirige vers la liste des partenaires et récompenses.": {
+    "fr": "Redirige vers la liste des partenaires et récompenses.",
+    "it": "Apri l’elenco dei partner e delle ricompense.",
+    "en": "Open the list of partners and rewards.",
+    "es": "Abre la lista de socios y recompensas."
+  },
+  "Badge du Castello Aragonese": {
+    "fr": "Badge du Castello Aragonese",
+    "it": "Distintivo del Castello Aragonese",
+    "en": "Castello Aragonese badge",
+    "es": "Insignia del Castello Aragonese"
+  },
+  "Débloque le badge spécifique au château principal.": {
+    "fr": "Débloque le badge spécifique au château principal.",
+    "it": "Sblocca il distintivo del castello.",
+    "en": "Unlock the castle badge.",
+    "es": "Desbloquea la insignia del castillo."
+  },
+  "Ouverture générique du marché bonus": {
+    "fr": "Ouverture générique du marché bonus",
+    "it": "Apri il mercato bonus",
+    "en": "Open the bonus market",
+    "es": "Abrir el mercado de bonus"
+  },
+  "Utilise la route open:// pour tester la navigation libre.": {
+    "fr": "Utilise la route open:// pour tester la navigation libre.",
+    "it": "Prova il collegamento al mercato.",
+    "en": "Test the link to the market.",
+    "es": "Prueba el enlace al mercado."
+  },
+  "Partenaire Caffè Mengoli": {
+    "fr": "Partenaire Caffè Mengoli",
+    "it": "Partner Caffè Mengoli",
+    "en": "Caffè Mengoli partner",
+    "es": "Socio Caffè Mengoli"
+  },
+  "Simule le scan direct d’un QR partenaire pour accéder aux vues marché/carte.": {
+    "fr": "Simule le scan direct d’un QR partenaire pour accéder aux vues marché/carte.",
+    "it": "Simula la scansione del QR di un partner per aprire mercato e mappa.",
+    "en": "Simulate a partner QR scan to open the market and map.",
+    "es": "Simula el escaneo del QR de un socio para abrir mercado y mapa."
+  },
+  "QR inconnu pour tests d’erreur": {
+    "fr": "QR inconnu pour tests d’erreur",
+    "it": "QR sconosciuto per provare gli errori",
+    "en": "Unknown QR error test",
+    "es": "QR desconocido para probar errores"
+  },
+  "Permet de valider la gestion des QR non pris en charge.": {
+    "fr": "Permet de valider la gestion des QR non pris en charge.",
+    "it": "Prova la gestione dei QR non supportati.",
+    "en": "Test how unsupported QR codes are handled.",
+    "es": "Prueba cómo se gestionan los QR no compatibles."
+  }
+}

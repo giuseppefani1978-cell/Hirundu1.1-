@@ -1,6 +1,8 @@
+import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/bonus/bonusStorage';
 import React from "react";
+import { disposeBattle } from "../battle.js";
 import { useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import LegacyGameShell from "../legacy/LegacyGameShell";
 import {
   bootLegacyLevel,
@@ -18,7 +20,7 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v1.0.0-flow";
+const DEFAULT_VERSION = "v7 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -42,6 +44,8 @@ function useLegacyLevelParam(): LegacyLevelId {
 
 export default function LegacyLevelPage() {
   const level = useLegacyLevelParam();
+  const location = useLocation();
+  const testBattle = new URLSearchParams(location.search).get("test") === "battle";
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const versionLabel =
@@ -53,12 +57,17 @@ export default function LegacyLevelPage() {
     } catch {
       // ignore inability to assign version label
     }
+    const cleanBonus = () => document.querySelectorAll('#__bonus_cta, #__otranto_bonus_link, #__gallipoli_bonus_link, #__lecce_bonus_link').forEach(node => node.remove());
+    cleanBonus();
     const cleanupChrome = initLegacyChrome();
 
     let cancelled = false;
+    const controller = new AbortController();
+    let cleanupLevel: (() => void) | undefined;
     const boot = async () => {
       try {
-        await bootLegacyLevel(level);
+        cleanupLevel = await bootLegacyLevel(level, controller.signal, { testBattle });
+        if (cancelled) cleanupLevel?.();
       } catch (error) {
         console.error("Unable to boot legacy level", error);
       }
@@ -73,7 +82,12 @@ export default function LegacyLevelPage() {
 
     const { bonusKey, event } = LEVEL_EVENTS[level];
 
+    let handledWin = false;
     const handleWin = () => {
+      if (handledWin || cancelled) return;
+      handledWin = true;
+      markLevelWin(level);
+      unlockBonus(bonusKey as BonusProgressEntry["key"]);
       storeToast(bonusKey);
       const next = getNextLevelId(level);
       navigate(`/bonus/${bonusKey}`, {
@@ -85,9 +99,13 @@ export default function LegacyLevelPage() {
 
     return () => {
       cancelled = true;
+      controller.abort();
+      cleanupLevel?.();
+      disposeBattle();
       window.cancelAnimationFrame(raf);
       document.removeEventListener(event, handleWin);
       cleanupChrome?.();
+      cleanBonus();
       removeVictoryCTA();
       try {
         document.body.classList.remove("mode-battle-intro");
@@ -96,11 +114,11 @@ export default function LegacyLevelPage() {
         // ignore cleanup issues
       }
     };
-  }, [level, navigate]);
+  }, [level, navigate, testBattle]);
 
   return (
     <div className="legacy-level-page">
-      <LegacyGameShell ref={canvasRef} versionLabel={versionLabel} />
+      <LegacyGameShell key={`${level}:${testBattle}`} level={level} ref={canvasRef} versionLabel={versionLabel} />
     </div>
   );
 }

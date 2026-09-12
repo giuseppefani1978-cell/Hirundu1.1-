@@ -1,0 +1,660 @@
+[
+  {
+    "level": 4,
+    "status": "concept",
+    "title": "Castro — Les grottes aux échos",
+    "collectible": "Coquillages nacrés",
+    "boss": {
+      "name": "Nacra, la murène des échos",
+      "placeholder": "boss-4.svg",
+      "description": "Une murène violette composée de trois ovales, yeux jaunes et nageoire triangulaire.",
+      "combat": "Deux jets de bulles annoncés par une inspiration ; esquiver, puis attaquer lorsqu’elle sort de sa grotte."
+    },
+    "pois": [
+      {
+        "id": "l4-poi-01",
+        "kind": "real_reference",
+        "name": "Grotta Zinzulusa",
+        "question_fr": "Quelle ouverture dans la falaise ressemble à une bouche garnie de dents de pierre ?",
+        "visual": "Grotte à trois stalactites",
+        "icon": "grotte"
+      },
+      {
+        "id": "l4-poi-02",
+        "kind": "real_reference",
+        "name": "Castello Aragonese de Castro",
+        "question_fr": "Qui surveille le village derrière deux tours reliées par une muraille ?",
+        "visual": "Château ocre à deux tours",
+        "icon": "chateau"
+      },
+      {
+        "id": "l4-poi-03",
+        "kind": "fictional_game_landmark",
+        "name": "Barque aux voiles jumelles",
+        "question_fr": "Quelle barque porte deux voiles, une blanche et une bleue ?",
+        "visual": "Barque à deux voiles",
+        "icon": "barque"
+      },
+      {
+        "id": "l4-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Escalier des coquillages",
+        "question_fr": "Quel escalier porte un coquillage sur sa première marche ?",
+        "visual": "Escalier blanc et coquille rose",
+        "icon": "escalier"
+      },
+      {
+        "id": "l4-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Bassin turquoise",
+        "question_fr": "Où l’eau reste-t-elle enfermée dans un cercle de rochers ?",
+        "visual": "Bassin rond turquoise",
+        "icon": "bassin"
+      },
+      {
+        "id": "l4-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Filets du pêcheur",
+        "question_fr": "Quel filet sèche entre deux piquets devant une bouée orange ?",
+        "visual": "Filet quadrillé et bouée",
+        "icon": "filet"
+      },
+      {
+        "id": "l4-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Arche des vagues",
+        "question_fr": "Sous quelle arche peut passer la mer ?",
+        "visual": "Arche rocheuse au-dessus de l’eau",
+        "icon": "arche"
+      },
+      {
+        "id": "l4-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Rocher du cormoran",
+        "question_fr": "Sur quelle pierre un oiseau noir déploie-t-il ses ailes ?",
+        "visual": "Rocher isolé et ailes ouvertes",
+        "icon": "oiseau"
+      },
+      {
+        "id": "l4-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Balcon aux citrons",
+        "question_fr": "Quel balcon porte trois citrons au-dessus de sa rambarde ?",
+        "visual": "Balcon et trois fruits jaunes",
+        "icon": "citron"
+      },
+      {
+        "id": "l4-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Grotte à la perle",
+        "question_fr": "Où brille une perle dans une coquille ouverte ?",
+        "visual": "Petite grotte et perle lumineuse",
+        "icon": "perle"
+      }
+    ]
+  },
+  {
+    "level": 5,
+    "status": "concept",
+    "title": "Santa Maria di Leuca — Les vents du cap",
+    "collectible": "Gouttes de lumière",
+    "boss": {
+      "name": "Scirocco, le dragon du vent",
+      "placeholder": "boss-5.svg",
+      "description": "Un losange orange, deux ailes triangulaires et une queue en spirale.",
+      "combat": "Une rafale pousse le personnage ; s’abriter derrière un bloc, puis profiter du calme pour frapper."
+    },
+    "pois": [
+      {
+        "id": "l5-poi-01",
+        "kind": "real_reference",
+        "name": "Phare de Leuca",
+        "question_fr": "Quelle haute tour envoie un rayon au-dessus du cap ?",
+        "visual": "Tour blanche et faisceau jaune",
+        "icon": "phare"
+      },
+      {
+        "id": "l5-poi-02",
+        "kind": "real_reference",
+        "name": "Sanctuaire de Santa Maria de Finibus Terrae",
+        "question_fr": "Quel grand sanctuaire domine la mer, avec sa croix sur le toit ?",
+        "visual": "Façade claire et croix",
+        "icon": "sanctuaire"
+      },
+      {
+        "id": "l5-poi-03",
+        "kind": "fictional_game_landmark",
+        "name": "Rose des vents",
+        "question_fr": "Quel disque porte quatre flèches tournées dans quatre directions ?",
+        "visual": "Disque à quatre pointes",
+        "icon": "boussole"
+      },
+      {
+        "id": "l5-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Voilier rouge",
+        "question_fr": "Quel bateau avance avec une seule voile rouge ?",
+        "visual": "Voile triangulaire rouge",
+        "icon": "voilier"
+      },
+      {
+        "id": "l5-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Escalier des lumières",
+        "question_fr": "Quelles marches sont bordées de petites lampes dorées ?",
+        "visual": "Escalier et cinq lampes",
+        "icon": "marches"
+      },
+      {
+        "id": "l5-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Porte du soleil",
+        "question_fr": "Sous quelle porte ronde brille un soleil sculpté ?",
+        "visual": "Arc ocre et soleil à huit rayons",
+        "icon": "soleil"
+      },
+      {
+        "id": "l5-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Jardin aux palmiers",
+        "question_fr": "Où trois palmiers entourent-ils une fontaine ?",
+        "visual": "Trois palmiers et bassin carré",
+        "icon": "palmiers"
+      },
+      {
+        "id": "l5-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Ancre oubliée",
+        "question_fr": "Quel objet de fer à deux bras repose sur le sable ?",
+        "visual": "Ancre sombre",
+        "icon": "ancre"
+      },
+      {
+        "id": "l5-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Rocher des embruns",
+        "question_fr": "Quelle pierre reçoit une vague en forme de couronne blanche ?",
+        "visual": "Rocher haut et écume",
+        "icon": "vague"
+      },
+      {
+        "id": "l5-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Lanterne du gardien",
+        "question_fr": "Où une petite flamme brille-t-elle derrière quatre vitres ?",
+        "visual": "Lanterne carrée dorée",
+        "icon": "lanterne"
+      }
+    ]
+  },
+  {
+    "level": 6,
+    "status": "concept",
+    "title": "Nardò et Porto Selvaggio — La forêt des sentinelles",
+    "collectible": "Pommes de pin",
+    "boss": {
+      "name": "Resino, le scarabée de résine",
+      "placeholder": "boss-6.svg",
+      "description": "Une carapace verte ovale, six petites pattes et deux antennes.",
+      "combat": "Carapace fermée pendant sa charge ; sauter, attendre qu’il se retourne, puis toucher son dos lumineux."
+    },
+    "pois": [
+      {
+        "id": "l6-poi-01",
+        "kind": "real_reference",
+        "name": "Baie de Porto Selvaggio",
+        "question_fr": "Quelle petite baie est entourée de pins et bordée de galets ?",
+        "visual": "Croissant bleu entre deux pins",
+        "icon": "baie"
+      },
+      {
+        "id": "l6-poi-02",
+        "kind": "real_reference",
+        "name": "Palude del Capitano",
+        "question_fr": "Où plusieurs bassins d’eau se cachent-ils au milieu des rochers ?",
+        "visual": "Trois bassins irréguliers et roseaux",
+        "icon": "marais"
+      },
+      {
+        "id": "l6-poi-03",
+        "kind": "fictional_game_landmark",
+        "name": "Pin fourchu",
+        "question_fr": "Quel arbre possède un tronc qui se sépare en deux ?",
+        "visual": "Pin au tronc en Y",
+        "icon": "pin"
+      },
+      {
+        "id": "l6-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Tour de la sentinelle",
+        "question_fr": "Quelle tour carrée observe la mer depuis une colline ?",
+        "visual": "Tour carrée et fanion vert",
+        "icon": "tour"
+      },
+      {
+        "id": "l6-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Abri de pierre",
+        "question_fr": "Quel petit refuge est construit en pierres empilées sans toit de tuiles ?",
+        "visual": "Cabane ronde en pierre sèche",
+        "icon": "cabane"
+      },
+      {
+        "id": "l6-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Clairière des papillons",
+        "question_fr": "Où trois papillons tournent-ils autour d’une fleur blanche ?",
+        "visual": "Fleur et trois papillons",
+        "icon": "papillons"
+      },
+      {
+        "id": "l6-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Source fraîche",
+        "question_fr": "D’où sort le filet d’eau qui rejoint une vasque de pierre ?",
+        "visual": "Rocher fendu et eau claire",
+        "icon": "source"
+      },
+      {
+        "id": "l6-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Pont de racines",
+        "question_fr": "Quel passage au-dessus du ruisseau est formé par une grosse racine ?",
+        "visual": "Racine arquée sur eau",
+        "icon": "racine"
+      },
+      {
+        "id": "l6-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Rocher du lézard",
+        "question_fr": "Sur quelle pierre un lézard vert prend-il le soleil ?",
+        "visual": "Pierre plate et lézard",
+        "icon": "lezard"
+      },
+      {
+        "id": "l6-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Nid de la pinède",
+        "question_fr": "Où deux œufs reposent-ils entre les branches ?",
+        "visual": "Nid et deux œufs",
+        "icon": "nid"
+      }
+    ]
+  },
+  {
+    "level": 7,
+    "status": "concept",
+    "title": "Grecìa Salentina — Le rythme des villages",
+    "collectible": "Tambourins dorés",
+    "boss": {
+      "name": "Tamburo, le gardien du contretemps",
+      "placeholder": "boss-7.svg",
+      "description": "Un disque rouge cerclé de petites cymbales, deux bras et deux pieds.",
+      "combat": "Trois pulsations annoncent l’attaque ; sauter au signal visuel. Le son aide mais reste facultatif."
+    },
+    "pois": [
+      {
+        "id": "l7-poi-01",
+        "kind": "fictional_game_landmark",
+        "name": "Place du tambourin",
+        "question_fr": "Sur quelle place un grand tambourin est-il suspendu entre deux mâts ?",
+        "visual": "Tambourin entre deux mâts",
+        "icon": "tambourin"
+      },
+      {
+        "id": "l7-poi-02",
+        "kind": "fictional_game_landmark",
+        "name": "Porte aux deux écritures",
+        "question_fr": "Quelle porte porte deux lignes de signes gravés sur son fronton ?",
+        "visual": "Porte bleue et deux lignes gravées",
+        "icon": "porte"
+      },
+      {
+        "id": "l7-poi-03",
+        "kind": "fictional_game_landmark",
+        "name": "Olivier noueux",
+        "question_fr": "Quel arbre possède un tronc torsadé et trois grosses racines visibles ?",
+        "visual": "Olivier gris à trois racines",
+        "icon": "olivier"
+      },
+      {
+        "id": "l7-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Maison du tisserand",
+        "question_fr": "Dans quelle maison vois-tu un métier à tisser par la fenêtre ?",
+        "visual": "Fenêtre ouverte et métier à tisser",
+        "icon": "tissage"
+      },
+      {
+        "id": "l7-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Puits aux rubans",
+        "question_fr": "Quel puits est décoré de deux rubans rouges ?",
+        "visual": "Puits rond et rubans",
+        "icon": "puits"
+      },
+      {
+        "id": "l7-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Cour des danseurs",
+        "question_fr": "Où deux silhouettes dansent-elles autour d’un cercle peint ?",
+        "visual": "Cour et deux danseurs",
+        "icon": "danse"
+      },
+      {
+        "id": "l7-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Four du village",
+        "question_fr": "D’où sortent trois pains dorés sous une cheminée ?",
+        "visual": "Four voûté et trois pains",
+        "icon": "four"
+      },
+      {
+        "id": "l7-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Cloche de pierre",
+        "question_fr": "Quelle petite arcade abrite une cloche unique ?",
+        "visual": "Arcade et cloche",
+        "icon": "cloche"
+      },
+      {
+        "id": "l7-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Muret aux fleurs",
+        "question_fr": "Quel muret est traversé par cinq fleurs violettes ?",
+        "visual": "Muret bas et cinq fleurs",
+        "icon": "fleurs"
+      },
+      {
+        "id": "l7-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Étoile de la place",
+        "question_fr": "Quel dessin à huit branches est posé au centre du pavage ?",
+        "visual": "Étoile de pierre à huit branches",
+        "icon": "etoile"
+      }
+    ]
+  },
+  {
+    "level": 8,
+    "status": "concept",
+    "title": "Specchia et les Serre — L’or des oliviers",
+    "collectible": "Olives lumineuses",
+    "boss": {
+      "name": "Macina, le géant du moulin",
+      "placeholder": "boss-8.svg",
+      "description": "Deux roues de pierre grises, un corps trapézoïdal et des yeux ambrés.",
+      "combat": "La roue roule sur une voie annoncée au sol ; l’éviter, puis frapper le noyau lorsqu’elle s’immobilise."
+    },
+    "pois": [
+      {
+        "id": "l8-poi-01",
+        "kind": "fictional_game_landmark",
+        "name": "Belvédère des Serre",
+        "question_fr": "D’où voit-on trois collines derrière une rambarde de pierre ?",
+        "visual": "Terrasse et trois collines",
+        "icon": "belvedere"
+      },
+      {
+        "id": "l8-poi-02",
+        "kind": "fictional_game_landmark",
+        "name": "Moulin souterrain",
+        "question_fr": "Quel escalier descend vers une grande meule ronde ?",
+        "visual": "Entrée basse, escalier et meule",
+        "icon": "moulin"
+      },
+      {
+        "id": "l8-poi-03",
+        "kind": "fictional_game_landmark",
+        "name": "Olivier aux lanternes",
+        "question_fr": "Quel arbre porte deux lanternes entre ses branches ?",
+        "visual": "Olivier et deux lampes",
+        "icon": "olivier"
+      },
+      {
+        "id": "l8-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Jarre d’huile",
+        "question_fr": "Quel grand récipient porte une goutte dorée sur son ventre ?",
+        "visual": "Jarre ocre et goutte",
+        "icon": "jarre"
+      },
+      {
+        "id": "l8-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Cour aux arcades",
+        "question_fr": "Quelle cour est bordée de trois arches identiques ?",
+        "visual": "Trois arches de pierre",
+        "icon": "arcades"
+      },
+      {
+        "id": "l8-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Pajara du verger",
+        "question_fr": "Quel abri rond possède un escalier sur son côté ?",
+        "visual": "Cabane conique et escalier",
+        "icon": "pajara"
+      },
+      {
+        "id": "l8-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Fontaine aux feuilles",
+        "question_fr": "Quelle fontaine porte deux feuilles d’olivier sculptées ?",
+        "visual": "Fontaine et deux feuilles",
+        "icon": "fontaine"
+      },
+      {
+        "id": "l8-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Charrette de récolte",
+        "question_fr": "Quel chariot transporte trois paniers pleins d’olives ?",
+        "visual": "Charrette et trois paniers",
+        "icon": "charrette"
+      },
+      {
+        "id": "l8-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Porte de la colline",
+        "question_fr": "Quelle porte fortifiée est surmontée d’un fanion jaune ?",
+        "visual": "Porte haute et fanion jaune",
+        "icon": "porte"
+      },
+      {
+        "id": "l8-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Meule du soleil",
+        "question_fr": "Quelle roue de pierre porte un soleil gravé en son centre ?",
+        "visual": "Meule à motif solaire",
+        "icon": "meule"
+      }
+    ]
+  },
+  {
+    "level": 9,
+    "status": "concept",
+    "title": "Manduria — Les gardiens messapiens",
+    "collectible": "Fragments d’amphore",
+    "boss": {
+      "name": "Argillo, le scorpion d’argile",
+      "placeholder": "boss-9.svg",
+      "description": "Un corps terre cuite, deux pinces triangulaires et une queue segmentée.",
+      "combat": "Alterner pinces gauche et droite puis une frappe de queue annoncée ; attaquer après la troisième frappe."
+    },
+    "pois": [
+      {
+        "id": "l9-poi-01",
+        "kind": "real_reference",
+        "name": "Murailles messapiennes",
+        "question_fr": "Quelle double rangée de grandes pierres entoure l’ancienne cité ?",
+        "visual": "Deux rangées de blocs clairs",
+        "icon": "murailles"
+      },
+      {
+        "id": "l9-poi-02",
+        "kind": "real_reference",
+        "name": "Fonte Pliniano",
+        "question_fr": "Dans quelle cavité se trouve un bassin rond rempli d’eau ?",
+        "visual": "Ouverture souterraine et bassin rond",
+        "icon": "source"
+      },
+      {
+        "id": "l9-poi-03",
+        "kind": "real_reference",
+        "name": "Salina dei Monaci",
+        "question_fr": "Quel grand miroir d’eau est entouré de végétation basse ?",
+        "visual": "Lagune et touffes de salicornes",
+        "icon": "saline"
+      },
+      {
+        "id": "l9-poi-04",
+        "kind": "fictional_game_landmark",
+        "name": "Atelier du potier",
+        "question_fr": "Où une amphore encore humide tourne-t-elle sur un plateau ?",
+        "visual": "Tour de potier et amphore",
+        "icon": "potier"
+      },
+      {
+        "id": "l9-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Porte du bouclier",
+        "question_fr": "Quelle entrée porte un bouclier rond au-dessus de son passage ?",
+        "visual": "Porte et bouclier",
+        "icon": "bouclier"
+      },
+      {
+        "id": "l9-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Vigne aux grappes",
+        "question_fr": "Où trois grappes violettes pendent-elles sous de grandes feuilles ?",
+        "visual": "Treille et trois grappes",
+        "icon": "vigne"
+      },
+      {
+        "id": "l9-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Mosaïque du poisson",
+        "question_fr": "Quel sol est décoré d’un poisson bleu entouré de carreaux blancs ?",
+        "visual": "Carré de mosaïque et poisson",
+        "icon": "mosaique"
+      },
+      {
+        "id": "l9-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Borne des voyageurs",
+        "question_fr": "Quelle pierre dressée montre une flèche et deux traces de pas ?",
+        "visual": "Borne et flèche gravée",
+        "icon": "borne"
+      },
+      {
+        "id": "l9-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Jardin des grenades",
+        "question_fr": "Quel arbre porte trois fruits rouges fendus ?",
+        "visual": "Grenadier et trois fruits",
+        "icon": "grenade"
+      },
+      {
+        "id": "l9-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Amphore des fragments",
+        "question_fr": "Quel vase réparé présente trois jointures dorées ?",
+        "visual": "Amphore et trois fissures dorées",
+        "icon": "amphore"
+      }
+    ]
+  },
+  {
+    "level": 10,
+    "status": "concept",
+    "title": "Brindisi — Le grand retour des hirondelles",
+    "collectible": "Plumes d’aurore",
+    "boss": {
+      "name": "Nembor, le gardien des brumes",
+      "placeholder": "boss-10.svg",
+      "description": "Un nuage bleu sombre en trois lobes, deux ailes blanches et un cœur doré.",
+      "combat": "Trois phases courtes reprennent rafales, projectiles et rythme ; chaque phase expose le cœur après une attaque annoncée."
+    },
+    "pois": [
+      {
+        "id": "l10-poi-01",
+        "kind": "real_reference",
+        "name": "Colonnes romaines",
+        "question_fr": "Quel repère de pierre élevé domine les marches près du port ?",
+        "visual": "Colonne claire à chapiteau",
+        "icon": "colonne"
+      },
+      {
+        "id": "l10-poi-02",
+        "kind": "real_reference",
+        "name": "Scalinata Virgiliana",
+        "question_fr": "Quel large escalier monte du front de mer vers les colonnes ?",
+        "visual": "Grand escalier et colonne au sommet",
+        "icon": "escalier"
+      },
+      {
+        "id": "l10-poi-03",
+        "kind": "real_reference",
+        "name": "Castello Svevo",
+        "question_fr": "Quelle forteresse de pierre garde une cour derrière ses remparts ?",
+        "visual": "Forteresse carrée et cour centrale",
+        "icon": "chateau"
+      },
+      {
+        "id": "l10-poi-04",
+        "kind": "real_reference",
+        "name": "Monumento al Marinaio",
+        "question_fr": "Quel monument ressemble à un immense gouvernail dressé ?",
+        "visual": "Tour en forme de gouvernail",
+        "icon": "gouvernail"
+      },
+      {
+        "id": "l10-poi-05",
+        "kind": "fictional_game_landmark",
+        "name": "Quai des hirondelles",
+        "question_fr": "Où trois hirondelles sont-elles posées sur les anneaux du quai ?",
+        "visual": "Quai et trois oiseaux",
+        "icon": "hirondelles"
+      },
+      {
+        "id": "l10-poi-06",
+        "kind": "fictional_game_landmark",
+        "name": "Boussole du retour",
+        "question_fr": "Quelle boussole porte une plume au centre de ses quatre flèches ?",
+        "visual": "Boussole et plume",
+        "icon": "boussole"
+      },
+      {
+        "id": "l10-poi-07",
+        "kind": "fictional_game_landmark",
+        "name": "Voilier de l’aurore",
+        "question_fr": "Quel bateau porte un soleil levant sur sa voile ?",
+        "visual": "Voile blanche et demi-soleil",
+        "icon": "voilier"
+      },
+      {
+        "id": "l10-poi-08",
+        "kind": "fictional_game_landmark",
+        "name": "Porte des sept trésors",
+        "question_fr": "Quelle porte est entourée de sept petits médaillons ?",
+        "visual": "Arche et sept médaillons",
+        "icon": "medaillons"
+      },
+      {
+        "id": "l10-poi-09",
+        "kind": "fictional_game_landmark",
+        "name": "Nid du retour",
+        "question_fr": "Où trois plumes dorées reposent-elles dans un nid sous une corniche ?",
+        "visual": "Nid sous corniche et plumes",
+        "icon": "nid"
+      },
+      {
+        "id": "l10-poi-10",
+        "kind": "fictional_game_landmark",
+        "name": "Phare des souvenirs",
+        "question_fr": "Quelle petite tour projette un rayon contenant les symboles de nos découvertes ?",
+        "visual": "Tour imaginaire et rayon multicolore",
+        "icon": "phare"
+      }
+    ]
+  }
+]

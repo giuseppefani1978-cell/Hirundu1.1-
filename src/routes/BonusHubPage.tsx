@@ -1,186 +1,53 @@
-// src/routes/BonusHubPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import BonusIndex from "../features/bonus/BonusIndex";
-import QrHub from "../features/qr/routes/QrHub";
-import "./BonusHubPage.css";
-
-const TOAST_KEY = "__toast_next__";
-
-function consumeToast(): string | null {
-  try {
-    const v = window.localStorage.getItem(TOAST_KEY);
-    if (!v) return null;
-    window.localStorage.removeItem(TOAST_KEY);
-    return v;
-  } catch {
-    return null;
-  }
-}
-
-function toastMessage(key: string | null): string | null {
-  switch (key) {
-    case "otranto":
-      return "Niveau 1 terminé ! Bonus Otranto débloqué 🎉";
-    case "gallipoli":
-      return "Niveau 2 terminé ! Bonus Gallipoli débloqué 🎉";
-    case "lecce":
-      return "Niveau 3 terminé ! Bonus Lecce débloqué 🎉";
-    default:
-      return null;
-  }
-}
-
-/** Coupe proprement tous les flux média encore actifs (caméra/micro). */
-function stopAllMediaStreams() {
-  try {
-    const medias = Array.from(
-      document.querySelectorAll("video, audio")
-    ) as Array<HTMLVideoElement & { srcObject?: MediaStream }>;
-
-    for (const el of medias) {
-      const stream = (el as any).srcObject as MediaStream | undefined;
-      if (stream?.getTracks) {
-        stream.getTracks().forEach((t) => {
-          try {
-            t.stop();
-          } catch {}
-        });
-      }
-      try {
-        (el as any).srcObject = null;
-        el.pause?.();
-      } catch {}
-    }
-  } catch {}
-}
+import React, { lazy, Suspense, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useBonusProgress } from '../features/bonus/useBonusProgress';
+import { BONUS_MAPS } from '../features/bonus/bonusData';
+import LanguageSelect from '../ui/LanguageSelect';
+import { copy } from '../ui/copy.js';
+import './BonusHubPage.css';
+const Rankings = lazy(() => import('../features/bonus/HallOfFameSection'));
+import '../features/bonus/BonusIndex.css';
 
 export default function BonusHubPage() {
+  const navigate = useNavigate();
   const location = useLocation();
-  const params = useParams<{ bonusId?: string }>();
-
-  const rawNextLevel = (location.state as { nextLevel?: number } | null)?.nextLevel;
-  const hasNextLevel = typeof rawNextLevel === "number" && rawNextLevel >= 1;
-  const nextLevel = hasNextLevel ? Math.max(1, Math.min(3, rawNextLevel ?? 1)) : 3;
-
-  const [toastKey, setToastKey] = useState<string | null>(() => consumeToast());
-  const message = useMemo(() => toastMessage(toastKey), [toastKey]);
-
-  // Récupère un éventuel unlockedKey poussé via navigate(..., { state })
-  useEffect(() => {
-    if (location.state && (location.state as { unlockedKey?: string }).unlockedKey) {
-      setToastKey((location.state as { unlockedKey?: string }).unlockedKey ?? null);
-    }
-  }, [location.state]);
-
-  // Auto-hide du toast
-  useEffect(() => {
-    if (!message) return;
-    const id = window.setTimeout(() => setToastKey(null), 4200);
-    return () => window.clearTimeout(id);
-  }, [message]);
-
-  // Scroll automatique sur une carte bonus ciblée via .../bonus/:bonusId
-  useEffect(() => {
-    if (!params.bonusId) return;
-    const target = document.querySelector(
-      `[data-bonus-key="${params.bonusId.toLowerCase()}"]`
-    );
-    if (target && "scrollIntoView" in target) {
-      (target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
-      target.classList.add("bonus-hub-page__card-focus");
-      return () => (target as HTMLElement).classList.remove("bonus-hub-page__card-focus");
-    }
-  }, [params.bonusId]);
-
-  // Toujours autoriser le scroll vertical ici + cleanup caméra à la sortie
-  useEffect(() => {
-    const prev = document.body.style.overflowY;
-    document.body.style.overflowY = "auto";
-    return () => {
-      document.body.style.overflowY = prev;
-      stopAllMediaStreams();
-    };
-  }, []);
-
-  // Filet de sécurité : intercepter les clics "fermer" et certains hash
-  useEffect(() => {
-    function handleClick(ev: Event) {
-      const el = ev.target as HTMLElement | null;
-      if (!el) return;
-
-      const closeEl =
-        el.closest?.(
-          `[data-qr-close],
-           .qr-modal__close,
-           .scanner-close,
-           button[aria-label="Fermer"],
-           button[aria-label="Close"],
-           a[href="#"]`
-        ) || null;
-
-      if (closeEl) {
-        ev.preventDefault?.();
-        ev.stopPropagation?.();
-        stopAllMediaStreams();
-        // masque un éventuel overlay interne sans changer de page
-        (document.querySelector(".qr-modal, .qr-overlay") as HTMLElement | null)?.classList.remove(
-          "is-open"
-        );
-      }
-    }
-
-    function handleHash(e: HashChangeEvent) {
-      // si un composant tente de pousser "#", on annule et on coupe la caméra
-      if (location.hash === "#") {
-        e.preventDefault();
-        stopAllMediaStreams();
-        history.replaceState(null, "", location.pathname + location.search);
-      }
-    }
-
-    document.addEventListener("click", handleClick, true);
-    window.addEventListener("hashchange", handleHash, true);
-    return () => {
-      document.removeEventListener("click", handleClick, true);
-      window.removeEventListener("hashchange", handleHash, true);
-    };
-  }, [location.pathname, location.search, location.hash]);
-
-  return (
-    <div className="bonus-hub-page">
-      {message ? (
-        <div className="bonus-hub-page__toast" role="status">
-          {message}
-        </div>
-      ) : null}
-
-      <div className="bonus-hub-page__grid">
-        <div className="bonus-hub-page__column bonus-hub-page__column--primary">
-          <BonusIndex />
-        </div>
-
-        <aside className="bonus-hub-page__column bonus-hub-page__column--qr" aria-label="Scanner QR">
-          <div className="bonus-hub-page__panel">
-            <header className="bonus-hub-page__panel-header">
-              <h2>📷 Scanner depuis la zone bonus</h2>
-              <p>
-                Scanne les QR codes fournis sur les plans Leaflet d’Otranto, Gallipoli et Lecce pour
-                valider les POI partenaires.
-              </p>
-              {hasNextLevel ? (
-                <p className="bonus-hub-page__panel-next">
-                  Prochaine étape débloquée : niveau {nextLevel} de la chasse.
-                </p>
-              ) : null}
-              {/* Bouton “Retour au jeu” supprimé volontairement */}
-            </header>
-
-            {/* QrHub tel quel — nos hooks gèrent la fermeture propre */}
-            <QrHub />
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
+  const { progress, unlockedKeys } = useBonusProgress();
+  const [more, setMore] = useState(location.search.includes('hof'));
+  const next = progress.find((level) => !level.done && level.unlocked);
+  const completed = progress.filter((level) => level.done).length;
+  const unlockedKey = (location.state as { unlockedKey?: string } | null)?.unlockedKey;
+  return <main className="discoveries">
+    <header className="discoveries__nav">
+      <button className="app-button app-button--ghost" onClick={() => navigate('/')}>← {copy.home}</button>
+      <LanguageSelect />
+    </header>
+    <section className="discoveries__hero">
+      {unlockedKey && <p className="discoveries__success" role="status">✓ {copy.won}</p>}
+      <p className="discoveries__eyebrow">HIRUNDU · {completed} / 3</p>
+      <h1>{copy.bonus}</h1><p>{copy.bonusLead}</p>
+      {next ? <button className="app-button app-button--dark" onClick={() => navigate(`/level/${next.id}`)}>
+        ▶ {copy.continue} · {copy.level} {next.id}
+      </button> : <><p>{copy.complete}</p><button className="app-button" onClick={() => navigate('/level/1')}>{copy.replay}</button></>}
+    </section>
+    <section aria-labelledby="maps-title">
+      <h2 id="maps-title">{copy.maps}</h2><p>{copy.mapHint}</p>
+      <div className="discoveries__maps">{progress.map((level) => {
+        const unlocked = unlockedKeys.includes(level.key) || level.done;
+        return <article key={level.key} className="discoveries__card">
+          <span>{copy.level} {level.id}</span><h3>{BONUS_MAPS[level.key].title}</h3>
+          <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
+            {unlocked ? copy.open : copy.locked}
+          </button>
+        </article>;
+      })}</div>
+    </section>
+    <section className="discoveries__passport">
+      <div><h2>{copy.passport}</h2><p>{copy.passportHint}</p></div>
+      <button className="app-button" onClick={() => navigate('/passport/otranto')}>{copy.passportOpen}</button>
+    </section>
+    <details className="discoveries__more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
+      <summary>{copy.more}</summary>
+      {more && <Suspense fallback={<p>{copy.loading}</p>}><Rankings /></Suspense>}
+    </details>
+  </main>;
 }

@@ -1,3 +1,4 @@
+import { bt, LANG } from "../i18n/bonusLocale";
 // src/features/qr/routes/QrHub.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -144,7 +145,7 @@ export default function QrHub() {
     (payload: string) => {
       const raw = payload.trim();
       if (!raw) {
-        dispatch(scanFailed({ message: "Le QR ne contient pas de valeur exploitable." }));
+        dispatch(scanFailed({ message: bt("Le QR ne contient pas de valeur exploitable.") }));
         return;
       }
 
@@ -158,7 +159,7 @@ export default function QrHub() {
       if (action.type === "unknown") {
         dispatch(
           scanFailed({
-            message: "Ce QR n’est pas encore reconnu. Vérifie le scénario ou la configuration.",
+            message: bt("Ce QR n’est pas encore reconnu. Vérifie le scénario ou la configuration."),
             raw,
           })
         );
@@ -207,19 +208,12 @@ export default function QrHub() {
     <section className="app-section qr-hub">
       <header className="qr-hub__header">
         <div className="qr-hub__header-copy">
-          <h1 className="qr-hub__title">🔍 Scanner un QR</h1>
-          <p className="qr-hub__subtitle">
-            Lance le scanner pour lire un code partenaire ou déclenche un scénario fictif pour tester
-            les flux de navigation.
-          </p>
+          <h1 className="qr-hub__title">🔍 {bt("Scanner un QR")}</h1>
+          <p className="qr-hub__subtitle">{bt("Scanne un QR partenaire pour valider une visite ou découvrir une récompense.")}</p>
         </div>
         <div className="qr-hub__header-actions">
-          <button type="button" className="app-button app-button--dark" onClick={openScanner}>
-            📷 Lancer le scanner
-          </button>
-          <button type="button" className="app-button app-button--ghost" onClick={resetScan}>
-            ♻︎ Réinitialiser
-          </button>
+          <button type="button" className="app-button app-button--dark" onClick={openScanner}>📷 {bt("Lancer le scanner")}</button>
+          <button type="button" className="app-button app-button--ghost" onClick={resetScan}>♻︎ {bt("Réinitialiser")}</button>
         </div>
       </header>
 
@@ -227,7 +221,7 @@ export default function QrHub() {
         <article className="surface-card qr-hub__result" aria-live="polite">
           <div className="qr-hub__result-head">
             <div>
-              <h2>Dernier scan</h2>
+              <h2>{bt("Dernier scan")}</h2>
               <p className="qr-hub__result-meta">
                 {formatDate(lastScan.scannedAt)} · {statusLabel(status)}
               </p>
@@ -249,20 +243,14 @@ export default function QrHub() {
           ) : null}
 
           <div className="qr-hub__actions">
-            <button type="button" className="app-button app-button--success" onClick={openScanner}>
-              Scanner encore
-            </button>
-            <button type="button" className="app-button app-button--ghost" onClick={resetScan}>
-              Effacer l’historique
-            </button>
+            <button type="button" className="app-button app-button--success" onClick={openScanner}>{bt("Scanner encore")}</button>
+            <button type="button" className="app-button app-button--ghost" onClick={resetScan}>{bt("Effacer l’historique")}</button>
           </div>
         </article>
       ) : (
         <article className="surface-card qr-hub__empty" role="status">
-          <p>Aucun scan pour l’instant. Lance le lecteur ou choisis un scénario dans la liste.</p>
-          <button type="button" className="app-button app-button--dark" onClick={openScanner}>
-            📷 Activer le scanner
-          </button>
+          <p>{bt("Aucun scan pour l’instant. Lance le lecteur ou choisis un scénario dans la liste.")}</p>
+          <button type="button" className="app-button app-button--dark" onClick={openScanner}>📷 {bt("Activer le scanner")}</button>
         </article>
       )}
 
@@ -273,31 +261,26 @@ export default function QrHub() {
         </div>
       ) : null}
 
-      <section className="surface-card qr-hub__scenarios" aria-label="QR fictifs disponibles">
+      <section className="surface-card qr-hub__scenarios" aria-label={bt("QR fictifs disponibles")}>
         <header className="qr-hub__scenarios-head">
-          <h2>Scénarios de test</h2>
-          <p>
-            Ces QR fictifs déclenchent les différents parcours (carte, marché, badges, partenaires)
-            pour valider l’orchestration.
-          </p>
+          <h2>{bt("Scénarios de test")}</h2>
+          <p>{bt("Essaie ces QR de démonstration pour explorer les cartes, partenaires et badges.")}</p>
         </header>
         <ul className="qr-hub__scenario-list">
           {SCENARIOS.map((scenario) => (
             <li key={scenario.id} className="qr-hub__scenario-item">
               <div>
-                <div className="qr-hub__scenario-label">{scenario.label}</div>
+                <div className="qr-hub__scenario-label">{bt(scenario.label)}</div>
                 <code className="qr-hub__scenario-code">{scenario.payload}</code>
                 {scenario.notes ? (
-                  <p className="qr-hub__scenario-notes">{scenario.notes}</p>
+                  <p className="qr-hub__scenario-notes">{bt(scenario.notes)}</p>
                 ) : null}
               </div>
               <button
                 type="button"
                 className="app-button app-button--ghost"
                 onClick={() => handleScenario(scenario.payload)}
-              >
-                ▶︎ Déclencher
-              </button>
+              >▶︎ {bt("Déclencher")}</button>
             </li>
           ))}
         </ul>
@@ -317,7 +300,7 @@ export default function QrHub() {
 
 function formatDate(value: string): string {
   const date = new Date(value);
-  return new Intl.DateTimeFormat("fr-FR", {
+  return new Intl.DateTimeFormat(LANG, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
@@ -326,31 +309,31 @@ function formatDate(value: string): string {
 function statusLabel(status: string): string {
   switch (status) {
     case "scanning":
-      return "Scanner actif";
+      return bt("Scanner actif");
     case "succeeded":
-      return "Succès";
+      return bt("Succès");
     case "failed":
-      return "Erreur";
+      return bt("Erreur");
     default:
-      return "En attente";
+      return bt("En attente");
   }
 }
 
 function actionLabel(action: QRAction): string {
   switch (action.type) {
     case "open-otranto-map":
-      return "Carte";
+      return bt("Carte");
     case "open-otranto-market":
-      return "Marché";
+      return bt("Marché");
     case "open-any":
-      return "Navigation";
+      return bt("Navigation");
     case "badge":
-      return "Badge";
+      return bt("Badge");
     case "partner":
-      return "Partenaire";
+      return bt("Partenaire");
     case "unknown":
     default:
-      return "Inconnu";
+      return bt("Inconnu");
   }
 }
 
@@ -375,29 +358,29 @@ function describeAction(
     case "open-otranto-map":
       return {
         icon: "🗺️",
-        title: "Carte d’Otrante prête à s’ouvrir",
-        subtitle: "Navigue sur la carte réelle pour visualiser les partenaires localisés.",
+        title: bt("Carte d’Otrante prête à s’ouvrir"),
+        subtitle: bt("Navigue sur la carte réelle pour visualiser les partenaires localisés."),
         tone: "info",
-        actionLabel: "Voir la carte",
+        actionLabel: bt("Voir la carte"),
         onAction: () => navigate("/poi/otranto/realmap"),
       };
     case "open-otranto-market":
       return {
         icon: "🛒",
-        title: "Accès au marché d’Otrante",
-        subtitle: "Consulte la liste des partenaires et de leurs récompenses.",
+        title: bt("Accès au marché d’Otrante"),
+        subtitle: bt("Consulte la liste des partenaires et de leurs récompenses."),
         tone: "info",
-        actionLabel: "Explorer le marché",
+        actionLabel: bt("Explorer le marché"),
         onAction: () => navigate("/poi/otranto/market"),
       };
     case "open-any": {
       const safePath = normalizePath(action.path);
       return {
         icon: "🧭",
-        title: "Navigation générique",
-        subtitle: `Cible : ${safePath}`,
+        title: bt("Navigation générique"),
+        subtitle: `${bt("Cible")} : ${safePath}`,
         tone: "neutral",
-        actionLabel: "Suivre le lien",
+        actionLabel: bt("Suivre le lien"),
         onAction: () => navigate(safePath),
       };
     }
@@ -405,11 +388,11 @@ function describeAction(
       const partnerByName = PARTNER_BY_NAME.get(normalizeToken(action.name));
       return {
         icon: "🏅",
-        title: `Badge débloqué : ${action.name}`,
-        subtitle: partnerByName?.description || "Badge fictif pour valider le flux de progression.",
+        title: `${bt("Badge débloqué")} : ${action.name}`,
+        subtitle: (partnerByName ? bt(partnerByName.description) : "") || bt("Badge fictif pour valider le flux de progression."),
         meta: partnerByName ? rewardLabel(partnerByName.reward) : undefined,
         tone: "success",
-        actionLabel: "Voir les bonus",
+        actionLabel: bt("Voir les bonus"),
         onAction: () => navigate("/bonus"),
       };
     }
@@ -418,22 +401,22 @@ function describeAction(
       const poi = pois.find((entry) => entry.partner?.id === partner?.id);
       return {
         icon: "🤝",
-        title: partner ? `${partner.name} scanné !` : "Partenaire reconnu",
+        title: partner ? `${partner.name} · ${bt("Scanné")} !` : "Partenaire reconnu",
         subtitle:
-          partner?.description ||
-          "Le QR correspond à un partenaire fictif. Vérifie la carte pour valider l’emplacement.",
+          (partner ? bt(partner.description) : "") ||
+          bt("Le QR correspond à un partenaire fictif. Vérifie la carte pour valider l’emplacement."),
         meta: partner ? rewardLabel(partner.reward) : undefined,
         tone: "success",
-        actionLabel: "Voir sur la carte",
+        actionLabel: bt("Voir sur la carte"),
         onAction: () => navigate(`/poi/${encodeURIComponent(resolveBonusKey(poi))}/realmap`),
       };
     }
     case "unknown":
       return {
         icon: "❓",
-        title: "QR inconnu",
+        title: bt("QR inconnu"),
         subtitle:
-          "Ajoute ce QR dans le fichier des scénarios ou complète le service d’interprétation.",
+          bt("Ajoute ce QR dans le fichier des scénarios ou complète le service d’interprétation."),
         tone: "warning",
       };
     default:
@@ -479,16 +462,16 @@ function applyPassportVisits(targets: ReturnType<typeof getEnrichedPois>): void 
 }
 
 function rewardLabel(reward: PartnerReward | undefined): string {
-  if (!reward) return "Récompense non renseignée";
+  if (!reward) return bt("Récompense non renseignée");
   switch (reward.type) {
     case "stars":
-      return `${reward.value} étoile${reward.value > 1 ? "s" : ""}`;
+      return `${bt("Étoiles")} : ${reward.value}`;
     case "score":
-      return `${reward.value} points d’expérience`;
+      return `${bt("Points d’expérience")} : ${reward.value}`;
     case "bonus":
       return `${reward.value}× ${reward.item}`;
     default:
-      return "Récompense partenaire";
+      return bt("Récompense partenaire");
   }
 }
 
@@ -503,7 +486,7 @@ function normalizePath(path: string): string {
 function resolveBonusKey(poi: ReturnType<typeof getEnrichedPois>[number] | undefined): BonusKey {
   if (!poi) return "otranto";
   const entries = Object.entries(BONUS_MAPS) as [BonusKey, (typeof BONUS_MAPS)[BonusKey]][];
-  const found = entries.find(([, cfg]) => cfg.poiIds.includes(poi.id));
+  const found = entries.find(([, cfg]) => cfg.poiIds.some((id) => id === poi.id));
   return found?.[0] ?? "otranto";
 }
 

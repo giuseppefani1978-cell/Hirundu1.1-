@@ -1,3 +1,5 @@
+import { copy } from '../../ui/copy.js';
+import { createLevelSession, setupHuntControls } from '../../legacy/levelSession.js';
 // src/levels/level2/level2_game.js
 // =====================================================
 // NIVEAU 2 — CHASSE DES 10 SOLEILS DU SALENTO
@@ -7,7 +9,7 @@ import { t, poiName, poiInfo } from '../../i18n.js';
 import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from '../../audio.js';
 import * as ui from '../../ui.js';
@@ -119,25 +121,31 @@ function getCountry(){
 // ------------------------
 // BOOT (chasse uniquement)
 // ------------------------
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  let cleanupIntro = null;
+  let cleanupBattle = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
 
   // UI init
   ui.initUI();
   removeVictoryCTA();
-  setupVictoryCTAHandlers();
+  removeVictoryCTA();
 
   // Titres L2 + HUD "Soleils"
   const hudLabel = document.getElementById('hudLabel');
-  if (hudLabel) hudLabel.textContent = 'Soleils';
+  if (hudLabel) hudLabel.textContent = t.level2.hudLabel;
 
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
-  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live
@@ -187,19 +195,10 @@ export function boot(){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 2,
-    theme: 'gallipoli',
-    badge: 'Niveau 2',
-    title: 'Les Soleils du Salento',
-    subtitle: 'Collecte les 10 soleils et révèle la côte ionienne.',
-    description:
-      'Pars de Gallipoli, esquive les méduses et récupère chaque soleil pour faire progresser le passeport.',
-    footnote: 'Victoire = BONUS débloqué',
-    startLabel: '▶︎ Lancer le niveau 2',
-    highlight: {
-      title: 'Briefing',
-      body: 'Les soleils alimentent ta progression et ouvrent la route vers Lecce.',
-    },
+    level: 2, theme: 'gallipoli', badge: `${copy.level} 2`,
+    title: t.level2.title, subtitle: t.level2.subtitle, description: copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#facc15',
   });
 
@@ -231,11 +230,11 @@ export function boot(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
-  window.addEventListener('resize', resize, { passive:true });
+  session.listen(window, 'resize', resize, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
+  session.listen(window, 'orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
@@ -306,11 +305,11 @@ export function boot(){
   function updatePadAVisibilityForMode() {}
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(player, () => getSpeed(), () => mode === 'play');
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play', session);
 
   // Start button
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (startBtn) session.listen(startBtn, 'click', startGame);
 
   // Première question
   askQuestionAt(0);
@@ -370,7 +369,7 @@ export function boot(){
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
 
     const entry = {
-      name: playerName || 'Joueur',
+      name: playerName || copy.player,
       country,
       score: total,
       stars: starsPicked,
@@ -384,7 +383,7 @@ export function boot(){
     };
     addHallOfFameEntry(entry, HOF_KEY);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Soleils: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -415,15 +414,14 @@ export function boot(){
       ui.showSuccess([...baseLines, winExtra].join('\n'));
       try { unlockGallipoliBonus(); } catch {}
       try { showBonusCta(); } catch {}
-      setTimeout(() => {
-        try { document.dispatchEvent(new Event('otranto:unlocked')); } catch {}
-      }, 360);
+
     }
   }
 
   // ---------- Game loop ----------
   function draw(ts){
-    if(!running) return;
+    if(!running || !session.active) return;
+    if (document.hidden) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
@@ -431,6 +429,7 @@ export function boot(){
       lastTS = ts;
 
       if (mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
@@ -554,17 +553,17 @@ export function boot(){
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Gallipoli — Corbeaux';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdTitle.textContent = `${copy.battle} · Gallipoli`;
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
     } catch {}
 
-    startBattleIntro({
-      title: '⚔️ Bataille de Gallipoli',
-      subtitle: "Prépare-toi : Aracne vs. Corbeaux\n(les commandes apparaîtront en mode paysage)",
-      startLabel: 'Commencer',
+    cleanupIntro = startBattleIntro({
+      title: `⚔️ ${copy.battle} · Gallipoli`,
+      subtitle: copy.battleHint,
+      startLabel: copy.fight,
       ammo: {
         pasticciotto: pickedCounts.pasticciotto|0,
         rustico:      pickedCounts.rustico|0,
@@ -572,6 +571,7 @@ export function boot(){
         stars:        starsPicked|0
       },
 onProceed: async () => {
+    if (!session.active) return;
   try {
     running = false;
     mode = 'battle';
@@ -586,7 +586,9 @@ onProceed: async () => {
       mod = await import('../../game_battle.js');
     }
     const { startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
 
+    if (!session.active) return;
     await startBattleFlow(
       {
         pasticciotto: pickedCounts.pasticciotto | 0,
@@ -599,6 +601,7 @@ onProceed: async () => {
       {
         bottomExtra: 0,
         onWin: () => {
+          if (!session.active) return;
           try { unlockGallipoliBonus(); } catch {}
           document.body.classList.remove('mode-battle');
           mode = 'win';
@@ -607,6 +610,7 @@ onProceed: async () => {
           try { triggerWin(); } catch (err) { console.error(err); }
         },
         onLose: () => {
+          if (!session.active) return;
           document.body.classList.remove('mode-battle');
           mode = 'dead';
           running = false;
@@ -754,12 +758,12 @@ onProceed: async () => {
   function startGame() {
     try {
       document.body.classList.remove('mode-battle');
-      playerName = getStoredPlayerName() || 'Joueur';
+      playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
-      lsSet('player_name', playerName);
+
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
       gameStartAt = performance.now();
@@ -809,7 +813,7 @@ onProceed: async () => {
       openBonusMap('gallipoli');
     }
   };
-  window.addEventListener('hashchange', handleHash);
+  session.listen(window, 'hashchange', handleHash);
   handleHash();
 
   // helpers UI
@@ -845,47 +849,9 @@ onProceed: async () => {
     return false;
   }
 
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!hasGallipoliBonusUnlocked()) return;
-    let link = document.getElementById('__gallipoli_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__gallipoli_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      link.addEventListener('click', () => openBonusMap('gallipoli'));
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
 
-  function showBonusCta() {
-    if (document.getElementById('__bonus_cta')) return;
-
-    const btn = document.createElement('button');
-    btn.id = '__bonus_cta';
-    btn.type = 'button';
-    btn.textContent = '🌞 BONUS — ouvrir';
-    btn.style.cssText = `
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:86px; z-index:10003;
-      background:linear-gradient(180deg, #34d399, #10b981);
-      color:white; border:0; border-radius:999px;
-      padding:12px 18px; font:700 14px system-ui;
-      box-shadow:0 8px 18px rgba(0,0,0,.2);
-    `;
-    document.body.appendChild(btn);
-
-    btn.addEventListener('click', () => {
-      openBonusMap('gallipoli');
-    });
-  }
+  function showBonusCta() { /* Bonus navigation belongs to the discoveries page. */ }
 
   // ✅ Déblocage robuste : nouveau format + legacy + events + HUD
   function unlockGallipoliBonus(){
@@ -916,6 +882,19 @@ onProceed: async () => {
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
+  return () => {
+    running = false;
+    session.dispose();
+    document.getElementById("__score_live")?.remove();
+    cleanupIntro?.();
+    cleanupBattle?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+  };
 }
 
 // ------------------------
@@ -1104,28 +1083,7 @@ function shuffle(arr){
 /**
  * D-pad tactile/souris. Ne bouge que si canMove() === true
  */
-function setupDpad(player, getSpeed, canMove){
-  document.querySelectorAll('.btn').forEach((el) => {
-    const dx = parseFloat(el.dataset.dx);
-    const dy = parseFloat(el.dataset.dy);
-    if (isNaN(dx) || isNaN(dy)) return;
-    let press = false, rafId = null;
 
-    const step = () => {
-      if (!press) return;
-      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
-      const s = getSpeed();
-      player.x = Math.max(0, Math.min(1, player.x + dx * s));
-      player.y = Math.max(0, Math.min(1, player.y + dy * s));
-      rafId = requestAnimationFrame(step);
-    };
-
-    el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
-    el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
-  });
-}
 
 // =====================================================
 // DEBUG HELPERS (optionnel pendant le dev)

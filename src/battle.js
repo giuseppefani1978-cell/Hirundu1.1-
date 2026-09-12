@@ -4,8 +4,9 @@
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
-import { markLevelWin } from './bonus_maps.js';
+import { copy } from './ui/copy.js';
 import { withBase } from './utils/basePath.js';
+import { markLevelWin } from './bonus_maps.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -73,6 +74,7 @@ let state = {
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
   foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false },
 
+  initialAmmo: {},
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
 
@@ -161,21 +163,20 @@ function __persistUnlocksForFoe(foeType){
 }
 
 function __redirectAfterWin(foeType){
-  // Always bounce back into the React HashRouter
-  const hub = withBase('index.html?embed=1#');
+  const key = foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto';
+  window.location.hash = `/bonus/${key}`;
+}
 
-  if (foeType === 'sputacchina') {
-    // Level 3 → Lecce
-    location.href = `${hub}/poi/lecce/realmap`;
-  } else if (foeType === 'crow') {
-    // Level 2 → Gallipoli
-    location.href = `${hub}/poi/gallipoli/realmap`;
-  } else {
-    // Level 1 (jelly / default) → Otranto
-    location.href = `${hub}/poi/otranto/realmap`;
-  }
-  // optional telemetry/event
-  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
+export function disposeBattle() {
+  state.active = false;
+  _stopBattleTheme();
+  _stopVictoryMusic();
+  window.removeEventListener('keydown', _onKeyDown, true);
+  window.removeEventListener('keyup', _onKeyUp, true);
+  window.removeEventListener('orientationchange', _updateRotateOverlay);
+  window.removeEventListener('resize', _updateRotateOverlay);
+  state.input = { left:false, right:false, up:false, atk:false, spc:false };
+  if (state.ui.root) state.ui.root.style.display = 'none';
 }
 
 // ---------------------------------------------------------
@@ -200,10 +201,14 @@ export function setBattleAmmo(ammo){
   state.ammo.rustico      = ammo?.rustico|0;
   state.ammo.caffe        = ammo?.caffe|0;
   state.ammo.stars        = ammo?.stars|0;
+  state.initialAmmo = { ...state.ammo };
 }
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  state.shots.length = 0;
+  for (const key of Object.keys(state.input)) state.input[key] = false;
+  state.ammo = { ...state.initialAmmo };
   state.phase = 'play';
   state.victory = null;
   state.fx.fireworks.length = 0;
@@ -653,11 +658,12 @@ function _endBattle(victory){
   // 3) Overlay de fin + bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
-    if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
+    if (t) t.textContent = victory ? copy.won : copy.defeat;
 
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
-      btn.textContent = victory ? 'Continuer' : 'Réessayer';
+      btn.disabled = false;
+      btn.textContent = victory ? copy.bonus : copy.replay;
       btn.style.padding = '12px 16px';
       btn.style.fontSize = '16px';
       btn.style.transform = 'none';
@@ -665,8 +671,13 @@ function _endBattle(victory){
       btn.onclick = () => {
         try {
           if (victory) {
-            __persistUnlocksForFoe(state.foeType);
-            __redirectAfterWin(state.foeType);
+            btn.disabled = true;
+            const foe = state.foeType;
+            __persistUnlocksForFoe(foe);
+            try { state.onWin(); } finally {
+              disposeBattle();
+              __redirectAfterWin(foe);
+            }
           } else {
             state.ui.endOverlay.style.display = 'none';
             startBattle(state.foeType);
@@ -691,14 +702,8 @@ function _endBattle(victory){
     state.fx.fireworks.length = 0;
   }
 
-  // 6) Callbacks (défaite immédiate, victoire gérée via bouton)
-  try {
-    if (!victory && typeof state.onLose === 'function') {
-      setTimeout(() => state.onLose(), 0);
-    }
-  } catch (e) {
-    console.error('Battle callback error', e);
-  }
+  // Keep the wrapper and its render loop alive until retrying this battle.
+  if (!victory) _stopBattleTheme();
 }
 
 function _applyPhysics(ent, dt){
@@ -822,7 +827,7 @@ function _onKeyUp(e){
 // UI Battle (pads + overlay rotation)
 // ---------------------------------------------------------
 function _ensureBattleUI(show){
-  if (!state.ui.root){
+  if (!state.ui.root?.isConnected){
     const root = document.createElement('div');
     root.id = '__battle_ui__';
     root.style.cssText = `

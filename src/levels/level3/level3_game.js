@@ -1,3 +1,5 @@
+import { copy } from '../../ui/copy.js';
+import { createLevelSession, setupHuntControls } from '../../legacy/levelSession.js';
 // =====================================================
 // NIVEAU 3 — SALENTO NORD / LECCE (structure identique au N2)
 // Objectif : Collecter 10 FEUILLES D’OLIVIER -> Boss "Esprit de pierre" à Lecce
@@ -8,7 +10,7 @@ import { t, poiName, poiInfo } from '../../i18n.js';
 import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from '../../audio.js';
 import * as ui from '../../ui.js';
@@ -116,10 +118,15 @@ function getCountry(){
 // =====================================================
 // BOOT (structure identique L2)
 // =====================================================
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  let cleanupIntro = null;
+  let cleanupBattle = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
 
   // UI init
   ui.initUI();
@@ -133,8 +140,9 @@ export function boot(){
   ui.updateScore(0, LEAVES_TARGET);
   ui.renderStars(0, LEAVES_TARGET);
   ui.updateEnergy(100);
-  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live (comme L2)
@@ -182,19 +190,10 @@ export function boot(){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 3,
-    theme: 'lecce',
-    badge: 'Niveau 3',
-    title: t.level3?.title || 'Salento Nord — Lecce',
-    subtitle: t.level3?.subtitle || 'Collecte les 10 feuilles et découvre le nord du Salento.',
-    description:
-      'Récolte les feuilles salentines pour compléter ton passeport et accéder au BONUS.',
-    footnote: 'Victoire = BONUS débloqué',
-    startLabel: '▶︎ Lancer le niveau 3',
-    highlight: {
-      title: 'Briefing',
-      body: 'Le défi final commence ici : surveille ton énergie et ton score.',
-    },
+    level: 3, theme: 'lecce', badge: `${copy.level} 3`,
+    title: t.level3.title, subtitle: t.level3.subtitle, description: copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#38bdf8',
   });
 
@@ -223,11 +222,11 @@ export function boot(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
-  window.addEventListener('resize', resize, { passive:true });
+  session.listen(window, 'resize', resize, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
+  session.listen(window, 'orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
@@ -295,11 +294,11 @@ export function boot(){
   const winFx = { t:0, fw:[], fwTimer:0 };
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(player, () => getSpeed(), () => mode === 'play');
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play', session);
 
   // Start button
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (startBtn) session.listen(startBtn, 'click', startGame);
 
   // Première question
   askQuestionAt(0);
@@ -355,7 +354,7 @@ export function boot(){
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
 
     const entry = {
-      name: playerName || 'Joueur',
+      name: playerName || copy.player,
       country,
       score: total,
       stars: leavesPicked,            // on conserve 'stars' pour le tableau mais c'est des feuilles
@@ -369,7 +368,7 @@ export function boot(){
     };
     addHallOfFameEntry(entry, HOF_KEY);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Feuilles: +${leavesPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -390,7 +389,8 @@ export function boot(){
 
   // ---------- Game loop ----------
   function draw(ts){
-    if(!running) return;
+    if(!running || !session.active) return;
+    if (document.hidden) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
@@ -398,6 +398,7 @@ export function boot(){
       lastTS = ts;
 
       if (mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
@@ -520,17 +521,17 @@ export function boot(){
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Lecce — Esprit de pierre';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdTitle.textContent = `${copy.battle} · Lecce`;
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
     } catch {}
 
-    startBattleIntro({
-      title: '⚔️ Bataille de Lecce',
-      subtitle: "Aracne vs. Esprit baroque (golem)\n(les commandes apparaîtront en mode paysage)",
-      startLabel: 'Commencer',
+    cleanupIntro = startBattleIntro({
+      title: `⚔️ ${copy.battle} · Lecce`,
+      subtitle: copy.battleHint,
+      startLabel: copy.fight,
       ammo: {
         pasticciotto: pickedCounts.pasticciotto|0,
         rustico:      pickedCounts.rustico|0,
@@ -538,6 +539,7 @@ export function boot(){
         stars:        leavesPicked|0
       },
       onProceed: async () => {
+    if (!session.active) return;
   try {
     running = false;
     mode = 'battle';
@@ -556,7 +558,9 @@ export function boot(){
     }
 
     const { startBattleL3, startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
 
+    if (!session.active) return;
     if (typeof startBattleL3 === 'function') {
       await startBattleL3('golem', {
         ammo: {
@@ -566,6 +570,7 @@ export function boot(){
           stars:        leavesPicked|0
         },
         onWin: () => {
+          if (!session.active) return;
           document.body.classList.remove('mode-battle');
           mode = 'win';
           running = true;
@@ -573,12 +578,14 @@ export function boot(){
           triggerWin();
         },
         onLose: () => {
+          if (!session.active) return;
           document.body.classList.remove('mode-battle');
           triggerGameOver();
         }
       });
     } else if (typeof startBattleFlow === 'function') {
-      await startBattleFlow(
+      if (!session.active) return;
+    await startBattleFlow(
         {
           pasticciotto: pickedCounts.pasticciotto | 0,
           rustico:      pickedCounts.rustico | 0,
@@ -590,6 +597,7 @@ export function boot(){
         {
           bottomExtra: 0,
           onWin: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'win';
             running = true;
@@ -597,6 +605,7 @@ export function boot(){
             triggerWin();
           },
           onLose: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             triggerGameOver();
           },
@@ -730,9 +739,7 @@ export function boot(){
 
     try {
       unlockLecceBonus();
-      ui.showCTA((t.level3?.open_bonus || 'Scanner le QR bonus à Lecce'), () => {
-        openBonusMap('lecce');
-      });
+
     } catch {}
   }
 
@@ -746,9 +753,10 @@ export function boot(){
   function startGame() {
     try {
       document.body.classList.remove('mode-battle');
+      playerName = ui.readPlayerName() || copy.player;
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
       gameStartAt = performance.now();
@@ -799,7 +807,7 @@ export function boot(){
       } catch {}
     }
   };
-  window.addEventListener('hashchange', handleHash);
+  session.listen(window, 'hashchange', handleHash);
   handleHash();
 
   // helpers UI
@@ -860,25 +868,20 @@ export function boot(){
     return false;
   }
 
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!hasLecceBonusUnlocked()) return;
-    let link = document.getElementById('__lecce_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__lecce_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      link.addEventListener('click', () => openBonusMap('lecce'));
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
+  return () => {
+    running = false;
+    session.dispose();
+    document.getElementById("__score_live")?.remove();
+    cleanupIntro?.();
+    cleanupBattle?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+  };
 }
 
 // ------------------------
@@ -1037,25 +1040,3 @@ function shuffle(arr){
 /**
  * D-pad tactile/souris. Ne bouge que si canMove() === true
  */
-function setupDpad(player, getSpeed, canMove){
-  document.querySelectorAll('.btn').forEach((el) => {
-    const dx = parseFloat(el.dataset.dx);
-    const dy = parseFloat(el.dataset.dy);
-    if (isNaN(dx) || isNaN(dy)) return;
-    let press = false, rafId = null;
-
-    const step = () => {
-      if (!press) return;
-      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
-      const s = getSpeed();
-      player.x = Math.max(0, Math.min(1, player.x + dx * s));
-      player.y = Math.max(0, Math.min(1, player.y + dy * s));
-      rafId = requestAnimationFrame(step);
-    };
-
-    el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
-    el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
-  });
-}

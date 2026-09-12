@@ -1,3 +1,4 @@
+import { withBase } from './utils/basePath.js';
 // src/audio.js
 // ========================================================
 // Audio minimaliste : musique, sfx, finale (sans accès DOM)
@@ -7,13 +8,24 @@ let audioCtx = null;
 let masterGain = null;
 
 let musicOn = false;
+let huntTrack = null;
 let loopTimer = null;
 let finaleLoopTimer = null;
+let musicRequest = 0;
+const musicVoices = new Set();
+export const AUDIO_STATE_EVENT = 'hirundu:audio-state';
+function notifyAudioState() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(AUDIO_STATE_EVENT));
+}
 
 // ---------- Init ----------
 export function createAudioOnce() {
-  if (audioCtx) return;
+  if (audioCtx) {
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+    return;
+  }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.onstatechange = notifyAudioState;
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.58;
   masterGain.connect(audioCtx.destination);
@@ -24,18 +36,23 @@ export function createAudioOnce() {
   s.buffer = b;
   s.connect(masterGain);
   s.start(0);
+  audioCtx.resume().catch(() => {});
 }
 
 // ---------- Ensure Contexte actif ----------
 function ensureCtxActive() {
-  if (!audioCtx) createAudioOnce();
-  if (audioCtx && audioCtx.state === "suspended") {
-    try { audioCtx.resume(); } catch {}
+  try {
+    if (!audioCtx) createAudioOnce();
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(notifyAudioState);
+    return true;
+  } catch {
+    notifyAudioState();
+    return false;
   }
 }
 
 // ---------- Utils osc carrée ----------
-function scheduleSquare(freq, start, dur = 0.25, amp = 0.30) {
+function scheduleSquare(freq, start, dur = 0.25, amp = 0.30, music = false) {
   if (!audioCtx || !masterGain) return;
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -44,21 +61,25 @@ function scheduleSquare(freq, start, dur = 0.25, amp = 0.30) {
   g.gain.setValueAtTime(amp, start);
   g.gain.exponentialRampToValueAtTime(0.001, start + dur);
   o.connect(g).connect(masterGain);
+  if (music) {
+    musicVoices.add(o);
+    o.onended = () => { musicVoices.delete(o); o.disconnect(); g.disconnect(); };
+  } else {
+    o.onended = () => { o.disconnect(); g.disconnect(); };
+  }
   o.start(start);
   o.stop(start + dur);
 }
 
 // ---------- SFX publics ----------
 export function ping(freq = 440, amp = 0.2) {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(freq, t, 0.16, amp);
 }
 
 export function starEmphasis() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const base = audioCtx.currentTime;
   [784, 880, 988, 1175].forEach((f, i) =>
     scheduleSquare(f, base + i * 0.08, 0.18, 0.46)
@@ -66,8 +87,7 @@ export function starEmphasis() {
 }
 
 export function failSfx() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
   const t = audioCtx.currentTime;
   scheduleSquare(196, t, 0.20, 0.42);
   scheduleSquare(165, t + 0.18, 0.20, 0.36);
@@ -80,36 +100,52 @@ function playPhrase() {
   const notes = [262, 294, 330, 349, 392, 440, 494, 523];
   let t = audioCtx.currentTime;
   notes.forEach(f => {
-    scheduleSquare(f, t, 0.24, 0.28);
+    scheduleSquare(f, t, 0.24, 0.28, true);
     t += 0.28;
   });
   loopTimer = setTimeout(playPhrase, 2800);
 }
 
 export async function startMusic() {
-  ensureCtxActive();
-  // petit bip de feedback
-  ping(720, 0.20);
-  musicOn = true;
-  playPhrase();
+  if (isMusicOn()) return;
+  const request = ++musicRequest;
+  try {
+    if (!huntTrack) {
+      huntTrack = new window.Audio(withBase('assets/hunt_loop.wav'));
+      huntTrack.loop = true;
+      huntTrack.volume = 0.65;
+      huntTrack.preload = 'auto';
+      for (const event of ['playing','pause','ended','error']) huntTrack.addEventListener(event, notifyAudioState);
+    }
+    musicOn = true;
+    await huntTrack.play();
+    if (request !== musicRequest) return;
+  } catch (error) {
+    if (request === musicRequest) musicOn = false;
+    console.warn('Hunt audio unavailable', error);
+  } finally { notifyAudioState(); }
 }
 
 export function stopMusic() {
+  ++musicRequest;
   musicOn = false;
+  huntTrack?.pause();
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  // ⚠️ Ne pas suspendre le contexte : on garde les SFX actifs
+  musicVoices.forEach((o) => { try { o.stop(); } catch {} });
+  musicVoices.clear();
+  notifyAudioState();
 }
 
-export function toggleMusic() {
-  if (musicOn) stopMusic(); else startMusic();
+export async function toggleMusic() {
+  if (isMusicOn()) stopMusic(); else await startMusic();
 }
 
-export function isMusicOn() { return musicOn; }
+export function isMusicOn() { return musicOn && !!huntTrack && !huntTrack.paused && !huntTrack.error; }
 
 // ---------- Finale longue ----------
 export function playFinaleLong() {
-  ensureCtxActive();
-  if (!audioCtx || !masterGain) return;
+  stopMusic();
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
 
   // on coupe la boucle courte si active
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
@@ -140,10 +176,6 @@ export function stopFinaleLoop() {
 
 // ---------- Reset global (utile quand on relance une partie) ----------
 export function resetAudioForNewGame() {
-  if (musicOn) {
-    if (loopTimer) clearTimeout(loopTimer);
-    playPhrase();
-  }
   stopFinaleLoop();
 }
 
@@ -154,8 +186,7 @@ let _wasPlayingBeforeBattle = false;
 export function pauseBgForBattle() {
   _wasPlayingBeforeBattle = musicOn === true;
   // coupe SEULEMENT la boucle (pas le contexte, sinon plus de SFX)
-  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
-  musicOn = false;
+  stopMusic();
   stopFinaleLoop();
 }
 

@@ -1,4 +1,5 @@
 import React from "react";
+import { copy } from "../../ui/copy.js";
 import {
   formatHallOfFameBreakdown,
   formatHallOfFameTime,
@@ -26,9 +27,9 @@ type SummaryTotals = {
 };
 
 const SOURCE_META: SourceMeta[] = [
-  { key: "salento_hof_v1", label: "Niv. 1", suffix: "★", alwaysShow: true },
-  { key: "salento_hof_v2", label: "Niv. 2", suffix: "🌞", alwaysShow: true },
-  { key: "salento_hof_v3", label: "Niv. 3", suffix: "🍃", alwaysShow: true },
+  { key: "salento_hof_v1", label: `${copy.level} 1`, suffix: "★", alwaysShow: true },
+  { key: "salento_hof_v2", label: `${copy.level} 2`, suffix: "🌞", alwaysShow: true },
+  { key: "salento_hof_v3", label: `${copy.level} 3`, suffix: "🍃", alwaysShow: true },
   { key: "salento_hof", label: "Archive", suffix: "★" },
   { key: "salento_hof_v0", label: "Archive", suffix: "★" },
   { key: "hof", label: "Archive", suffix: "★" },
@@ -224,17 +225,17 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
             🏆 Hall of Fame
           </h2>
           <p className="bonus-index__hof-lead">
-            Les meilleurs scores de la chasse sont enregistrés sur cet appareil. Challenge accepté ?
+            {copy.hofLead}
           </p>
           <div className="bonus-index__hof-meta" aria-live="polite">
             <div className="bonus-index__hof-stat bonus-index__hof-stat--accent">
-              <span className="bonus-index__hof-stat-label">Points cumulés</span>
+              <span className="bonus-index__hof-stat-label">{copy.points}</span>
               <strong className="bonus-index__hof-stat-value">
                 {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.points)))}
               </strong>
             </div>
             <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
-              <span className="bonus-index__hof-stat-label">Pasticciotti collectés</span>
+              <span className="bonus-index__hof-stat-label">Pasticciotti</span>
               <strong className="bonus-index__hof-stat-value">
                 {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.pasticciotto)))}
                 <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
@@ -243,7 +244,7 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
               </strong>
             </div>
             <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
-              <span className="bonus-index__hof-stat-label">Rustici collectés</span>
+              <span className="bonus-index__hof-stat-label">Rustici</span>
               <strong className="bonus-index__hof-stat-value">
                 {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.rustico)))}
                 <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
@@ -252,7 +253,7 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
               </strong>
             </div>
             <div className="bonus-index__hof-stat bonus-index__hof-stat--bonus">
-              <span className="bonus-index__hof-stat-label">Caffè leccesi dégustés</span>
+              <span className="bonus-index__hof-stat-label">Caffè leccesi</span>
               <strong className="bonus-index__hof-stat-value">
                 {numberFormatter.format(Math.max(0, Math.round(entryStats.totals.caffe)))}
                 <span aria-hidden="true" className="bonus-index__hof-stat-suffix">
@@ -261,11 +262,11 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
               </strong>
             </div>
             <div className="bonus-index__hof-stat">
-              <span className="bonus-index__hof-stat-label">Parties enregistrées</span>
+              <span className="bonus-index__hof-stat-label">{copy.runs}</span>
               <strong className="bonus-index__hof-stat-value">{entryStats.total}</strong>
             </div>
             <div className="bonus-index__hof-stat">
-              <span className="bonus-index__hof-stat-label">Joueurs uniques</span>
+              <span className="bonus-index__hof-stat-label">{copy.players}</span>
               <strong className="bonus-index__hof-stat-value">{entryStats.players}</strong>
             </div>
           </div>
@@ -274,7 +275,7 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
 
       {entries.length === 0 ? (
         <p className="bonus-index__hof-empty" role="status">
-          Aucun score n’a encore été enregistré. Termine une chasse pour inaugurer le tableau d’honneur !
+          {copy.emptyScores}
         </p>
       ) : (
         <div className="bonus-index__hof-table-wrapper" role="region" aria-live="polite">
@@ -282,15 +283,15 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Niveau</th>
-                <th scope="col">Pays</th>
-                <th scope="col">Joueur</th>
+                <th scope="col">{copy.level}</th>
+                <th scope="col">{copy.country}</th>
+                <th scope="col">{copy.player}</th>
                 <th scope="col">Score</th>
-                <th scope="col">Progression</th>
+                <th scope="col">{copy.progress}</th>
                 <th scope="col">Bonus</th>
-                <th scope="col">Détail bonus</th>
-                <th scope="col">Coups</th>
-                <th scope="col">Temps</th>
+                <th scope="col">{copy.bonusDetail}</th>
+                <th scope="col">{copy.hits}</th>
+                <th scope="col">{copy.time}</th>
                 <th scope="col">Date</th>
               </tr>
             </thead>
@@ -301,7 +302,7 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
                   <td className="bonus-index__hof-mode">{entry.sourceLabel}</td>
                   <td>{entry.country?.flag || "🏳️"}</td>
                   <td className="bonus-index__hof-player" title={entry.country?.label || undefined}>
-                    {entry.name || "Joueur"}
+                    {entry.name || copy.player}
                   </td>
                   <td className="bonus-index__hof-score">{entry.score}</td>
                   <td>{entry.stars}{entry.progressSuffix}</td>
@@ -318,7 +319,7 @@ export function HallOfFameSection({ highlight }: HallOfFameSectionProps) {
       )}
 
       <footer className="bonus-index__hof-footer">
-        Les scores ne quittent jamais votre appareil : ils sont stockés localement dans le navigateur.
+        {copy.localScores}
       </footer>
     </section>
   );
