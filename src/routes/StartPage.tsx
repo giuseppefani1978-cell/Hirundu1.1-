@@ -13,7 +13,7 @@ export default function StartPage() {
     <div className="start-page">
       <div className="start-page__hero">
         <div className="start-page__content">
-          <p>HIRUNDU · v6 · TEST</p>
+          <p>HIRUNDU · v7 · TEST</p>
           <LanguageSelect /><p className="start-page__eyebrow">{t.title}</p>
           <h1 className="start-page__title">{copy.ready}</h1>
           <p className="start-page__lead">

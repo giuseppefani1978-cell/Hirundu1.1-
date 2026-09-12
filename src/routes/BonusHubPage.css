@@ -151,7 +151,8 @@
 /* Sécurité globale : pas d’overflow horizontal */
 html, body { overflow-x: hidden; }
 
-.discoveries { min-height:100dvh; padding:clamp(1rem,4vw,3rem); background:#edf5ff; color:#10243e; font:1rem/1.55 system-ui; }
+.discoveries { height:100dvh; min-height:0; overflow-y:auto; overflow-x:hidden; touch-action:pan-y; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:clamp(1rem,4vw,3rem); background:#edf5ff; color:#10243e; font:1rem/1.55 system-ui; }
+.discoveries { padding-bottom:max(120px, env(safe-area-inset-bottom)); }
 .discoveries > * { max-width:960px; margin:0 auto 2rem; }
 .discoveries__nav { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
 .discoveries__hero { background:#102d50; color:white; border-radius:22px; padding:clamp(1.4rem,4vw,2.5rem); }

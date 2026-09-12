@@ -8,7 +8,7 @@ export default function TestShortcuts() {
  const navigate = useNavigate();
  const levels = ['otranto','gallipoli','lecce'] as const;
  return <details style={{marginTop:'20px',padding:'12px',border:'1px solid #aaa',borderRadius:'10px',textAlign:'left'}}>
-  <summary style={{cursor:'pointer',fontWeight:700}}>{copy.testTools} · v6</summary>
+  <summary style={{cursor:'pointer',fontWeight:700}}>{copy.testTools} · v7</summary>
   <p>{copy.testWarning}</p>
   {levels.map((key,index) => <section key={key} style={{margin:'12px 0'}}>
    <strong>{copy.level} {index+1} · {key[0].toUpperCase()+key.slice(1)}</strong>
