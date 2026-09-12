@@ -16,6 +16,7 @@ function normalizeLevel(level: number | string | null | undefined): LegacyLevelI
 export async function bootLegacyLevel(
   level: number | string | null | undefined,
   signal?: AbortSignal,
+  options: { testBattle?: boolean } = {},
 ): Promise<(() => void) | undefined> {
   const normalized = normalizeLevel(level);
   const mod = await boots[normalized]();
@@ -23,7 +24,7 @@ export async function bootLegacyLevel(
   const start = (mod as Record<string, unknown>)[`startLevel${normalized}`]
     ?? mod.boot;
   if (typeof start !== "function") throw new Error("Level entrypoint missing");
-  const cleanup = start();
+  const cleanup = start(options);
   return typeof cleanup === "function" ? cleanup : undefined;
 }
 

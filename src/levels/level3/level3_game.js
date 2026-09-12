@@ -118,7 +118,7 @@ function getCountry(){
 // =====================================================
 // BOOT (structure identique L2)
 // =====================================================
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
@@ -522,7 +522,7 @@ export function boot(){
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
         bdTitle.textContent = 'Lecce — Esprit de pierre';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
@@ -739,9 +739,7 @@ export function boot(){
 
     try {
       unlockLecceBonus();
-      ui.showCTA((t.level3?.open_bonus || 'Scanner le QR bonus à Lecce'), () => {
-        openBonusMap('lecce');
-      });
+
     } catch {}
   }
 
@@ -870,25 +868,9 @@ export function boot(){
     return false;
   }
 
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!hasLecceBonusUnlocked()) return;
-    let link = document.getElementById('__lecce_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__lecce_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      session.listen(link, 'click', () => openBonusMap('lecce'));
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
   return () => {
     running = false;
     session.dispose();

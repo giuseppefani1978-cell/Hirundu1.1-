@@ -23,6 +23,8 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
   createOscillator(){return {frequency:{value:0},connect(){return this},start(){},stop(){},disconnect(){}};}
  }
  w.AudioContext=AudioContext;
+ w.Audio=class extends w.EventTarget {paused=true;error=null; play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;} };
+
  const frames=new Map();let counter=0;
  w.requestAnimationFrame=fn=>{frames.set(++counter,fn);return counter;};w.cancelAnimationFrame=id=>frames.delete(id);
  globalThis.requestAnimationFrame=w.requestAnimationFrame;globalThis.cancelAnimationFrame=w.cancelAnimationFrame;
@@ -46,21 +48,33 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
   const {t, LANG} = await server.ssrLoadModule('/src/i18n.js');
   assert.equal(LANG, language);
   for(const n of [1,2,3]) {
-   w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell));
+   w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    transitions.queueLevelTransition({targetLevel:n, subtitle:'ANCIEN TEXTE FRANÇAIS', startLabel:'ANCIEN BOUTON FRANÇAIS'});
    const dispose=await bootLegacyLevel(n);
    assert.ok(!w.document.getElementById('subtitleP').textContent.includes('ANCIEN'), 'saved text cannot override current language');
    assert.ok(!w.document.getElementById('startBtn').textContent.includes('ANCIEN'));
    assert.equal(w.document.getElementById('hudLabel').textContent, n===1 ? t.hudStars : t['level'+n].hudLabel);
    assert.equal(w.document.getElementById('replayFloat').textContent, t.replay);
-   w.document.getElementById('playerName').value='Tester';
+   const nameInput=w.document.getElementById('playerName');
+   assert.equal(!!nameInput,n===1,'only the first level asks for a name');
+   if(nameInput) nameInput.value='Tester';
    w.document.getElementById('startBtn').click();
    assert.deepEqual(errors,[],`level ${n} start errors`);
    assert.equal(w.document.getElementById('overlay').style.display,'none',`level ${n} starts`);
    // Execute a real game frame; no screenshots or browser claims are inferred.
    const pending=[...frames.values()];frames.clear();pending.forEach(fn=>fn(1000));
    assert.deepEqual(errors,[],`level ${n} frame errors`);
+   assert.equal(w.localStorage.getItem('player_name'),'Tester');
+   assert.equal(w.document.querySelectorAll('#__bonus_cta, #__otranto_bonus_link, #__gallipoli_bonus_link, #__lecce_bonus_link').length,0);
    dispose?.();frames.clear();
+  }
+  for (const n of [1,2,3]) {
+   w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
+   const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
+   assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
+   assert.equal(w.document.getElementById('playerName'),null,'saved name not requested again');
+   dispose?.();frames.clear();
+   assert.equal(w.document.getElementById('__battle_intro__'),null,'battle intro cleaned on exit');
   }
   // Inject only the outcome in the test loader; execute the actual end screen,
   // click handler, progress writes and hash routing. No production cheat exists.

@@ -1,3 +1,4 @@
+import { withBase } from './utils/basePath.js';
 // src/audio.js
 // ========================================================
 // Audio minimaliste : musique, sfx, finale (sans accès DOM)
@@ -7,6 +8,7 @@ let audioCtx = null;
 let masterGain = null;
 
 let musicOn = false;
+let huntTrack = null;
 let loopTimer = null;
 let finaleLoopTimer = null;
 let musicRequest = 0;
@@ -108,25 +110,26 @@ export async function startMusic() {
   if (isMusicOn()) return;
   const request = ++musicRequest;
   try {
-    createAudioOnce();
-    await audioCtx.resume();
-    if (request !== musicRequest || audioCtx.state !== 'running') return;
+    if (!huntTrack) {
+      huntTrack = new window.Audio(withBase('assets/hunt_loop.wav'));
+      huntTrack.loop = true;
+      huntTrack.volume = 0.65;
+      huntTrack.preload = 'auto';
+      for (const event of ['playing','pause','ended','error']) huntTrack.addEventListener(event, notifyAudioState);
+    }
     musicOn = true;
-    musicVoices.forEach((o) => { try { o.stop(); } catch {} });
-    musicVoices.clear();
-    if (loopTimer) clearTimeout(loopTimer);
-    playPhrase();
+    await huntTrack.play();
+    if (request !== musicRequest) return;
   } catch (error) {
-    musicOn = false;
-    console.warn('Audio unavailable', error);
-  } finally {
-    notifyAudioState();
-  }
+    if (request === musicRequest) musicOn = false;
+    console.warn('Hunt audio unavailable', error);
+  } finally { notifyAudioState(); }
 }
 
 export function stopMusic() {
   ++musicRequest;
   musicOn = false;
+  huntTrack?.pause();
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   musicVoices.forEach((o) => { try { o.stop(); } catch {} });
   musicVoices.clear();
@@ -137,10 +140,11 @@ export async function toggleMusic() {
   if (isMusicOn()) stopMusic(); else await startMusic();
 }
 
-export function isMusicOn() { return musicOn && audioCtx?.state === 'running'; }
+export function isMusicOn() { return musicOn && !!huntTrack && !huntTrack.paused && !huntTrack.error; }
 
 // ---------- Finale longue ----------
 export function playFinaleLong() {
+  stopMusic();
   if (!ensureCtxActive() || !audioCtx || !masterGain) return;
 
   // on coupe la boucle courte si active
@@ -172,10 +176,6 @@ export function stopFinaleLoop() {
 
 // ---------- Reset global (utile quand on relance une partie) ----------
 export function resetAudioForNewGame() {
-  if (musicOn) {
-    if (loopTimer) clearTimeout(loopTimer);
-    playPhrase();
-  }
   stopFinaleLoop();
 }
 

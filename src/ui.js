@@ -439,7 +439,12 @@ export function hideCTA() {
 
 // Read the inline name field during the start gesture; never open a blocking dialog.
 export function readPlayerName() {
-  const name = (document.getElementById('playerName')?.value || '').trim().slice(0, 40);
-  try { if (name) localStorage.setItem('player_name', name); } catch {}
+  let stored = '';
+  try { stored = localStorage.getItem('player_name') || ''; } catch {}
+  try { const parsed = JSON.parse(stored); if (typeof parsed === 'string') stored = parsed; } catch {}
+  const name = (document.getElementById('playerName')?.value || stored || copy.player).trim().slice(0, 40) || copy.player;
+  try { localStorage.setItem('player_name', name); } catch {}
+  const field = document.getElementById('playerNameField');
+  if (field) { field.hidden = true; field.style.display = 'none'; }
   return name;
 }

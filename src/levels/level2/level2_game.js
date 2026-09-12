@@ -121,7 +121,7 @@ function getCountry(){
 // ------------------------
 // BOOT (chasse uniquement)
 // ------------------------
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
@@ -134,7 +134,7 @@ export function boot(){
   // UI init
   ui.initUI();
   removeVictoryCTA();
-  setupVictoryCTAHandlers();
+  removeVictoryCTA();
 
   // Titres L2 + HUD "Soleils"
   const hudLabel = document.getElementById('hudLabel');
@@ -554,7 +554,7 @@ export function boot(){
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
         bdTitle.textContent = 'Gallipoli — Corbeaux';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
@@ -760,7 +760,7 @@ onProceed: async () => {
       document.body.classList.remove('mode-battle');
       playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
-      lsSet('player_name', playerName);
+
       ui.hideOverlay();
       ui.showTouch(true);
       if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
@@ -849,47 +849,9 @@ onProceed: async () => {
     return false;
   }
 
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!hasGallipoliBonusUnlocked()) return;
-    let link = document.getElementById('__gallipoli_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__gallipoli_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      session.listen(link, 'click', () => openBonusMap('gallipoli'));
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
 
-  function showBonusCta() {
-    if (document.getElementById('__bonus_cta')) return;
-
-    const btn = document.createElement('button');
-    btn.id = '__bonus_cta';
-    btn.type = 'button';
-    btn.textContent = '🌞 BONUS — ouvrir';
-    btn.style.cssText = `
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:86px; z-index:10003;
-      background:linear-gradient(180deg, #34d399, #10b981);
-      color:white; border:0; border-radius:999px;
-      padding:12px 18px; font:700 14px system-ui;
-      box-shadow:0 8px 18px rgba(0,0,0,.2);
-    `;
-    document.body.appendChild(btn);
-
-    session.listen(btn, 'click', () => {
-      openBonusMap('gallipoli');
-    });
-  }
+  function showBonusCta() { /* Bonus navigation belongs to the discoveries page. */ }
 
   // ✅ Déblocage robuste : nouveau format + legacy + events + HUD
   function unlockGallipoliBonus(){
@@ -920,6 +882,8 @@ onProceed: async () => {
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
   return () => {
     running = false;
     session.dispose();

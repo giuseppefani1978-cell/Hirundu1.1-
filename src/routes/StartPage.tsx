@@ -1,3 +1,4 @@
+import TestShortcuts from '../ui/TestShortcuts';
 import LanguageSelect from '../ui/LanguageSelect';
 import { copy } from '../ui/copy.js';
 import { t } from '../i18n.js';
@@ -12,6 +13,7 @@ export default function StartPage() {
     <div className="start-page">
       <div className="start-page__hero">
         <div className="start-page__content">
+          <p>HIRUNDU · v4 · TEST</p>
           <LanguageSelect /><p className="start-page__eyebrow">{t.title}</p>
           <h1 className="start-page__title">{copy.ready}</h1>
           <p className="start-page__lead">
@@ -33,6 +35,7 @@ export default function StartPage() {
               🎁 {copy.bonus}
             </button>
           </div>
+          <TestShortcuts />
         </div>
       </div>
       {/* PATCH : suppression du Hall of Fame sur la page d’accueil.

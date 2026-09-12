@@ -1,6 +1,10 @@
 import { LANG } from '../i18n.js';
 const messages = {
   fr: {
+    testTools: "Raccourcis de test",
+    testWarning: "Outils temporaires. Simuler une victoire modifie la progression sur cet appareil.",
+    testWin: "Simuler une victoire",
+
     musicStart: "Activer la musique",
     musicStop: "Couper la musique",
 
@@ -29,6 +33,10 @@ const messages = {
     battleHint: 'En paysage : ← / → pour bouger, ↑ pour sauter, A pour attaquer, B pour le spécial.',
   },
   it: {
+    testTools: "Scorciatoie di test",
+    testWarning: "Strumenti temporanei. Simulare una vittoria modifica i progressi su questo dispositivo.",
+    testWin: "Simula una vittoria",
+
     musicStart: "Attiva la musica",
     musicStop: "Disattiva la musica",
 
@@ -57,6 +65,10 @@ const messages = {
     battleHint: 'In orizzontale: ← / → per muoverti, ↑ per saltare, A per attaccare, B per lo speciale.',
   },
   en: {
+    testTools: "Test shortcuts",
+    testWarning: "Temporary tools. Simulating a win changes progress on this device.",
+    testWin: "Simulate a win",
+
     musicStart: "Enable music",
     musicStop: "Mute music",
 
@@ -85,6 +97,10 @@ const messages = {
     battleHint: 'In landscape: ← / → to move, ↑ to jump, A to attack, B for the special move.',
   },
   es: {
+    testTools: "Atajos de prueba",
+    testWarning: "Herramientas temporales. Simular una victoria cambia el progreso en este dispositivo.",
+    testWin: "Simular una victoria",
+
     musicStart: "Activar la música",
     musicStop: "Silenciar la música",
 

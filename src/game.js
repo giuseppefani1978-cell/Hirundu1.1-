@@ -140,7 +140,7 @@ function getCountry(){
 // ------------------------
 // BOOT (chasse uniquement)
 // ------------------------
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
@@ -591,13 +591,16 @@ export function boot(){
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
         bdTitle.textContent = 'Tarantula';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
     } catch {}
 
 cleanupIntro = startBattleIntro({
+  title: `⚔️ ${copy.battle} · Otranto`,
+  subtitle: copy.battleHint,
+  startLabel: copy.fight,
   ammo: {
     pasticciotto: pickedCounts.pasticciotto | 0,
     rustico:      pickedCounts.rustico      | 0,
@@ -888,50 +891,9 @@ cleanupIntro = startBattleIntro({
     const el = document.getElementById('__score_live');
     if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
   }
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) return;
-    let link = document.getElementById('__otranto_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__otranto_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      session.listen(link, 'click', openBonusMap);
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
 
-  function showBonusCta(){
-    // évite de spam si déjà affichée
-    if (document.getElementById('__bonus_cta')) return;
-
-    const btn = document.createElement('button');
-    btn.id = '__bonus_cta';
-    btn.type = 'button';
-    btn.textContent = '🌟 BONUS — ouvrir';
-    btn.style.cssText = `
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:86px; z-index:10003;
-      background:linear-gradient(180deg, #34d399, #10b981);
-      color:white; border:0; border-radius:999px;
-      padding:12px 18px; font:700 14px system-ui; box-shadow:0 8px 18px rgba(0,0,0,.2);
-    `;
-    document.body.appendChild(btn);
-    session.listen(btn, 'click', () => {
-      lsSet(LS.OTRANTO_BONUS_SEEN, true);
-      openBonusMap();
-    });
-
-    // Ajoute en HUD pour les sessions suivantes
-    ensureBonusQuickLinkInHud();
-  }
+  function showBonusCta() { /* Bonus navigation belongs to the discoveries page. */ }
 
   function unlockOtrantoBonus(){
     if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
@@ -955,6 +917,8 @@ cleanupIntro = startBattleIntro({
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
   return () => {
     running = false;
     session.dispose();

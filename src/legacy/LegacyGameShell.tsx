@@ -3,12 +3,13 @@ import { t } from "../i18n.js";
 import { copy } from "../ui/copy.js";
 
 export type LegacyGameShellProps = {
+  level?: number;
   onStartClick?: () => void;
   versionLabel?: string;
 };
 
 const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(function LegacyGameShell(
-  { onStartClick, versionLabel = "v2025-08-20-g" },
+  { level = 1, onStartClick, versionLabel = "v2025-08-20-g" },
   canvasRef
 ) {
   return (
@@ -49,12 +50,12 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 <img id="heroTa" alt="Tarantula" />
               </div>
               <p className="overlay-card__footnote" id="overlayFootnote"></p>
-              <label htmlFor="playerName" style={{display:'grid', gap:'6px', margin:'12px 0', textAlign:'left'}}>
+              {level === 1 && (() => { try { return !localStorage.getItem('player_name'); } catch { return true; } })() && <label id="playerNameField" htmlFor="playerName" style={{display:'grid', gap:'6px', margin:'12px 0', textAlign:'left'}}>
                 {copy.name}
                 <input id="playerName" type="text" maxLength={40} autoComplete="nickname"
                   defaultValue={(() => { try { return localStorage.getItem('player_name') || ''; } catch { return ''; } })()}
                   placeholder={copy.player} style={{fontSize:'16px', padding:'10px', borderRadius:'8px', width:'100%', boxSizing:'border-box'}} />
-              </label>
+              </label>}
               <button
                 id="startBtn"
                 type="button"
