@@ -20,7 +20,7 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v4 · TEST";
+const DEFAULT_VERSION = "v5 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -118,7 +118,7 @@ export default function LegacyLevelPage() {
 
   return (
     <div className="legacy-level-page">
-      <LegacyGameShell level={level} ref={canvasRef} versionLabel={versionLabel} />
+      <LegacyGameShell key={`${level}:${testBattle}`} level={level} ref={canvasRef} versionLabel={versionLabel} />
     </div>
   );
 }

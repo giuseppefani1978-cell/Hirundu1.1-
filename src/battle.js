@@ -74,6 +74,7 @@ let state = {
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
   foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false },
 
+  initialAmmo: {},
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
 
@@ -200,10 +201,14 @@ export function setBattleAmmo(ammo){
   state.ammo.rustico      = ammo?.rustico|0;
   state.ammo.caffe        = ammo?.caffe|0;
   state.ammo.stars        = ammo?.stars|0;
+  state.initialAmmo = { ...state.ammo };
 }
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  state.shots.length = 0;
+  for (const key of Object.keys(state.input)) state.input[key] = false;
+  state.ammo = { ...state.initialAmmo };
   state.phase = 'play';
   state.victory = null;
   state.fx.fireworks.length = 0;
@@ -697,14 +702,8 @@ function _endBattle(victory){
     state.fx.fireworks.length = 0;
   }
 
-  // 6) Callbacks (défaite immédiate, victoire gérée via bouton)
-  try {
-    if (!victory && typeof state.onLose === 'function') {
-      setTimeout(() => state.onLose(), 0);
-    }
-  } catch (e) {
-    console.error('Battle callback error', e);
-  }
+  // Keep the wrapper and its render loop alive until retrying this battle.
+  if (!victory) _stopBattleTheme();
 }
 
 function _applyPhysics(ent, dt){
@@ -828,7 +827,7 @@ function _onKeyUp(e){
 // UI Battle (pads + overlay rotation)
 // ---------------------------------------------------------
 function _ensureBattleUI(show){
-  if (!state.ui.root){
+  if (!state.ui.root?.isConnected){
     const root = document.createElement('div');
     root.id = '__battle_ui__';
     root.style.cssText = `

@@ -521,7 +521,7 @@ export function boot(options = {}){
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Lecce — Esprit de pierre';
+        bdTitle.textContent = `${copy.battle} · Lecce`;
         bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);

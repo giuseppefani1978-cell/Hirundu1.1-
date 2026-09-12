@@ -1,4 +1,5 @@
 // src/app.tsx
+import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
@@ -31,7 +32,7 @@ function Loading() {
       height: "100vh",
       fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
     }}>
-      <div style={{ opacity: 0.8 }}>Chargement…</div>
+      <div style={{ opacity: 0.8 }}>{copy.loading}</div>
     </div>
   );
 }
@@ -51,6 +52,9 @@ export default function App() {
           {/* Hub bonus + variante avec :bonusId */}
           <Route path="/bonus" element={<BonusHubPage />} />
           <Route path="/bonus/:bonusId" element={<BonusHubPage />} />
+
+          <Route path="/passport" element={<RealMap passportOnly />} />
+          <Route path="/passport/:id" element={<RealMap passportOnly />} />
 
           {/* Zone QR/POI sous layout commun */}
           <Route element={<AppLayout />}>

@@ -1,6 +1,7 @@
 import { LANG } from '../i18n.js';
 const messages = {
   fr: {
+    battleOrientation: "Pour jouer confortablement, tourne ton téléphone en paysage.", battleStars: "Étoiles",
     testTools: "Raccourcis de test",
     testWarning: "Outils temporaires. Simuler une victoire modifie la progression sur cet appareil.",
     testWin: "Simuler une victoire",
@@ -33,6 +34,7 @@ const messages = {
     battleHint: 'En paysage : ← / → pour bouger, ↑ pour sauter, A pour attaquer, B pour le spécial.',
   },
   it: {
+    battleOrientation: "Per giocare comodamente, ruota il telefono in orizzontale.", battleStars: "Stelle",
     testTools: "Scorciatoie di test",
     testWarning: "Strumenti temporanei. Simulare una vittoria modifica i progressi su questo dispositivo.",
     testWin: "Simula una vittoria",
@@ -65,6 +67,7 @@ const messages = {
     battleHint: 'In orizzontale: ← / → per muoverti, ↑ per saltare, A per attaccare, B per lo speciale.',
   },
   en: {
+    battleOrientation: "For comfortable play, turn your phone to landscape.", battleStars: "Stars",
     testTools: "Test shortcuts",
     testWarning: "Temporary tools. Simulating a win changes progress on this device.",
     testWin: "Simulate a win",
@@ -97,6 +100,7 @@ const messages = {
     battleHint: 'In landscape: ← / → to move, ↑ to jump, A to attack, B for the special move.',
   },
   es: {
+    battleOrientation: "Para jugar cómodamente, gira el teléfono en horizontal.", battleStars: "Estrellas",
     testTools: "Atajos de prueba",
     testWarning: "Herramientas temporales. Simular una victoria cambia el progreso en este dispositivo.",
     testWin: "Simular una victoria",

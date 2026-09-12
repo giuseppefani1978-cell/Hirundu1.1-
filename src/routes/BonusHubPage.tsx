@@ -43,7 +43,7 @@ export default function BonusHubPage() {
     </section>
     <section className="discoveries__passport">
       <div><h2>{copy.passport}</h2><p>{copy.passportHint}</p></div>
-      <button className="app-button" onClick={() => navigate('/qr')}>{copy.passportOpen}</button>
+      <button className="app-button" onClick={() => navigate('/passport/otranto')}>{copy.passportOpen}</button>
     </section>
     <details className="discoveries__more" open={more} onToggle={(e) => setMore(e.currentTarget.open)}>
       <summary>{copy.more}</summary>

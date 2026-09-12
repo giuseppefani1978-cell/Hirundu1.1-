@@ -302,3 +302,9 @@
     gap: 0.4rem;
   }
 }
+
+/* The dedicated passport is a normal scrollable page, not a map overlay. */
+.passport-page { height:100dvh; box-sizing:border-box; overflow:auto; background:#f5f1e5; }
+.passport-page .real-map__actions { position:static; display:flex; flex-wrap:wrap; margin:12px 0; }
+.passport-page .real-map__passport { position:static; width:100%; max-height:none; box-sizing:border-box; }
+.passport-page [aria-pressed="true"] { outline:3px solid #b98526; }

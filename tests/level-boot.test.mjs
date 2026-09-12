@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 for (const language of ['fr','it','en','es']) test(`three hunts and victory routing work in ${language}`, async () => {
  const dom = new JSDOM('<div id="root"></div>',{url:`https://example.test/Hirundu1.1-/?lang=${language}`,pretendToBeVisual:true});
@@ -11,6 +12,7 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
  for(const key of ['window','document','localStorage','location','navigator','Event','CustomEvent','HTMLElement','Image','screen']) Object.defineProperty(globalThis,key,{value:key==='window'?w:w[key],configurable:true,writable:true});
  const errors=[];
  globalThis.alert=msg=>errors.push(String(msg));globalThis.prompt=()=> { throw new Error('Native prompt must not interrupt the game'); };
+ globalThis.Image = function() { const img=w.document.createElement('img'); Object.defineProperty(img,'src',{get(){return img.getAttribute('src');},set(value){img.setAttribute('src',value);queueMicrotask(()=>img.onload?.());}}); return img; };
  w.scrollTo=()=>{};w.matchMedia=()=>({matches:false});
  const drawing=new Proxy({measureText:()=>({width:100}),getImageData:()=>({data:new Uint8ClampedArray(4)})},{get:(obj,key)=>obj[key]??(()=>{})});
  w.HTMLCanvasElement.prototype.getContext=()=>drawing;
@@ -31,6 +33,7 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
  const server=await createServer({server:{middlewareMode:true},appType:'custom', plugins:[{
   name:'test-only-battle-outcome', enforce:'post',
   transform(code,id) {
+   if(id.endsWith('/src/features/qr/routes/RealMap.tsx')) return code.replace('import { useNavigate, useParams } from "react-router-dom";', 'import Router from "react-router-dom"; const {useNavigate,useParams}=Router;');
    if(id.endsWith('/src/battle.js')) return code + '\nexport { _endBattle as finishBattleForTest };';
   }
  }]});
@@ -73,6 +76,24 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
    const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
    assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
    assert.equal(w.document.getElementById('playerName'),null,'saved name not requested again');
+   const {copy}=await server.ssrLoadModule('/src/ui/copy.js');
+   assert.ok(w.document.getElementById('__battle_intro__').textContent.includes(copy.battleOrientation));
+   const start = w.document.getElementById('__battle_start_btn');
+   assert.equal(start.disabled,false,'portrait and timers do not block starting');
+   start.click(); start.click();
+   const engine = await server.ssrLoadModule('/src/battle.js');
+   for(let attempt=0;attempt<100 && !engine.isBattleActive();attempt++) await new Promise(resolve=>setTimeout(resolve,10));
+   assert.equal(engine.isBattleActive(),true,'shortcut starts the actual battle wrapper for level '+n);
+   for (let retry=0;retry<2;retry++) {
+    engine.finishBattleForTest(false);
+    await new Promise(resolve=>setTimeout(resolve,1));
+    assert.ok(w.document.body.classList.contains('mode-battle'),'defeat retains battle canvas');
+    w.document.getElementById('__battle_replay_btn').click();
+    assert.equal(engine.isBattleActive(),true,'retry restarts the battle');
+    const pending=[...frames.values()];frames.clear();pending.forEach(fn=>fn(performance.now()));
+    assert.ok(frames.size>0,'wrapper render loop survives retry');
+   }
+   engine.disposeBattle();
    dispose?.();frames.clear();
    assert.equal(w.document.getElementById('__battle_intro__'),null,'battle intro cleaned on exit');
   }
@@ -95,5 +116,14 @@ for (const language of ['fr','it','en','es']) test(`three hunts and victory rout
    assert.equal(battle.isBattleActive(),false);
   }
   battle.disposeBattle();
+  const passportStore=await server.ssrLoadModule('/src/features/qr/passport/passportStorage.ts');
+  passportStore.writePassportStorage({pois:{otranto:['poi_castle']}});
+  const PassportPage=(await server.ssrLoadModule('/src/features/qr/routes/RealMap.tsx')).default;
+  const {passportCopy}=await server.ssrLoadModule('/src/features/qr/passport/passportCopy.ts');
+  const markup=renderToStaticMarkup(React.createElement(MemoryRouter,{initialEntries:['/passport/otranto']},React.createElement(Routes,null,React.createElement(Route,{path:'/passport/:id',element:React.createElement(PassportPage,{passportOnly:true})}))));
+  assert.ok(markup.includes('Passport Salentino'));
+  assert.ok(markup.includes(passportCopy.validated),'existing QR stamp appears on passport');
+  assert.ok(!markup.includes('leaflet-container'),'passport does not require loading the map');
+  assert.deepEqual(passportStore.readPassportStorage().pois.otranto,['poi_castle']);
  } finally {await server.close();dom.window.close();}
 });
