@@ -2,7 +2,7 @@ import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/
 import React from "react";
 import { disposeBattle } from "../battle.js";
 import { useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useLocation } from "react-router-dom";
 import LegacyGameShell from "../legacy/LegacyGameShell";
 import {
   bootLegacyLevel,
@@ -20,7 +20,7 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v7 · TEST";
+const DEFAULT_VERSION = "v8 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -42,7 +42,13 @@ function useLegacyLevelParam(): LegacyLevelId {
   return useMemo(() => parseLevelId(params.levelId), [params.levelId]);
 }
 
-export default function LegacyLevelPage() {
+export default function LevelPage() {
+  const {levelId}=useParams();
+  const {search}=useLocation();
+  if([4,5,6].includes(Number(levelId)))return <Navigate to={`/region/${levelId}${search}`} replace/>;
+  return <LegacyLevelPage/>;
+}
+function LegacyLevelPage() {
   const level = useLegacyLevelParam();
   const location = useLocation();
   const testBattle = new URLSearchParams(location.search).get("test") === "battle";

@@ -23,7 +23,7 @@ export default function BonusHubPage() {
     </header>
     <section className="discoveries__hero">
       {unlockedKey && <p className="discoveries__success" role="status">✓ {copy.won}</p>}
-      <p className="discoveries__eyebrow">HIRUNDU · {completed} / 3</p>
+      <p className="discoveries__eyebrow">HIRUNDU · {completed} / {progress.length}</p>
       <h1>{copy.bonus}</h1><p>{copy.bonusLead}</p>
       {next ? <button className="app-button app-button--dark" onClick={() => navigate(`/level/${next.id}`)}>
         ▶ {copy.continue} · {copy.level} {next.id}
@@ -35,7 +35,7 @@ export default function BonusHubPage() {
         const unlocked = unlockedKeys.includes(level.key) || level.done;
         return <article key={level.key} className="discoveries__card">
           <span>{copy.level} {level.id}</span><h3>{BONUS_MAPS[level.key].title}</h3>
-          <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
+          <button className="app-button" disabled={!unlocked} onClick={() => navigate(level.id>3?`/region/${level.id}/discoveries`:`/poi/${level.key}/realmap`)}>
             {unlocked ? copy.open : copy.locked}
           </button>
         </article>;

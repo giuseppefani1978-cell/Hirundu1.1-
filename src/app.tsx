@@ -11,6 +11,8 @@ const AppLayout = lazy(() => import("./ui/AppLayout"));
 const StartPage = lazy(() => import("./routes/StartPage"));
 const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
+const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
+const RegionDiscoveries = lazy(() => import("./levels/RegionDiscoveries"));
 
 // ---- Small helper: scroll to top on route change
 function ScrollToTop() {
@@ -49,6 +51,8 @@ export default function App() {
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />
+          <Route path="/region/:levelId" element={<RegionLevelPage />} />
+          <Route path="/region/:levelId/discoveries" element={<RegionDiscoveries />} />
 
           {/* Hub bonus + variante avec :bonusId */}
           <Route path="/bonus" element={<BonusHubPage />} />
