@@ -1,7 +1,7 @@
 import { copy } from './ui/copy.js';
 
 // Explicit, gesture-driven start. No timer or portrait gate can strand the player.
-export function startBattleIntro({ ammo = {}, onProceed, title = `⚔️ ${copy.battle} · Otranto`, subtitle = copy.battleHint, startLabel = copy.fight } = {}) {
+export function startBattleIntro({ ammo = {}, onProceed, title = `⚔️ ${copy.battle} · Otranto`, subtitle = copy.battleHint, startLabel = copy.fight, collectibleLabel = copy.battleStars, collectibleIcon = '⭐' } = {}) {
   const overlay = document.createElement('div');
   overlay.id = '__battle_intro__';
   overlay.setAttribute('role', 'dialog');
@@ -14,7 +14,7 @@ export function startBattleIntro({ ammo = {}, onProceed, title = `⚔️ ${copy.
   heading.id = '__battle_intro_title__'; heading.textContent = title;
   const hint = document.createElement('p'); hint.textContent = copy.battleOrientation;
   const supplies = document.createElement('p');
-  supplies.textContent = `⭐ ${copy.battleStars}: ${ammo.stars|0} · 🍩 Pasticciotto: ${ammo.pasticciotto|0} · 🥟 Rustico: ${ammo.rustico|0} · ☕ Caffè: ${ammo.caffe|0}`;
+  supplies.textContent = `${collectibleIcon} ${collectibleLabel}: ${ammo.stars|0} · 🍩 Pasticciotto: ${ammo.pasticciotto|0} · 🥟 Rustico: ${ammo.rustico|0} · ☕ Caffè: ${ammo.caffe|0}`;
   const instructions = document.createElement('p'); instructions.textContent = subtitle;
   const button = document.createElement('button');
   button.id = '__battle_start_btn'; button.type = 'button'; button.textContent = startLabel;

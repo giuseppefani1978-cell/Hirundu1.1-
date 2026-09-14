@@ -5,6 +5,13 @@
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
 import { copy } from './ui/copy.js';
+import { LANG } from './i18n.js';
+const battleWords = {
+ fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !'},
+ it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!'},
+ en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'},
+ es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!'},
+}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
 
@@ -130,7 +137,19 @@ function __persistUnlocksForFoe(foeType){
     // legacy umbrella bit (kept if some code still checks it)
     localStorage.setItem('bonus_unlocked', '1');
 
-    if (foeType === 'jelly') {
+    if (foeType === 'resino') {
+      __writeUnifiedUnlock('arneo');
+      markLevelWin(6);
+      localStorage.setItem('__toast_next__', 'arneo');
+    } else if (foeType === 'scirocco') {
+      __writeUnifiedUnlock('capo');
+      try { markLevelWin?.(5); } catch {}
+      localStorage.setItem('__toast_next__', 'capo');
+    } else if (foeType === 'nacra') {
+      __writeUnifiedUnlock('adriatico');
+      try { markLevelWin?.(4); } catch {}
+      localStorage.setItem('__toast_next__', 'adriatico');
+    } else if (foeType === 'jelly') {
       // Otranto (L1)
       localStorage.setItem('bonus_otranto_unlocked', '1');
       __writeUnifiedUnlock('otranto');
@@ -163,7 +182,7 @@ function __persistUnlocksForFoe(foeType){
 }
 
 function __redirectAfterWin(foeType){
-  const key = foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto';
+  const key = foeType === 'resino' ? 'arneo' : foeType === 'scirocco' ? 'capo' : foeType === 'nacra' ? 'adriatico' : foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto';
   window.location.hash = `/bonus/${key}`;
 }
 
@@ -225,7 +244,7 @@ export function startBattle(foeType='jelly'){
   // ennemi : hors-écran à droite
   state.foe = {
     x: state.w + 160, y: 0, vx: 0, vy: 0,
-    hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
+    hp: foeType === 'resino' ? 340 : foeType === 'scirocco' ? 300 : foeType === 'nacra' ? 260 : BTL.FOE_HP, fireAt: Infinity, onGround: false
   };
   state.foeDir = -1;
   state.foeWanderUntil = performance.now() + 700;
@@ -268,6 +287,7 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
+  if(['nacra','scirocco','resino'].includes(state.foeType) && (document.hidden || !_isLandscape())) return;
   // même si la battle est finie, on continue certains FX
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
@@ -370,7 +390,7 @@ export function tickBattle(dt){
           } else {
             _fireFoeZap();
           }
-          state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
+          state.foe.fireAt = now + (state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX));
         }
       }
     }
@@ -514,7 +534,7 @@ export function renderBattle(ctx, _view, sprites){
   const F_H_BASE = Math.round(P_H * 1.8);
 
   let foeImg = null;
-  if (state.foeType === 'jelly')        foeImg = sprites?.jellyImg;
+  if (['jelly','nacra','scirocco','resino'].includes(state.foeType)) foeImg = sprites?.jellyImg;
   else if (state.foeType === 'crow')    foeImg = sprites?.crowImg;
   else if (state.foeType === 'sputacchina') foeImg = sprites?.sputImg;
 
@@ -618,25 +638,25 @@ export function renderBattle(ctx, _view, sprites){
 
   // HUD
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
-  ctx.fillText(`HP: ${state.player.hp}`, 16, 28);
-  ctx.fillText(`Foe: ${state.foe.hp}`,  Math.max(16, w-120), 28);
-  ctx.fillText(`★: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
+  ctx.fillText(`♥ ${state.player.hp}`, 16, 28);
+  ctx.fillText(`${state.foeType==='resino'?'Resino ':state.foeType==='scirocco'?'Scirocco ':state.foeType==='nacra'?'Nacra ':' '}♥ ${state.foe.hp}`, Math.max(16,w-140),28);
+  ctx.fillText(`${state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★'}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
 
   // READY / GO
   const now = performance.now();
   if (now < state.goAt){
     ctx.font='700 42px system-ui';
     ctx.fillStyle='rgba(255,255,255,.9)';
-    ctx.fillText('READY…', Math.floor(w/2 - 92), Math.floor(h/2 - 40));
+    ctx.fillText(battleWords.ready, Math.floor(w/2 - 92), Math.floor(h/2 - 40));
   } else if (now < state.goAt + BTL.GO_FLASH_MS){
     ctx.font='900 56px system-ui';
     ctx.fillStyle='rgba(255,235,0,.95)';
-    ctx.fillText('GO!', Math.floor(w/2 - 40), Math.floor(h/2 - 40));
+    ctx.fillText(battleWords.go, Math.floor(w/2 - 40), Math.floor(h/2 - 40));
   }
 
   // Aide
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
-  ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, Math.max(12, h-12));
+  ctx.fillText(copy.battleHint, 16, Math.max(12, h-12));
 
   ctx.restore();
 }
@@ -760,7 +780,7 @@ function _fireFoeZapOnce() {
     y: state.foe.y,
     vx, vy,
     from: 'foe',
-    dmg: BTL.FOE_ZAP_DMG,
+    dmg: state.foeType==='resino' ? 20 : state.foeType==='scirocco' ? 18 : state.foeType==='nacra' ? 16 : BTL.FOE_ZAP_DMG,
     kind: 'zap',
     life: 1.2,
   });
@@ -863,8 +883,8 @@ function _ensureBattleUI(show){
       pointer-events:auto;
     `;
     ab.innerHTML = `
-      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
-      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
+      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • ${battleWords.attack}</button>
+      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • ${battleWords.special}</button>
     `;
 
     // style boutons
@@ -883,7 +903,7 @@ function _ensureBattleUI(show){
       position:absolute; inset:0; display:none; align-items:center; justify-content:center;
       background:rgba(0,0,0,.75); color:#fff; font:700 18px system-ui; text-align:center; padding:20px; pointer-events:auto;
     `;
-    rot.innerHTML = `<div>📱 Tourne ton téléphone en mode paysage pour la bataille.</div>`;
+    rot.textContent = `📱 ${copy.battleOrientation}`;
 
     // overlay fin de partie
     const end = document.createElement('div');

@@ -43,5 +43,29 @@
     "radius": 120,
     "partnerId": "beach_grotte",
     "category": "beach"
+  },
+  {
+    "id": "poi_giurdignano_san_salvatore",
+    "label": "Cripta di San Salvatore",
+    "lat": 40.12202,
+    "lng": 18.43113,
+    "radius": 80,
+    "category": "monument"
+  },
+  {
+    "id": "poi_leuca_faro",
+    "label": "Faro di Santa Maria di Leuca",
+    "lat": 39.7959,
+    "lng": 18.36846,
+    "radius": 80,
+    "category": "monument"
+  },
+  {
+    "id": "poi_copertino_castello",
+    "label": "Castello di Copertino",
+    "lat": 40.273,
+    "lng": 18.043,
+    "radius": 80,
+    "category": "monument"
   }
 ]

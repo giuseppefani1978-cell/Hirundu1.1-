@@ -17,10 +17,13 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
   1: { bonusKey: "otranto", event: "otranto:unlocked" },
   2: { bonusKey: "gallipoli", event: "gallipoli:unlocked" },
   3: { bonusKey: "lecce", event: "lecce:unlocked" },
+  4: { bonusKey: "adriatico", event: "adriatico:unlocked" },
+  5: { bonusKey: "capo", event: "capo:unlocked" },
+  6: { bonusKey: "arneo", event: "arneo:unlocked" },
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v8 · TEST";
+const DEFAULT_VERSION = "v8.6 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -34,6 +37,9 @@ function parseLevelId(raw: string | undefined): LegacyLevelId {
   const numeric = Number(raw);
   if (numeric === 2) return 2;
   if (numeric === 3) return 3;
+  if (numeric === 4) return 4;
+  if (numeric === 5) return 5;
+  if (numeric === 6) return 6;
   return 1;
 }
 
@@ -45,7 +51,7 @@ function useLegacyLevelParam(): LegacyLevelId {
 export default function LevelPage() {
   const {levelId}=useParams();
   const {search}=useLocation();
-  if([4,5,6].includes(Number(levelId)))return <Navigate to={`/region/${levelId}${search}`} replace/>;
+
   return <LegacyLevelPage/>;
 }
 function LegacyLevelPage() {
@@ -114,7 +120,7 @@ function LegacyLevelPage() {
       cleanBonus();
       removeVictoryCTA();
       try {
-        document.body.classList.remove("mode-battle-intro");
+        document.body.classList.remove("mode-battle-intro", "mode-battle");
         document.body.removeAttribute("data-level-theme");
       } catch {
         // ignore cleanup issues

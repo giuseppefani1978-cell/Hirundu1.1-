@@ -46,11 +46,11 @@ const ASSETS = {
 
 // UI carte
 const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
-function computeMapViewport(canvasW, canvasH, mapW, mapH){
+function computeMapViewport(canvasW, canvasH, mapW, mapH, fitWidth = false){
   const availW = canvasW;
   const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
   const baseScale = Math.min(availW / mapW, availH / mapH);
-  const scale = baseScale * UI_CONST.MAP_ZOOM;
+  const scale = Math.min(baseScale * UI_CONST.MAP_ZOOM, fitWidth ? canvasW / mapW : Infinity);
   const dw = mapW * scale, dh = mapH * scale;
   const ox = (canvasW - dw) / 2;
   const oy = UI_CONST.TOP + (availH - dh) / 2;
@@ -119,6 +119,21 @@ function getCountry(){
 // BOOT (structure identique L2)
 // =====================================================
 export function boot(options = {}){
+  // Optional regional content reuses the established hunt and battle shell.
+  const regional = options.region;
+  const levelId = regional?.id || (regional ? 4 : 3);
+  const collectibleIcon = regional?.token || '🐚';
+  const places = regional?.pois || POIS;
+  const inventoryLabel = regional?.inventoryLabel || INVENTORY_LABEL;
+  const placeName = key => regional ? places.find(p => p.key === key)?.name || key : poiName(key);
+  const question = key => regional ? places.find(p => p.key === key)?.clue || '' : t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`;
+  const renderInventory = (n,total) => {
+    ui.renderStars(n,total);
+    if(regional) document.querySelectorAll('#stars .star').forEach((node,i)=>{
+      const shell=document.createElement('span');shell.textContent=collectibleIcon;shell.style.cssText=`display:block;font-size:20px;opacity:${i<n?1:.25}`;
+      node.replaceWith(shell);
+    });
+  };
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
@@ -135,10 +150,10 @@ export function boot(options = {}){
 
   // Titres L3 + HUD "Feuilles"
   const hudLabel = document.getElementById('hudLabel');
-  if (hudLabel) hudLabel.textContent = INVENTORY_LABEL;
+  if (hudLabel) hudLabel.textContent = inventoryLabel;
 
   ui.updateScore(0, LEAVES_TARGET);
-  ui.renderStars(0, LEAVES_TARGET);
+  renderInventory(0, LEAVES_TARGET);
   ui.updateEnergy(100);
   ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
@@ -190,10 +205,10 @@ export function boot(options = {}){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 3, theme: 'lecce', badge: `${copy.level} 3`,
-    title: t.level3.title, subtitle: t.level3.subtitle, description: copy.mission,
+    level: levelId, theme: 'lecce', badge: `${copy.level} ${levelId}`,
+    title: regional?.title || t.level3.title, subtitle: regional?.subtitle || t.level3.subtitle, description: regional?.mission || copy.mission,
     footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
-    highlight: { title: copy.briefing, body: copy.mission },
+    highlight: { title: copy.briefing, body: regional?.mission || copy.mission },
     accentColor: '#38bdf8',
   });
 
@@ -237,7 +252,7 @@ export function boot(options = {}){
   let running = false;
   let lastTS = 0;
   let collected = new Set();
-  let QUEST = shuffle(POIS);
+  let QUEST = shuffle(places);
   let currentIdx = 0;
 
   // timers/questions
@@ -245,7 +260,7 @@ export function boot(options = {}){
   function askQuestionAt(idx){
     if (idx >= 0 && idx < QUEST.length) {
       const key = QUEST[idx].key;
-      ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
+      ui.showAsk(question(key));
     }
   }
   function queueNextAsk(delayMs = 1200){
@@ -366,7 +381,7 @@ export function boot(options = {}){
       bonusScore,
       bonusBreakdown: { ...pickedCounts }
     };
-    addHallOfFameEntry(entry, HOF_KEY);
+    addHallOfFameEntry(entry, regional ? `salento_hof_v${levelId}` : HOF_KEY);
 
     const title = won ? copy.won : copy.defeat;
     const baseLines = [
@@ -377,6 +392,7 @@ export function boot(options = {}){
       ``,
       `👉 Consulte le Hall of Fame depuis la page Bonus.`
     ];
+    if(regional) baseLines.splice(0,baseLines.length,title,`${copy.points}: ${total}`,`${inventoryLabel}: ${leavesPicked}/10`,`${copy.hits}: ${hits}`,`${copy.time}: ${fmtTime(entry.time)}`);
     ui.showSuccess(baseLines.join('\n'));
     ui.showReplay(true);
 
@@ -409,7 +425,7 @@ export function boot(options = {}){
 
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
-    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
+    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh, Boolean(regional));
 
     const ctx2 = canvas.getContext('2d');
     ctx2.clearRect(0,0,W,H);
@@ -425,10 +441,22 @@ export function boot(options = {}){
     }
 
     // POIs
-    for (const p of POIS){
+    for (const p of places){
       const x = ox + p.x*dw, y = oy + p.y*dh;
+      ctx2.save();
       if (collected.has(p.key)){
-        drawLeaf(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+        if(regional){
+          ctx2.font='24px system-ui';ctx2.textAlign='center';ctx2.fillText(collectibleIcon,x,y);
+          ctx2.font='bold 11px system-ui';ctx2.lineWidth=3;ctx2.strokeStyle='#fff6d9';ctx2.fillStyle='#142d45';
+          const lines=[];let line='';
+          for(const word of p.name.split(' ')){
+            const next=line ? `${line} ${word}` : word;
+            if(line && ctx2.measureText(next).width>105){lines.push(line);line=word;}else line=next;
+          }
+          if(line)lines.push(line);
+          lines.forEach((label,i)=>{ctx2.strokeText(label,x,y+15+i*12);ctx2.fillText(label,x,y+15+i*12);});
+        }
+        else drawLeaf(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
         ctx2.save();
         ctx2.strokeStyle = '#0a7a3c'; ctx2.lineWidth = 2;
@@ -438,6 +466,7 @@ export function boot(options = {}){
         ctx2.stroke();
         ctx2.restore();
       }
+      ctx2.restore();
     }
 
     // joueur + collisions + ennemis/bonus (mode play)
@@ -478,18 +507,18 @@ export function boot(options = {}){
       if (now >= collectLockUntil){
         const p = QUEST[currentIdx];
         const px = ox + p.x*dw, py = oy + p.y*dh;
-        const onTarget = Math.hypot(bx - px, by - py) < 44;
+        const onTarget = Math.hypot(bx - px, by - py) < (regional ? 22 : 44);
         if (onTarget){
           collectLockUntil = now + 900;
           collected.add(p.key);
           ui.updateScore(collected.size, LEAVES_TARGET);
-          ui.renderStars(collected.size, LEAVES_TARGET);
+          renderInventory(collected.size, LEAVES_TARGET);
           starEmphasis();
-          ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+          ui.showEphemeralLabel(px, py - 28, placeName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
 
           score += SCORE.STAR; leavesPicked++; updateScoreLive();
 
-          const nameShort = poiName(p.key);
+          const nameShort = placeName(p.key);
           ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
           currentIdx++;
@@ -521,7 +550,7 @@ export function boot(options = {}){
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = `${copy.battle} · Lecce`;
+        bdTitle.textContent = `${copy.battle} · ${regional?.bossName || 'Lecce'}`;
         bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
@@ -529,7 +558,9 @@ export function boot(options = {}){
     } catch {}
 
     cleanupIntro = startBattleIntro({
-      title: `⚔️ ${copy.battle} · Lecce`,
+      title: `⚔️ ${copy.battle} · ${regional?.bossName || 'Lecce'}`,
+      collectibleLabel: regional ? inventoryLabel : undefined,
+      collectibleIcon: regional ? collectibleIcon : undefined,
       subtitle: copy.battleHint,
       startLabel: copy.fight,
       ammo: {
@@ -549,7 +580,9 @@ export function boot(options = {}){
     const mods = import.meta.glob('./game_battle_lecce.js');
 
     let mod;
-    if (mods['./game_battle_lecce.js']) {
+    if (regional) {
+      mod = await import('../../game_battle.js');
+    } else if (mods['./game_battle_lecce.js']) {
       mod = await mods['./game_battle_lecce.js'](); // ← Vite réécrit l’URL vers le chunk émis
     } else {
       // ✅ 2) Fallback robuste vers le moteur commun
@@ -596,6 +629,9 @@ export function boot(options = {}){
         },
         {
           bottomExtra: 0,
+          bossSprite: regional?.bossSprite,
+          backdrop: regional?.backdrop,
+          foeType: regional ? regional.foeType || 'nacra' : 'jelly',
           onWin: () => {
           if (!session.active) return;
             document.body.classList.remove('mode-battle');
@@ -738,7 +774,10 @@ export function boot(options = {}){
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
 
     try {
-      unlockLecceBonus();
+      if(regional){
+        try { localStorage.setItem(`region${levelId}_hunt`,'10'); } catch {}
+        document.dispatchEvent(new Event(`${regional.key || 'adriatico'}:unlocked`));
+      } else unlockLecceBonus();
 
     } catch {}
   }
@@ -770,7 +809,7 @@ export function boot(options = {}){
   }
   function resetGame(){
     collected = new Set();
-    QUEST = shuffle(POIS);
+    QUEST = shuffle(places);
     currentIdx = 0;
 
     scoreReset();
@@ -784,7 +823,7 @@ export function boot(options = {}){
     playerSlowTimer = 0; hitShake = 0;
 
     ui.updateScore(0, LEAVES_TARGET);
-    ui.renderStars(0, LEAVES_TARGET);
+    renderInventory(0, LEAVES_TARGET);
     resetAudioForNewGame();
 
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }

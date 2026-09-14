@@ -98,7 +98,7 @@ function _onResize() {
   } catch {}
 }
 
-function _loadSprites() {
+function _loadSprites({ bossSprite, backdrop } = {}) {
   return new Promise((resolve) => {
     const birdImg   = new Image();
     const spiderImg = new Image();
@@ -112,8 +112,8 @@ function _loadSprites() {
     birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
-    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC;  // ✅ ajouté
+    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSprite || SPRITES_SRC.jelly;
+    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = backdrop || BTL_BG_SRC;
   });
 }
 
@@ -175,7 +175,7 @@ function _exitCanvasFullscreen() {
 // ---------------------------
 export async function startBattleFlow(
   ammo,
-  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0 } = {}
+  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0, bossSprite, backdrop, foeType = 'jelly' } = {}
 ){
   // Canvas / contexte
   const generation = ++_generation;
@@ -241,7 +241,7 @@ export async function startBattleFlow(
   setAmmoRaw(ammo || {});
 
   // sprites
-  _sprites = await _loadSprites();
+  _sprites = await _loadSprites({ bossSprite, backdrop });
   if (generation !== _generation) return;
 
   // sizing + listeners
@@ -253,7 +253,7 @@ export async function startBattleFlow(
   window.addEventListener('orientationchange', _onResize, { passive:true });
 
   // go!
-  startBattleRaw('jelly');   // si tu as plusieurs niveaux, passe la clé en param
+  startBattleRaw(foeType);
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(_loop);
 }

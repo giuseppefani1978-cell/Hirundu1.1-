@@ -35,7 +35,7 @@ export default function BonusHubPage() {
         const unlocked = unlockedKeys.includes(level.key) || level.done;
         return <article key={level.key} className="discoveries__card">
           <span>{copy.level} {level.id}</span><h3>{BONUS_MAPS[level.key].title}</h3>
-          <button className="app-button" disabled={!unlocked} onClick={() => navigate(level.id>3?`/region/${level.id}/discoveries`:`/poi/${level.key}/realmap`)}>
+          <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
             {unlocked ? copy.open : copy.locked}
           </button>
         </article>;

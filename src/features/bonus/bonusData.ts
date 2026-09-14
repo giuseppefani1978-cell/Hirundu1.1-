@@ -6,15 +6,16 @@ export type BonusMapConfig = {
   lat: number;
   lng: number;
   zoom: number;
+  radiusKm?: number;
   markerText?: string;
   partnerIds: Partner["id"][];
   poiIds: Poi["id"][];
 };
 
 export const BONUS_MAPS = {
-  adriatico: { title: "Adriatico", lat:40.15,lng:18.4,zoom:10, markerText: "Adriatico",partnerIds:[],poiIds:[] },
-  capo: { title: "Capo di Leuca", lat:39.9,lng:18.3,zoom:10, markerText:"Capo di Leuca",partnerIds:[],poiIds:[] },
-  arneo: { title: "Arneo", lat:40.35,lng:17.95,zoom:10, markerText:"Arneo",partnerIds:[],poiIds:[] },
+  adriatico: { title: "Giurdignano", lat:40.12366,lng:18.43169,zoom:14,radiusKm:3, markerText: "Giurdignano",partnerIds:[],poiIds:["poi_giurdignano_san_salvatore"] },
+  capo: { title: "Santa Maria di Leuca", lat:39.7959,lng:18.36846,zoom:14,radiusKm:3, markerText:"Santa Maria di Leuca",partnerIds:[],poiIds:["poi_leuca_faro"] },
+  arneo: { title: "Copertino", lat:40.273,lng:18.043,zoom:14,radiusKm:3, markerText:"Copertino",partnerIds:[],poiIds:["poi_copertino_castello"] },
   otranto: {
     title: "Otranto",
     lat: 40.1489,

@@ -8,7 +8,7 @@ import './styles.css';
 
 export default function AppLayout({ children }: { children?: React.ReactNode }) {
   const { id } = useParams();
-  const city = ['otranto','gallipoli','lecce'].includes(id || '') ? id : 'otranto';
+  const city = ['otranto','gallipoli','lecce','adriatico','capo','arneo'].includes(id || '') ? id : 'otranto';
   return <div className="app-shell">
     <div className="app-shell__inner">
       <header className="app-shell__header">

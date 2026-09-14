@@ -14,7 +14,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
+import { BONUS_MAPS, type BonusKey, type BonusMapConfig } from "../../bonus/bonusData";
 import { getEnrichedPois, type EnrichedPoi } from "../services/pois";
 import { findPartnerById, type Partner } from "../services/partners";
 import {
@@ -96,7 +96,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
   const navigate = useNavigate();
   const { id } = useParams();
   const key = (id?.toLowerCase() as BonusKey) || "otranto";
-  const cfg = BONUS_MAPS[key] ?? BONUS_MAPS.otranto;
+  const cfg: BonusMapConfig = BONUS_MAPS[key] ?? BONUS_MAPS.otranto;
 
   const pois = useMemo(() => getEnrichedPois(), []);
   const relevantPois = useMemo(() => filterPoisForMap(cfg.poiIds, pois), [cfg.poiIds, pois]);
@@ -111,7 +111,8 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
   }, [partners, relevantPois]);
 
   const center: LatLngTuple = [cfg.lat, cfg.lng];
-  const inner = circleToPolygon(center[0], center[1], RADIUS_KM);
+  const radiusKm = cfg.radiusKm ?? RADIUS_KM;
+  const inner = circleToPolygon(center[0], center[1], radiusKm);
   const innerHole = [...inner].reverse();
   const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
 
@@ -153,7 +154,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
     <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
       <nav className="real-map__actions passport-page__navigation">
         <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
-        {(['otranto','gallipoli','lecce'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{city[0].toUpperCase()+city.slice(1)}</button>)}
+        {(['otranto','gallipoli','lecce','adriatico','capo','arneo'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{BONUS_MAPS[city].title}</button>)}
       </nav>
       <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
       <nav className="real-map__actions">
@@ -233,7 +234,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           }}
         />
 
-        <FitAndRestrict lat={center[0]} lng={center[1]} radiusKm={RADIUS_KM} />
+        <FitAndRestrict lat={center[0]} lng={center[1]} radiusKm={radiusKm} />
       </MapContainer>
 
       <button type="button" className="real-map__back" onClick={() => navigate(`/passport/${key}`)}>
@@ -244,7 +245,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
 }
 
 function filterPoisForMap(ids: string[] | undefined, pois: EnrichedPoi[]): EnrichedPoi[] {
-  if (!ids?.length) return pois;
+  if (!ids?.length) return pois.filter(poi => !poi.id.startsWith("poi_giurdignano_") && !poi.id.startsWith("poi_leuca_") && !poi.id.startsWith("poi_copertino_"));
   const set = new Set(ids);
   return pois.filter((poi) => set.has(poi.id));
 }

@@ -34,6 +34,7 @@ export function attackLanes(id:number,round:number):number[] {
 export default function RegionLevelPage(){
  const {levelId}=useParams(); const location=useLocation();
  const id=Number(levelId); const region=regionById(id);
+ if([4,5,6].includes(id))return <Navigate to={`/level/${id}${location.search}`} replace/>;
  if(!region) return <Navigate to="/" replace/>;
  return <RegionalGame key={`${id}:${location.search}`} id={id}/>;
 }
