@@ -41,6 +41,7 @@ import { createHallOfFameController } from './hof.js';
 import { withBase } from '../../utils/basePath.js';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
 import { setupDpad } from './input.js';
+import { drawAnimatedBird } from '../../legacy/levelSession.js';
 import {
   computeMapViewport,
   drawStarfish,
@@ -453,7 +454,7 @@ export function boot() {
     }, 220);
   }, { passive: true });
 
-  setupDpad(state.player, () => getSpeed(), () => state.mode === 'play');
+  const movePlayer = setupDpad(state.player, () => getSpeed(), () => state.mode === 'play');
 
   const startBtn = document.getElementById('startBtn');
   if (startBtn) {
@@ -894,6 +895,7 @@ export function boot() {
       const dt = Math.min(0.05, (timestamp - state.lastFrame) / 1000);
       state.lastFrame = timestamp;
       if (state.mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (state.hitShake > 0) {
           state.hitShake = Math.max(0, state.hitShake - dt * SHAKE.DECAY_PER_S);
@@ -959,14 +961,7 @@ export function boot() {
     const shake = applyShake({ mode: state.mode, hitShake: state.hitShake });
 
     if (state.mode === 'play') {
-      if (images.birdImg.complete && images.birdImg.naturalWidth) {
-        ctx.drawImage(images.birdImg, px - playerSize / 2 + shake.x, py - playerSize / 2 + shake.y, playerSize, playerSize);
-      } else {
-        ctx.fillStyle = '#333';
-        ctx.beginPath();
-        ctx.arc(px + shake.x, py + shake.y, playerSize * 0.35, 0, TWO_PI);
-        ctx.fill();
-      }
+      drawAnimatedBird(ctx, images.birdImg, px, py, playerSize, state.player, performance.now(), shake.x, shake.y);
     }
 
     if (state.mode === 'play' && state.currentTarget < state.quest.length) {
