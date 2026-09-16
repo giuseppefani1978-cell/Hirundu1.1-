@@ -11,7 +11,7 @@ import {
   isBattleActive as isActiveRaw
 } from './battle.js';
 
-const BTL_BG_SRC = withBase('assets/battle_bg_salento.PNG');
+const BTL_BG_SRC = withBase('assets/battle_bg_salento.webp');
 
 // ---------------------------
 // Config assets (sprites)
