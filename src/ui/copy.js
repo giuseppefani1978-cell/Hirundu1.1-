@@ -2,6 +2,10 @@ import { LANG } from '../i18n.js';
 const messages = {
   fr: {
     battleOrientation: "Pour jouer confortablement, tourne ton téléphone en paysage.", battleStars: "Étoiles",
+    huntOrientation: "Pour la chasse, garde ton téléphone en mode portrait.",
+    rotatePortrait: "Tourne ton téléphone à la verticale pour continuer la chasse.",
+    rotateLandscape: "Tourne ton téléphone en paysage pour commencer la bataille.",
+    landscapeReady: "Parfait — orientation paysage détectée.",
     testTools: "Raccourcis de test",
     testWarning: "Outils temporaires. Simuler une victoire modifie la progression sur cet appareil.",
     testWin: "Simuler une victoire",
@@ -35,6 +39,10 @@ const messages = {
   },
   it: {
     battleOrientation: "Per giocare comodamente, ruota il telefono in orizzontale.", battleStars: "Stelle",
+    huntOrientation: "Per la caccia, tieni il telefono in verticale.",
+    rotatePortrait: "Ruota il telefono in verticale per continuare la caccia.",
+    rotateLandscape: "Ruota il telefono in orizzontale per iniziare la battaglia.",
+    landscapeReady: "Perfetto — orientamento orizzontale rilevato.",
     testTools: "Scorciatoie di test",
     testWarning: "Strumenti temporanei. Simulare una vittoria modifica i progressi su questo dispositivo.",
     testWin: "Simula una vittoria",
@@ -68,6 +76,10 @@ const messages = {
   },
   en: {
     battleOrientation: "For comfortable play, turn your phone to landscape.", battleStars: "Stars",
+    huntOrientation: "Keep your phone in portrait for the hunt.",
+    rotatePortrait: "Turn your phone upright to continue the hunt.",
+    rotateLandscape: "Turn your phone to landscape to start the battle.",
+    landscapeReady: "Perfect — landscape orientation detected.",
     testTools: "Test shortcuts",
     testWarning: "Temporary tools. Simulating a win changes progress on this device.",
     testWin: "Simulate a win",
@@ -101,6 +113,10 @@ const messages = {
   },
   es: {
     battleOrientation: "Para jugar cómodamente, gira el teléfono en horizontal.", battleStars: "Estrellas",
+    huntOrientation: "Para la búsqueda, mantén el teléfono en vertical.",
+    rotatePortrait: "Gira el teléfono a vertical para continuar la búsqueda.",
+    rotateLandscape: "Gira el teléfono en horizontal para comenzar la batalla.",
+    landscapeReady: "Perfecto — orientación horizontal detectada.",
     testTools: "Atajos de prueba",
     testWarning: "Herramientas temporales. Simular una victoria cambia el progreso en este dispositivo.",
     testWin: "Simular una victoria",
