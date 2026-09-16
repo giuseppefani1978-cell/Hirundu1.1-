@@ -9,10 +9,11 @@ export type LegacyGameShellProps = {
   onDiscoveriesClick?: () => void;
   versionLabel?: string;
   debug?: boolean;
+  showPerf?: boolean;
 };
 
 const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(function LegacyGameShell(
-  { level = 1, onStartClick, onDiscoveriesClick, versionLabel = "v2025-08-20-g", debug = false },
+  { level = 1, onStartClick, onDiscoveriesClick, versionLabel = "v2025-08-20-g", debug = false, showPerf = false },
   canvasRef
 ) {
   const [paused, setPaused] = useState(false);
@@ -164,7 +165,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                     🎁 {copy.bonus}
                   </button>
                 ) : null}
-                {debug ? (
+                {(debug || showPerf) ? (
                   <div className="game-pause__perf">
                     <strong>{copy.performance}</strong>
                     <span>{copy.fps}: {perf.fps}</span>
@@ -176,7 +177,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
             </div>
           ) : null}
 
-          {debug ? (
+          {(debug || showPerf) ? (
             <div id="perfHud" className="perf-hud">
               {perf.fps} FPS · jank {perf.jank} · {perf.worstFrameMs} ms
             </div>
