@@ -39,7 +39,7 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
  }]});
  try {
   const Shell=(await server.ssrLoadModule('/src/legacy/LegacyGameShell.tsx')).default;
-  const {bootLegacyLevel}=await server.ssrLoadModule('/src/legacy/bootLevel.ts');
+  const {bootLegacyLevel,getNextLevelId}=await server.ssrLoadModule('/src/legacy/bootLevel.ts');
   const storage = await server.ssrLoadModule('/src/features/bonus/bonusStorage.ts');
   storage.markLevelWin(1);
   assert.equal(storage.getResumeTarget().id, 2, 'victory 1 offers hunt 2');
@@ -106,12 +106,12 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    assert.equal(w.document.getElementById('__battle_intro__'),null,'battle intro cleaned on exit');
   }
   // Inject only the outcome in the test loader; execute the actual end screen,
-  // click handler, progress writes and hash routing. No production cheat exists.
+  // click handler and progress writes. Routing is owned by the React level flow.
   const battle = await server.ssrLoadModule('/src/battle.js');
   battle.setupBattleInputs();
   let victories = 0;
   battle.setBattleCallbacks({onWin:()=> { victories++; }});
-  for (const [foe,key,level] of [['jelly','otranto',1],['crow','gallipoli',2],['sputacchina','lecce',3],['nacra','adriatico',4],['scirocco','capo',5],['resino','arneo',6],['macina','nardo',7],['argillo','messapia',8],['calcara','itria',9]]) {
+  for (const [foe,level] of [['jelly',1],['crow',2],['sputacchina',3],['nacra',4],['scirocco',5],['resino',6],['macina',7],['argillo',8],['calcara',9]]) {
    w.location.hash='/level/'+level;
    battle.startBattle(foe);
    battle.finishBattleForTest(true);
@@ -119,7 +119,8 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    const continueButton=w.document.getElementById('__battle_replay_btn');
    continueButton.click(); continueButton.click();
    assert.equal(victories,level,'one victory callback per battle');
-   assert.equal(w.location.hash,'#/bonus/'+key,'victory opens discoveries instead of the real map');
+   assert.equal(w.location.hash,'#/level/'+level,'battle engine must not own navigation');
+   assert.equal(getNextLevelId(level), level < 9 ? level + 1 : null, 'app flow knows the next level');
    assert.equal(storage.getProgressList()[level-1].done,true);
    assert.equal(battle.isBattleActive(),false);
   }
