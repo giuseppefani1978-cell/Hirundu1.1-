@@ -39,15 +39,20 @@ export function setupDpad(player, getSpeed, canMove) {
     const length = Math.hypot(dx, dy);
     const targetX = length ? dx / length : 0;
     const targetY = length ? dy / length : 0;
-    const blend = 1 - Math.exp(-(length ? 12 : 8) * dt);
-    vx += (targetX - vx) * blend;
-    vy += (targetY - vy) * blend;
+    const response = length ? 12 : 8;
+    const decay = Math.exp(-response * dt);
+    const oldVx = vx;
+    const oldVy = vy;
+    const moveX = targetX * dt + (oldVx - targetX) * (1 - decay) / response;
+    const moveY = targetY * dt + (oldVy - targetY) * (1 - decay) / response;
+    vx = targetX + (oldVx - targetX) * decay;
+    vy = targetY + (oldVy - targetY) * decay;
     if (!length && Math.abs(vx) < 0.015) vx = 0;
     if (!length && Math.abs(vy) < 0.015) vy = 0;
 
-    const distance = (getSpeed ? getSpeed() : 0) * 60 * dt;
-    player.x = Math.max(0, Math.min(1, player.x + vx * distance));
-    player.y = Math.max(0, Math.min(1, player.y + vy * distance));
+    const speedPerSecond = (getSpeed ? getSpeed() : 0) * 60;
+    player.x = Math.max(0, Math.min(1, player.x + moveX * speedPerSecond));
+    player.y = Math.max(0, Math.min(1, player.y + moveY * speedPerSecond));
     player._motionX = vx;
     player._motionY = vy;
     player._motionSpeed = Math.min(1, Math.hypot(vx, vy));
