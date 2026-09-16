@@ -43,7 +43,9 @@ export function startBattleIntro({
   const visual = document.createElement('div');
   visual.className = 'battle-transition__visual';
   if (backdrop) {
-    visual.style.backgroundImage = `linear-gradient(180deg,rgba(10,18,32,.12),rgba(10,18,32,.72)),url("${String(backdrop).replace(/"/g, '%22')}")`;
+    const png = String(backdrop).replace(/"/g, '%22');
+    const webp = /\.png$/i.test(png) ? png.replace(/\.png$/i, '.webp') : png;
+    visual.style.backgroundImage = `linear-gradient(180deg,rgba(10,18,32,.12),rgba(10,18,32,.72)),image-set(url("${webp}") type("image/webp"), url("${png}") type("image/png"))`;
   }
 
   const bossImg = document.createElement('img');
