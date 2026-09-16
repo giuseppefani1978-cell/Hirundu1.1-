@@ -1,4 +1,7 @@
 [
+  {"id":"poi_nardo_salandra","label":"Piazza Salandra","lat":40.1798,"lng":18.0316,"radius":80,"category":"monument"},
+  {"id":"poi_ostuni_cattedrale","label":"Cattedrale di Ostuni","lat":40.7346,"lng":17.5784,"radius":80,"category":"monument"},
+  {"id":"poi_manduria_mura","label":"Mura messapiche","lat":40.4074,"lng":17.6422,"radius":80,"category":"monument"},
   {
     "id": "poi_castle",
     "label": "Castello Aragonese",

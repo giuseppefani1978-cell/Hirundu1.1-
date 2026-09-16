@@ -20,10 +20,13 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
   4: { bonusKey: "adriatico", event: "adriatico:unlocked" },
   5: { bonusKey: "capo", event: "capo:unlocked" },
   6: { bonusKey: "arneo", event: "arneo:unlocked" },
+  7: { bonusKey: "nardo", event: "nardo:unlocked" },
+  8: { bonusKey: "messapia", event: "messapia:unlocked" },
+  9: { bonusKey: "itria", event: "itria:unlocked" },
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v8.6 · TEST";
+const DEFAULT_VERSION = "v9 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -40,6 +43,9 @@ function parseLevelId(raw: string | undefined): LegacyLevelId {
   if (numeric === 4) return 4;
   if (numeric === 5) return 5;
   if (numeric === 6) return 6;
+  if (numeric === 7) return 7;
+  if (numeric === 8) return 8;
+  if (numeric === 9) return 9;
   return 1;
 }
 
