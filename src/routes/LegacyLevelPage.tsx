@@ -63,7 +63,9 @@ export default function LevelPage() {
 function LegacyLevelPage() {
   const level = useLegacyLevelParam();
   const location = useLocation();
-  const testBattle = new URLSearchParams(location.search).get("test") === "battle";
+  const params = new URLSearchParams(location.search);
+  const testBattle = params.get("test") === "battle";
+  const debug = params.has("debug");
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const versionLabel =
@@ -77,7 +79,7 @@ function LegacyLevelPage() {
     }
     const cleanBonus = () => document.querySelectorAll('#__bonus_cta, #__otranto_bonus_link, #__gallipoli_bonus_link, #__lecce_bonus_link').forEach(node => node.remove());
     cleanBonus();
-    const cleanupChrome = initLegacyChrome();
+    const cleanupChrome = initLegacyChrome({ debug });
 
     let cancelled = false;
     const controller = new AbortController();
@@ -132,11 +134,11 @@ function LegacyLevelPage() {
         // ignore cleanup issues
       }
     };
-  }, [level, navigate, testBattle]);
+  }, [level, navigate, testBattle, debug]);
 
   return (
     <div className="legacy-level-page">
-      <LegacyGameShell key={`${level}:${testBattle}`} level={level} ref={canvasRef} versionLabel={versionLabel} />
+      <LegacyGameShell key={`${level}:${testBattle}:${debug}`} level={level} ref={canvasRef} versionLabel={versionLabel} debug={debug} />
     </div>
   );
 }
