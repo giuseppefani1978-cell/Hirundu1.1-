@@ -102,7 +102,8 @@ function _onResize() {
 function _loadSprites({ bossSprite, backdrop } = {}) {
   const bossSrc = bossSprite || SPRITES_SRC.jelly;
   const backdropSrc = backdrop || BTL_BG_SRC;
-  const cacheKey = `${bossSrc}|${backdropSrc}`;
+  const webpBackdrop = /\.png$/i.test(backdropSrc) ? backdropSrc.replace(/\.png$/i, '.webp') : backdropSrc;
+  const cacheKey = `${bossSrc}|${webpBackdrop}`;
   if (_spriteCache.has(cacheKey)) return _spriteCache.get(cacheKey);
 
   const pending = new Promise((resolve) => {
@@ -119,7 +120,14 @@ function _loadSprites({ bossSprite, backdrop } = {}) {
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
     jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSrc;
-    bgImg.onload = done;      bgImg.onerror = done;      bgImg.src   = backdropSrc;
+    bgImg.onload = done;
+    bgImg.onerror = () => {
+      if (bgImg.src !== backdropSrc) {
+        bgImg.onerror = done;
+        bgImg.src = backdropSrc;
+      } else done();
+    };
+    bgImg.src = webpBackdrop;
   });
   _spriteCache.set(cacheKey, pending);
   return pending;
