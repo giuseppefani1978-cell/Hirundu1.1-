@@ -55,46 +55,24 @@ const ENERGY_SEGMENTS = 8; // 8 “plots” façon batterie
 
 function buildEnergyBar() {
   if (!el.hud) return;
+  document.getElementById('energyBar')?.remove();
 
   const wrap = document.createElement('div');
-  wrap.setAttribute('id', 'energyBar');
-  wrap.style.cssText = `
-    width: 42px; margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  `;
-
-  const label = document.createElement('div');
-  label.textContent = t.energy;
-  label.style.cssText = 'font: 700 11px system-ui; color:#0e2b4a;';
+  wrap.id = 'energyBar';
+  wrap.className = 'hud-energy';
+  wrap.setAttribute('aria-label', t.energy);
 
   const battery = document.createElement('div');
-  battery.style.cssText = `
-    position: relative;
-    width: 28px; height: 54px;
-    border: 2px solid #7a6a2b; border-radius: 5px; background: #fff8dc;
-    display: grid; grid-template-rows: repeat(${ENERGY_SEGMENTS}, 1fr); gap: 3px; padding: 4px 4px;
-  `;
+  battery.className = 'hud-energy__battery';
 
-  // Cosse de batterie
-  const nub = document.createElement('div');
-  nub.style.cssText = `
-    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-    width:12px; height:6px; border:2px solid #7a6a2b; border-bottom:none; background:#fff8dc; border-radius:3px 3px 0 0;
-  `;
-  battery.appendChild(nub);
-
-  // Segments
   el.energySegs = [];
   for (let i = 0; i < ENERGY_SEGMENTS; i++) {
-    const seg = document.createElement('div');
-    seg.style.cssText = `
-      width: 100%; border-radius: 2px; background: #e5d9a6; height: 100%;
-      box-shadow: inset 0 -1px 0 rgba(0,0,0,.08);
-    `;
+    const seg = document.createElement('span');
+    seg.className = 'hud-energy__segment';
     el.energySegs.push(seg);
     battery.appendChild(seg);
   }
 
-  wrap.appendChild(label);
   wrap.appendChild(battery);
   el.hud.appendChild(wrap);
   el.energyWrap = wrap;
@@ -113,7 +91,7 @@ export function updateEnergy(percent) {
   });
 
   // Border/couleur d’alerte si faible
-  const battery = el.energyWrap?.querySelector('div:nth-child(2)');
+  const battery = el.energyWrap?.querySelector('.hud-energy__battery');
   if (!battery) return;
   if (p <= 20) {
     battery.style.borderColor = '#c34a3a';
