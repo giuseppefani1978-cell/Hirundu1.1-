@@ -129,13 +129,14 @@ export function startBattleIntro({
     orientationStatus.dataset.ready = matches ? 'true' : 'false';
   });
 
-  function cleanup() {
+  function cleanup({ animate = false } = {}) {
     if (cleaned) return;
     cleaned = true;
     stopOrientationWatch?.();
     button.removeEventListener('click', proceed);
     overlay.classList.remove('is-visible');
-    window.setTimeout(() => overlay.remove(), 180);
+    if (animate) window.setTimeout(() => overlay.remove(), 180);
+    else overlay.remove();
     document.getElementById('__battle_rotate__')?.remove();
     document.body.classList.remove('mode-battle-intro', 'mobile-portrait');
     document.body.style.overflow = previousOverflow;
@@ -144,7 +145,7 @@ export function startBattleIntro({
   function proceed() {
     if (cleaned || !canProceed) return;
     setGameFlowPhase(FLOW_PHASES.BATTLE, { level, boss });
-    cleanup();
+    cleanup({ animate: true });
     onProceed?.();
   }
 
