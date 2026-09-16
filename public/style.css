@@ -224,7 +224,7 @@ body.mode-battle canvas#c {
    ========================================================= */
 .hud {
   position:absolute; z-index:22;
-  left: calc(8px + var(--safe-left)); top:50%; transform: translateY(-50%);
+  left: calc(8px + var(--safe-left)); top:calc(50% + 28px); transform: translateY(-50%);
   width:42px;
   background: var(--hud-bg);
   color:var(--hud-ink);
