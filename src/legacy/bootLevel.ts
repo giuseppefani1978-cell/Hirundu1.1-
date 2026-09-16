@@ -45,9 +45,30 @@ export async function bootLegacyLevel(
   return typeof cleanup === "function" ? cleanup : undefined;
 }
 
+const LEVEL_PRELOAD_ASSETS: Partial<Record<LegacyLevelId, string[]>> = {
+  1: ["assets/salento-map.PNG","assets/jellyfish_boss.PNG","assets/battle_bg_salento.PNG"],
+  2: ["assets/salento-map.PNG","assets/crow.PNG","assets/battle_bg_gallipoli.png"],
+  3: ["assets/salento-map.PNG","assets/sputacchina_boss.png","assets/battle_bg_lecce.png"],
+  4: ["assets/salento-map.PNG","assets/boss-4.svg","assets/battle_bg_acaya.png"],
+  5: ["assets/salento-map.PNG","assets/boss-5.svg","assets/battle_bg_leuca.png"],
+  6: ["assets/salento-map.PNG","assets/boss-6.svg","assets/battle_bg_copertino.png"],
+  7: ["assets/salento-map.PNG","assets/boss-8.svg","assets/battle_bg_nardo.png"],
+  8: ["assets/salento-map.PNG","assets/boss-9.svg","assets/battle_bg_messapia.png"],
+  9: ["assets/salento-map.PNG","assets/boss-8.svg","assets/battle_bg_ostuni.png"],
+};
+
+function preloadAsset(path: string): void {
+  if (typeof window === "undefined" || typeof Image === "undefined") return;
+  const img = new Image();
+  img.decoding = "async";
+  img.src = `${import.meta.env.BASE_URL ?? "/"}${path}`.replace(/\/\/{2,}/g, "/");
+}
+
 export async function preloadNextLevel(current: LegacyLevelId): Promise<void> {
   const next = getNextLevelId(current);
-  if (next) await preloadLegacyLevel(next);
+  if (!next) return;
+  await preloadLegacyLevel(next);
+  LEVEL_PRELOAD_ASSETS[next]?.forEach(preloadAsset);
 }
 
 export function getNextLevelId(current: LegacyLevelId): LegacyLevelId | null {
