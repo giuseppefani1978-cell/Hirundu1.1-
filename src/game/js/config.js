@@ -20,7 +20,7 @@ export const ASSETS = {
 export const UI_CONST = Object.freeze({
   TOP: 120,
   BOTTOM: 160,
-  MAP_ZOOM: 1.30,
+  MAP_ZOOM: 1,
 });
 
 const SHIFT_COAST = { x: 0.045, y: 0.026 };
