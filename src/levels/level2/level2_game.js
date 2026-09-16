@@ -313,8 +313,7 @@ export function boot(options = {}){
   const startBtn = document.getElementById('startBtn');
   if (startBtn) session.listen(startBtn, 'click', startGame);
 
-  // Première question
-  askQuestionAt(0);
+  // First clue is shown by resetGame() only after the player starts the hunt.
 
   // helpers
   function setEnergy(p){
