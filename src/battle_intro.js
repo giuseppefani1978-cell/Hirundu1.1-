@@ -104,7 +104,9 @@ export function startBattleIntro({
   document.body.classList.add('mode-battle-intro');
   document.body.append(overlay);
 
-  requestAnimationFrame(() => overlay.classList.add('is-visible'));
+  const reveal = () => overlay.classList.add('is-visible');
+  if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(reveal);
+  else window.setTimeout(reveal, 0);
 
   let cleaned = false;
   let canProceed = true;
