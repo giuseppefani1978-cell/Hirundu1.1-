@@ -66,8 +66,16 @@ export function setupHuntControls(player, getSpeed, canMove, session) {
     held.set(e.key, keys[e.key]);
   });
   session.listen(window, 'keyup', (e) => held.delete(e.key));
-  session.listen(window, 'blur', () => held.clear());
-  session.listen(document, 'visibilitychange', () => held.clear());
+  const stopMotion = () => {
+    held.clear();
+    vx = 0;
+    vy = 0;
+    player._motionX = 0;
+    player._motionY = 0;
+    player._motionSpeed = 0;
+  };
+  session.listen(window, 'blur', stopMotion);
+  session.listen(document, 'visibilitychange', () => { if (document.hidden) stopMotion(); });
 
   return (rawDt) => {
     const dt = Math.min(0.05, Math.max(0.001, rawDt || 0.016));
@@ -82,15 +90,20 @@ export function setupHuntControls(player, getSpeed, canMove, session) {
 
     // Responsive on press, softer on release: still arcade-like but no hard step.
     const response = length ? 12 : 8;
-    const blend = 1 - Math.exp(-response * dt);
-    vx += (targetX - vx) * blend;
-    vy += (targetY - vy) * blend;
+    const decay = Math.exp(-response * dt);
+    const oldVx = vx;
+    const oldVy = vy;
+    // Exact integral of first-order acceleration: same travelled distance at 60 or 120 Hz.
+    const moveX = targetX * dt + (oldVx - targetX) * (1 - decay) / response;
+    const moveY = targetY * dt + (oldVy - targetY) * (1 - decay) / response;
+    vx = targetX + (oldVx - targetX) * decay;
+    vy = targetY + (oldVy - targetY) * decay;
     if (!length && Math.abs(vx) < 0.015) vx = 0;
     if (!length && Math.abs(vy) < 0.015) vy = 0;
 
     const speedPerSecond = (getSpeed ? getSpeed() : 0) * 60;
-    player.x = Math.max(0, Math.min(1, player.x + vx * speedPerSecond * dt));
-    player.y = Math.max(0, Math.min(1, player.y + vy * speedPerSecond * dt));
+    player.x = Math.max(0, Math.min(1, player.x + moveX * speedPerSecond));
+    player.y = Math.max(0, Math.min(1, player.y + moveY * speedPerSecond));
     player._motionX = vx;
     player._motionY = vy;
     player._motionSpeed = Math.min(1, Math.hypot(vx, vy));
