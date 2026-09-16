@@ -193,6 +193,14 @@ function __persistUnlocksForFoe(foeType){
   } catch(e){ console.error(e); }
 }
 
+function _onBattlePause(event){
+  const paused = !!event?.detail?.paused;
+  try {
+    if (paused) state.musicBattle?.pause();
+    else if (state.active) state.musicBattle?.play().catch(()=>{});
+  } catch {}
+}
+
 export function disposeBattle() {
   state.active = false;
   _stopBattleTheme();
@@ -201,6 +209,7 @@ export function disposeBattle() {
   window.removeEventListener('keyup', _onKeyUp, true);
   window.removeEventListener('orientationchange', _updateRotateOverlay);
   window.removeEventListener('resize', _updateRotateOverlay);
+  window.removeEventListener(PAUSE_EVENT, _onBattlePause);
   state.input = { left:false, right:false, up:false, atk:false, spc:false };
   if (state.ui.root) state.ui.root.style.display = 'none';
 }
@@ -215,6 +224,8 @@ export function setupBattleInputs(){
   window.addEventListener('keyup', _onKeyUp, true);
   _ensureBattleUI(false); // créer mais caché
   _installOrientationWatch();
+  window.removeEventListener(PAUSE_EVENT, _onBattlePause);
+  window.addEventListener(PAUSE_EVENT, _onBattlePause);
 }
 
 export function setBattleCallbacks({ onWin, onLose } = {}){
