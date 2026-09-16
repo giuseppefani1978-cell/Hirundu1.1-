@@ -244,6 +244,12 @@ export async function resumeBgAfterBattle() {
 if (typeof window !== 'undefined') {
   window.__STOP_BG_MUSIC   = () => pauseBgForBattle();
   window.__RESUME_BG_MUSIC = () => resumeBgAfterBattle();
+  window.addEventListener('hirundu:pause', (event) => {
+    if (!huntTrack || huntTrack.paused) return;
+    const paused = Boolean(event.detail?.paused);
+    const from = Number.isFinite(huntTrack.volume) ? huntTrack.volume : 0.65;
+    fadeTrack(huntTrack, from, paused ? 0.14 : 0.65, 220);
+  });
 }
 
 // ---------- Export bruts si besoin dans d'autres modules ----------
