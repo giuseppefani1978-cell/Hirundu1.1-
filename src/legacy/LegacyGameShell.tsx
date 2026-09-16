@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useState } from "react";
 import { t } from "../i18n.js";
 import { copy } from "../ui/copy.js";
 import { PERF_EVENT, PAUSE_EVENT, setGamePaused, toggleGamePaused } from "../game_flow.js";
+import { AUDIO_STATE_EVENT, isMusicOn } from "../audio.js";
 
 export type LegacyGameShellProps = {
   level?: number;
@@ -17,6 +18,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   canvasRef
 ) {
   const [paused, setPaused] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(false);
   const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
 
   useEffect(() => {
@@ -32,11 +34,15 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
         worstFrameMs: Number(detail.worstFrameMs || 0),
       });
     };
+    const onAudio = () => setMusicEnabled(isMusicOn());
+    onAudio();
     window.addEventListener(PAUSE_EVENT, onPause as EventListener);
     window.addEventListener(PERF_EVENT, onPerf as EventListener);
+    window.addEventListener(AUDIO_STATE_EVENT, onAudio);
     return () => {
       window.removeEventListener(PAUSE_EVENT, onPause as EventListener);
       window.removeEventListener(PERF_EVENT, onPerf as EventListener);
+      window.removeEventListener(AUDIO_STATE_EVENT, onAudio);
       setGamePaused(false);
     };
   }, []);
@@ -158,7 +164,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 </button>
                 <button type="button" onClick={restart}>↻ {copy.restartLevel}</button>
                 <button type="button" onClick={() => document.getElementById("musicBtn")?.click()}>
-                  ♪ {copy.musicStart}
+                  ♪ {musicEnabled ? copy.musicStop : copy.musicStart}
                 </button>
                 {onDiscoveriesClick ? (
                   <button type="button" onClick={() => { setGamePaused(false); onDiscoveriesClick(); }}>
