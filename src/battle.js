@@ -132,12 +132,23 @@ function __writeUnifiedUnlock(key){
   } catch {}
 }
 
+const REGIONAL_BOSSES = {
+  macina: {level:7,key:'nardo',name:'Macina',token:'🫒',hp:380,damage:22,fireMin:850,fireMax:1400},
+  argillo: {level:8,key:'messapia',name:'Argillo',token:'🏺',hp:420,damage:24,fireMin:800,fireMax:1350},
+  calcara: {level:9,key:'itria',name:'Calcara',token:'💎',hp:460,damage:26,fireMin:750,fireMax:1300},
+};
+
 function __persistUnlocksForFoe(foeType){
   try {
     // legacy umbrella bit (kept if some code still checks it)
     localStorage.setItem('bonus_unlocked', '1');
 
-    if (foeType === 'resino') {
+    if (REGIONAL_BOSSES[foeType]) {
+      const boss=REGIONAL_BOSSES[foeType];
+      __writeUnifiedUnlock(boss.key);
+      markLevelWin(boss.level);
+      localStorage.setItem('__toast_next__',boss.key);
+    } else if (foeType === 'resino') {
       __writeUnifiedUnlock('arneo');
       markLevelWin(6);
       localStorage.setItem('__toast_next__', 'arneo');
@@ -182,7 +193,7 @@ function __persistUnlocksForFoe(foeType){
 }
 
 function __redirectAfterWin(foeType){
-  const key = foeType === 'resino' ? 'arneo' : foeType === 'scirocco' ? 'capo' : foeType === 'nacra' ? 'adriatico' : foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto';
+  const key = REGIONAL_BOSSES[foeType]?.key ?? (foeType === 'resino' ? 'arneo' : foeType === 'scirocco' ? 'capo' : foeType === 'nacra' ? 'adriatico' : foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto');
   window.location.hash = `/bonus/${key}`;
 }
 
@@ -244,7 +255,7 @@ export function startBattle(foeType='jelly'){
   // ennemi : hors-écran à droite
   state.foe = {
     x: state.w + 160, y: 0, vx: 0, vy: 0,
-    hp: foeType === 'resino' ? 340 : foeType === 'scirocco' ? 300 : foeType === 'nacra' ? 260 : BTL.FOE_HP, fireAt: Infinity, onGround: false
+    hp: REGIONAL_BOSSES[foeType]?.hp ?? (foeType === 'resino' ? 340 : foeType === 'scirocco' ? 300 : foeType === 'nacra' ? 260 : BTL.FOE_HP), fireAt: Infinity, onGround: false
   };
   state.foeDir = -1;
   state.foeWanderUntil = performance.now() + 700;
@@ -287,7 +298,7 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
-  if(['nacra','scirocco','resino'].includes(state.foeType) && (document.hidden || !_isLandscape())) return;
+  if((REGIONAL_BOSSES[state.foeType] || ['nacra','scirocco','resino'].includes(state.foeType)) && (document.hidden || !_isLandscape())) return;
   // même si la battle est finie, on continue certains FX
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
@@ -390,7 +401,8 @@ export function tickBattle(dt){
           } else {
             _fireFoeZap();
           }
-          state.foe.fireAt = now + (state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX));
+          const profile=REGIONAL_BOSSES[state.foeType];
+          state.foe.fireAt = now + (profile ? _rnd(profile.fireMin,profile.fireMax) : state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX));
         }
       }
     }
@@ -534,7 +546,7 @@ export function renderBattle(ctx, _view, sprites){
   const F_H_BASE = Math.round(P_H * 1.8);
 
   let foeImg = null;
-  if (['jelly','nacra','scirocco','resino'].includes(state.foeType)) foeImg = sprites?.jellyImg;
+  if (REGIONAL_BOSSES[state.foeType] || ['jelly','nacra','scirocco','resino'].includes(state.foeType)) foeImg = sprites?.jellyImg;
   else if (state.foeType === 'crow')    foeImg = sprites?.crowImg;
   else if (state.foeType === 'sputacchina') foeImg = sprites?.sputImg;
 
@@ -639,8 +651,8 @@ export function renderBattle(ctx, _view, sprites){
   // HUD
   ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
   ctx.fillText(`♥ ${state.player.hp}`, 16, 28);
-  ctx.fillText(`${state.foeType==='resino'?'Resino ':state.foeType==='scirocco'?'Scirocco ':state.foeType==='nacra'?'Nacra ':' '}♥ ${state.foe.hp}`, Math.max(16,w-140),28);
-  ctx.fillText(`${state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★'}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
+  ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.name ?? (state.foeType==='resino'?'Resino':state.foeType==='scirocco'?'Scirocco':state.foeType==='nacra'?'Nacra':'')} ♥ ${state.foe.hp}`, Math.max(16,w-140),28);
+  ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.token ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★')}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
 
   // READY / GO
   const now = performance.now();
@@ -780,7 +792,7 @@ function _fireFoeZapOnce() {
     y: state.foe.y,
     vx, vy,
     from: 'foe',
-    dmg: state.foeType==='resino' ? 20 : state.foeType==='scirocco' ? 18 : state.foeType==='nacra' ? 16 : BTL.FOE_ZAP_DMG,
+    dmg: REGIONAL_BOSSES[state.foeType]?.damage ?? (state.foeType==='resino' ? 20 : state.foeType==='scirocco' ? 18 : state.foeType==='nacra' ? 16 : BTL.FOE_ZAP_DMG),
     kind: 'zap',
     life: 1.2,
   });
