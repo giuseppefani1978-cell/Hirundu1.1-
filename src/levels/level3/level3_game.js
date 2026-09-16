@@ -18,6 +18,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro } from '../../level_transition.js';
+import { FLOW_PHASES, clearGameFlow, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
@@ -138,6 +139,7 @@ export function boot(options = {}){
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: levelId });
   let cleanupIntro = null;
   let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
@@ -553,6 +555,7 @@ export function boot(options = {}){
 
   // ---------- Battle flow ----------
   function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'battle_intro';
     ui.showTouch(false);
 
@@ -571,6 +574,8 @@ export function boot(options = {}){
     } catch {}
 
     cleanupIntro = startBattleIntro({
+      level: levelId,
+      boss: regional?.bossName || 'Lecce',
       title: `⚔️ ${copy.battle} · ${regional?.bossName || 'Lecce'}`,
       collectibleLabel: regional ? inventoryLabel : undefined,
       collectibleIcon: regional ? collectibleIcon : undefined,
@@ -780,6 +785,7 @@ export function boot(options = {}){
 
   // ---------- modes ----------
   function triggerWin() {
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'win';
     finalizeRun({ won: true });
     stopMusic();
@@ -796,6 +802,7 @@ export function boot(options = {}){
   }
 
   function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'dead';
     running = false;
     finalizeRun({won:false});
@@ -804,6 +811,7 @@ export function boot(options = {}){
   // ---------- controls ----------
   function startGame() {
     try {
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: levelId });
       document.body.classList.remove('mode-battle');
       playerName = ui.readPlayerName() || copy.player;
       ui.hideOverlay();
@@ -933,6 +941,7 @@ export function boot(options = {}){
     stopFinaleLoop();
     ui.onClickMusic(null);
     ui.onClickReplay(null);
+    clearGameFlow();
   };
 }
 
