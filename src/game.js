@@ -787,7 +787,7 @@ cleanupIntro = startBattleIntro({
     stopMusic();
     playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
-    location.hash = '#/bonus/otranto';
+    // Navigation is handled once by LegacyLevelPage after the unlock event.
   }
   function triggerGameOver(){
     mode = 'dead';
