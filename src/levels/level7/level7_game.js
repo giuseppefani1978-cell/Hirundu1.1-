@@ -13,7 +13,7 @@ export function startLevel7(options = {}) {
     mission: tr(['Guide Hirundu avec les flèches vers le lieu de chaque énigme. Évite les ennemis et ramasse les bonus.','Guida Hirundu con le frecce verso il luogo di ogni enigma. Evita i nemici e raccogli i bonus.','Guide Hirundu with the arrows to each clue’s place. Avoid enemies and collect bonuses.','Guía a Hirundu con las flechas hasta el lugar de cada enigma. Evita enemigos y recoge bonos.']),
     inventoryLabel: tr(["Olives","Olive","Olives","Aceitunas"]),
     bossName: 'Macina', bossSprite: withBase('assets/boss-8.svg'),
-    backdrop: withBase('assets/battle_bg_nardo.png'),
+    backdrop: withBase('assets/battle_bg_nardo.webp'),
     pois: region.places.map((p,i)=>({key:`nardo-${i}`,name:p.name,town:p.town,icon:p.icon,clue:tr(p.clue),x:positions[i][0],y:positions[i][1]})),
   }});
 }
