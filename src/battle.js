@@ -382,7 +382,7 @@ export function tickBattle(dt){
         if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
       }
       if (_consume('up') && now >= state.flapReadyAt){
-        state.player.vy = Math.min(0, state.player.vy) + BTL.FLAP_VY;
+        state.player.vy = Math.max(-720, Math.min(0, state.player.vy) - 420);
         state.player.onGround = false;
         state.flapReadyAt = now + BTL.FLAP_COOLDOWN_MS;
       }
@@ -935,13 +935,6 @@ function _fireFoeZapOnce(targetY = state.player.y, speedMul = 1) {
   });
 }
 
-function _fireFoeZap(){
-  _fireFoeZapOnce();
-  for (let i = 1; i < BTL.FOE_BURST_COUNT; i++){
-    setTimeout(_fireFoeZapOnce, i * BTL.FOE_BURST_GAP_MS);
-  }
-}
-
 // ---- Tir ennemi — SPORES (Sputacchina)
 function _fireFoeSporeOnce(targetY = state.player.y, speedMul = 1) {
   const dx = (state.player.x - state.foe.x);
@@ -959,13 +952,6 @@ function _fireFoeSporeOnce(targetY = state.player.y, speedMul = 1) {
     kind: 'spore',
     life: BTL.SPORE_LIFE_S,
   });
-}
-
-function _fireFoeSporeBurst(){
-  _fireFoeSporeOnce();
-  for (let i = 1; i < BTL.SPORE_BURST; i++){
-    setTimeout(_fireFoeSporeOnce, i * BTL.SPORE_BURST_GAP_MS);
-  }
 }
 
 function _executeFoePattern(pattern){
