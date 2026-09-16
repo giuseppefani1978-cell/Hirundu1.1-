@@ -1,49 +1,75 @@
 export function setupDpad(player, getSpeed, canMove) {
   const buttons = document.querySelectorAll('.btn');
+  const held = new Map();
+  let vx = 0;
+  let vy = 0;
+  let nextChirpAt = 0;
+
   buttons.forEach((btn) => {
     const dx = Number.parseFloat(btn.dataset.dx);
     const dy = Number.parseFloat(btn.dataset.dy);
-    if (Number.isNaN(dx) || Number.isNaN(dy)) {
-      return;
-    }
+    if (Number.isNaN(dx) || Number.isNaN(dy)) return;
 
-    let pressed = false;
-    let rafId = 0;
-
-    const step = () => {
-      if (!pressed) {
-        return;
-      }
-      if (canMove && !canMove()) {
-        pressed = false;
-        cancelAnimationFrame(rafId);
-        return;
-      }
-      const speed = getSpeed ? getSpeed() : 0;
-      player.x = Math.max(0, Math.min(1, player.x + dx * speed));
-      player.y = Math.max(0, Math.min(1, player.y + dy * speed));
-      rafId = requestAnimationFrame(step);
-    };
-
+    btn.style.touchAction = 'none';
     const start = (ev) => {
-      pressed = true;
-      step();
-      if (ev) {
-        ev.preventDefault();
-      }
+      if (canMove && !canMove()) return;
+      ev?.preventDefault?.();
+      const id = ev?.pointerId ?? btn;
+      try { if (ev?.pointerId != null) btn.setPointerCapture?.(ev.pointerId); } catch {}
+      held.set(id, [dx, dy]);
+    };
+    const stop = (ev) => {
+      const id = ev?.pointerId ?? btn;
+      held.delete(id);
     };
 
-    const stop = () => {
-      if (!pressed) {
-        return;
-      }
-      pressed = false;
-      cancelAnimationFrame(rafId);
-    };
-
-    btn.addEventListener('touchstart', start, { passive: false });
-    btn.addEventListener('touchend', stop, { passive: true });
-    btn.addEventListener('mousedown', start);
-    window.addEventListener('mouseup', stop);
+    btn.addEventListener('pointerdown', start, { passive: false });
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('lostpointercapture', stop);
   });
+
+  const step = (rawDt = 1 / 60) => {
+    const dt = Math.min(0.05, Math.max(0.001, rawDt));
+    if (canMove && !canMove()) held.clear();
+
+    let dx = 0;
+    let dy = 0;
+    held.forEach(([x, y]) => { dx += x; dy += y; });
+    const length = Math.hypot(dx, dy);
+    const targetX = length ? dx / length : 0;
+    const targetY = length ? dy / length : 0;
+    const response = length ? 12 : 8;
+    const decay = Math.exp(-response * dt);
+    const oldVx = vx;
+    const oldVy = vy;
+    const moveX = targetX * dt + (oldVx - targetX) * (1 - decay) / response;
+    const moveY = targetY * dt + (oldVy - targetY) * (1 - decay) / response;
+    vx = targetX + (oldVx - targetX) * decay;
+    vy = targetY + (oldVy - targetY) * decay;
+    if (!length && Math.abs(vx) < 0.015) vx = 0;
+    if (!length && Math.abs(vy) < 0.015) vy = 0;
+
+    const speedPerSecond = (getSpeed ? getSpeed() : 0) * 60;
+    player.x = Math.max(0, Math.min(1, player.x + moveX * speedPerSecond));
+    player.y = Math.max(0, Math.min(1, player.y + moveY * speedPerSecond));
+    player._motionX = vx;
+    player._motionY = vy;
+    player._motionSpeed = Math.min(1, Math.hypot(vx, vy));
+
+    const now = performance.now();
+    if (length && player._motionSpeed > 0.45 && now >= nextChirpAt) {
+      try { window.__HIRUNDU_CHIRP?.('soft'); } catch {}
+      nextChirpAt = now + 1700 + Math.random() * 2200;
+    }
+  };
+
+  step.dispose = () => {
+    held.clear();
+    buttons.forEach((btn) => {
+      // listeners are short-lived with the page; clearing movement state is sufficient here
+      btn.releasePointerCapture?.(0);
+    });
+  };
+  return step;
 }

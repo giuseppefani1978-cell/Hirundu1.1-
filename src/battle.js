@@ -23,8 +23,15 @@ const BTL = {
   JUMP_VY: -620,
   PLAYER_GRAV: 760,
   FLAP_VY: -560,
-  DIVE_VY: 720,
+  DIVE_VY: 620,
   FLAP_COOLDOWN_MS: 180,
+  H_RESPONSE: 12,
+  H_RELEASE: 8,
+  BOSS_SAFE_X: 150,
+  BOSS_HARD_X: 88,
+  BOSS_SAFE_ALT: -150,
+  BOSS_REPEL_SPEED: 250,
+  DIVE_NEAR_BOSS_MAX: 360,
   DODGE_SPEED: 820,
   DODGE_MS: 220,
   DODGE_COOLDOWN_MS: 900,
@@ -126,6 +133,9 @@ let state = {
   feedbackUntil: 0,
   combo: 0,
   comboUntil: 0,
+  chirpReadyAt: 0,
+  renderTilt: 0,
+  lastRenderAt: 0,
 
   // FX fin de partie
   fx: { fireworks: [] },
@@ -286,6 +296,9 @@ export function startBattle(foeType='jelly'){
   state.feedbackUntil = 0;
   state.combo = 0;
   state.comboUntil = 0;
+  state.chirpReadyAt = 0;
+  state.renderTilt = 0;
+  state.lastRenderAt = 0;
   // configure tir selon le boss
   state.foeShotKind = (foeType === 'sputacchina') ? 'spore' : 'zap';
 
@@ -371,23 +384,33 @@ export function tickBattle(dt){
   if (state.phase === 'play') {
     // Contrôles joueur (bloqués pendant READY…)
     const slowMul = (now < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
-    state.player.vx = 0;
 
     if (!readyPhase){
       if (_consume('dodge') && now >= state.dodgeCooldownUntil) _startDodge(now);
       if (now < state.dodgeUntil) {
         state.player.vx = BTL.DODGE_SPEED * state.dodgeDir * slowMul;
       } else {
-        if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
-        if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
+        const horizontalInput = (state.input.right ? 1 : 0) - (state.input.left ? 1 : 0);
+        if (horizontalInput) state.player.facing = horizontalInput;
+        const targetVx = horizontalInput * BTL.SPEED * slowMul;
+        const response = horizontalInput ? BTL.H_RESPONSE : BTL.H_RELEASE;
+        const blend = 1 - Math.exp(-response * dt);
+        state.player.vx += (targetVx - state.player.vx) * blend;
+        if (!horizontalInput && Math.abs(state.player.vx) < 2) state.player.vx = 0;
       }
       if (_consume('up') && now >= state.flapReadyAt){
         state.player.vy = Math.max(-720, Math.min(0, state.player.vy) - 420);
         state.player.onGround = false;
         state.flapReadyAt = now + BTL.FLAP_COOLDOWN_MS;
+        if (now >= state.chirpReadyAt) {
+          try { window.__HIRUNDU_CHIRP?.('soft'); } catch {}
+          state.chirpReadyAt = now + 950;
+        }
       }
       if (_consume('down')){
-        state.player.vy = Math.max(BTL.DIVE_VY, state.player.vy + 220);
+        const nearBoss = Math.abs(state.player.x - state.foe.x) < BTL.BOSS_SAFE_X && state.player.y > BTL.BOSS_SAFE_ALT;
+        const diveMax = nearBoss ? BTL.DIVE_NEAR_BOSS_MAX : BTL.DIVE_VY;
+        state.player.vy = Math.min(diveMax, Math.max(diveMax * 0.86, state.player.vy + 180));
         state.feedbackText = '↓ ' + battleWords.dive;
         state.feedbackUntil = now + 420;
       }
@@ -400,8 +423,25 @@ export function tickBattle(dt){
     }
     if (state.combo > 0 && now >= state.comboUntil) state.combo = 0;
 
-    // Clamp horizontal
+    // Déplacement horizontal + zone de respiration autour du boss à basse altitude.
     state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x + state.player.vx * dt));
+    if (state.player.y > BTL.BOSS_SAFE_ALT) {
+      const bossDx = state.player.x - state.foe.x;
+      const absDx = Math.abs(bossDx);
+      if (absDx < BTL.BOSS_SAFE_X) {
+        const away = bossDx === 0 ? -1 : Math.sign(bossDx);
+        const proximity = 1 - absDx / BTL.BOSS_SAFE_X;
+        state.player.x += away * BTL.BOSS_REPEL_SPEED * proximity * dt;
+        if (state.player.vy > BTL.DIVE_NEAR_BOSS_MAX) {
+          const soften = 1 - Math.exp(-10 * dt);
+          state.player.vy += (BTL.DIVE_NEAR_BOSS_MAX - state.player.vy) * soften;
+        }
+        if (absDx < BTL.BOSS_HARD_X && state.player.y > -110) {
+          state.player.x = state.foe.x + away * BTL.BOSS_HARD_X;
+        }
+        state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x));
+      }
+    }
 
     // Attaques joueur
     if (!readyPhase){
@@ -551,6 +591,8 @@ export function renderBattle(ctx, _view, sprites){
   const w = dw, h = dh;
   state.w = w; state.h = h;
   const renderNow = performance.now();
+  const renderDt = state.lastRenderAt ? Math.min(0.05, Math.max(0.001, (renderNow - state.lastRenderAt) / 1000)) : 1/60;
+  state.lastRenderAt = renderNow;
 
   // Shake hit
   if (state.shakeT > 0) {
@@ -594,9 +636,11 @@ export function renderBattle(ctx, _view, sprites){
   const foeBaseline = h - BTL.FLOOR_H + state.foe.y;
   const pY = playerBaseline - P_H;
 
-  // Joueur : inclinaison selon la trajectoire et lignes de vitesse.
+  // Joueur : inclinaison lissée + respiration/battement d’ailes simulé.
   const dodgeActive = renderNow < state.dodgeUntil;
-  const tilt = dodgeActive ? 0.08 * state.dodgeDir : Math.max(-0.34, Math.min(0.46, state.player.vy / 1250));
+  const targetTilt = dodgeActive ? 0.08 * state.dodgeDir : Math.max(-0.34, Math.min(0.46, state.player.vy / 1250));
+  state.renderTilt += (targetTilt - state.renderTilt) * (1 - Math.exp(-11 * renderDt));
+  const tilt = state.renderTilt;
   if (dodgeActive || state.player.vy > 500) {
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,.38)';
@@ -611,10 +655,16 @@ export function renderBattle(ctx, _view, sprites){
     }
     ctx.restore();
   }
+  const flightEnergy = Math.min(1, Math.abs(state.player.vx) / BTL.SPEED + Math.abs(state.player.vy) / 900);
+  const flapPeriod = dodgeActive ? 58 : flightEnergy > 0.65 ? 72 : 102;
+  const flap = Math.sin(renderNow / flapPeriod);
+  const wingScaleY = 0.96 + flap * (0.035 + flightEnergy * 0.025);
+  const wingScaleX = 1.012 - flap * 0.014;
+  const bob = Math.sin(renderNow / 115) * (0.7 + flightEnergy * 0.7);
   ctx.save();
-  ctx.translate(state.player.x + P_W/2, pY + P_H/2);
+  ctx.translate(state.player.x + P_W/2, pY + P_H/2 + bob);
   ctx.rotate(tilt);
-  if (state.player.facing < 0) ctx.scale(-1,1);
+  ctx.scale((state.player.facing < 0 ? -1 : 1) * wingScaleX, wingScaleY);
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, -P_W/2, -P_H/2, P_W, P_H);
   else { ctx.fillStyle='#e63946'; ctx.fillRect(-P_W/2,-P_H/2,P_W,P_H); }
   ctx.restore();
@@ -879,6 +929,7 @@ function _awardPerfectDodge(now){
   state.feedbackUntil = now + 720;
   state.shakeT = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.08);
   try { navigator.vibrate?.(18); } catch {}
+  try { window.__HIRUNDU_CHIRP?.('bright'); } catch {}
 }
 
 function _fireNormal(){

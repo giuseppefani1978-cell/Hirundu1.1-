@@ -119,6 +119,34 @@ export function failSfx() {
   scheduleSquare(147, t + 0.34, 0.25, 0.32);
 }
 
+// Short synthetic swallow-like chirp: two quick frequency sweeps, deliberately subtle.
+export function birdChirp(mode = 'soft') {
+  if (!ensureCtxActive() || !audioCtx || !masterGain) return;
+  const t = audioCtx.currentTime + 0.005;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(mode === 'bright' ? 0.075 : 0.045, t + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
+  gain.connect(masterGain);
+
+  const makeSweep = (start, from, to, dur, amp = 1) => {
+    const osc = audioCtx.createOscillator();
+    const local = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(from, start);
+    osc.frequency.exponentialRampToValueAtTime(to, start + dur);
+    local.gain.setValueAtTime(amp, start);
+    local.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    osc.connect(local).connect(gain);
+    osc.start(start);
+    osc.stop(start + dur + 0.01);
+    osc.onended = () => { try { osc.disconnect(); local.disconnect(); } catch {} };
+  };
+
+  makeSweep(t, mode === 'bright' ? 1700 : 1450, 2650, 0.09, 0.9);
+  makeSweep(t + 0.075, 2200, 1350, 0.11, 0.7);
+}
+
 function fadeMediaVolume(media, to, duration = 420, onDone) {
   if (!media) { onDone?.(); return; }
   const token = ++fadeToken;
@@ -259,6 +287,7 @@ export async function resumeBgAfterBattle() {
 if (typeof window !== 'undefined') {
   window.__STOP_BG_MUSIC   = () => pauseBgForBattle();
   window.__RESUME_BG_MUSIC = () => resumeBgAfterBattle();
+  window.__HIRUNDU_CHIRP    = (mode) => birdChirp(mode);
   window.addEventListener('hirundu:pause', (event) => {
     if (!huntTrack || huntTrack.paused) return;
     const paused = Boolean(event.detail?.paused);
