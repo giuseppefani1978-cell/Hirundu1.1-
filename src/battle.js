@@ -1101,19 +1101,43 @@ function _renderFireworks(ctx, w, h){
 }
 
 // ---------- Audio ----------
+function _fadeHtmlAudio(audio, from, to, duration = 420, done){
+  if (!audio) { done?.(); return; }
+  const steps = 10;
+  let step = 0;
+  try { audio.volume = Math.max(0, Math.min(1, from)); } catch {}
+  const timer = window.setInterval(() => {
+    step += 1;
+    const p = Math.min(1, step / steps);
+    try { audio.volume = Math.max(0, Math.min(1, from + (to - from) * p)); } catch {}
+    if (p >= 1) {
+      window.clearInterval(timer);
+      done?.();
+    }
+  }, Math.max(20, Math.round(duration / steps)));
+}
 function _playBattleTheme(){
   try{
     const url = window.__BATTLE_THEME_URL__ || withBase('assets/battle_loop.mp3');
     if (!url) return;
     if (state.musicBattle){ try{state.musicBattle.pause();}catch{} }
-    state.musicBattle = new Audio(url);
-    state.musicBattle.loop = true;
-    state.musicBattle.volume = 0.60;
-    state.musicBattle.play().catch(()=>{});
+    const track = new Audio(url);
+    state.musicBattle = track;
+    track.loop = true;
+    track.volume = 0;
+    track.play().then(() => _fadeHtmlAudio(track, 0, 0.60, 480)).catch(()=>{});
   }catch{}
 }
 function _stopBattleTheme(){
-  try{ if (state.musicBattle){ state.musicBattle.pause(); state.musicBattle = null; } }catch{}
+  try{
+    const track = state.musicBattle;
+    state.musicBattle = null;
+    if (!track) return;
+    const from = Number.isFinite(track.volume) ? track.volume : 0.60;
+    _fadeHtmlAudio(track, from, 0, 360, () => {
+      try { track.pause(); } catch {}
+    });
+  }catch{}
 }
 function _playVictoryMusic(){
   try{
