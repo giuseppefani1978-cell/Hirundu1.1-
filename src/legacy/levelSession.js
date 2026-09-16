@@ -40,9 +40,14 @@ export function createLevelSession() {
 }
 
 // Input is sampled by the game's single frame loop, with speed per second.
+// V9.5: acceleration/deceleration replaces the old on/off movement.
 export function setupHuntControls(player, getSpeed, canMove, session) {
   const held = new Map();
   const keys = { ArrowLeft: [-1,0], ArrowRight: [1,0], ArrowUp: [0,-1], ArrowDown: [0,1] };
+  let vx = 0;
+  let vy = 0;
+  let nextChirpAt = 0;
+
   document.querySelectorAll('.btn[data-dx]').forEach((el) => {
     el.style.touchAction = 'none';
     session.listen(el, 'pointerdown', (event) => {
@@ -57,19 +62,70 @@ export function setupHuntControls(player, getSpeed, canMove, session) {
   });
   session.listen(window, 'keydown', (e) => {
     if (!keys[e.key] || !canMove() || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName)) return;
-    e.preventDefault(); held.set(e.key, keys[e.key]);
+    e.preventDefault();
+    held.set(e.key, keys[e.key]);
   });
   session.listen(window, 'keyup', (e) => held.delete(e.key));
   session.listen(window, 'blur', () => held.clear());
   session.listen(document, 'visibilitychange', () => held.clear());
-  return (dt) => {
-    if (!canMove() || document.hidden) { held.clear(); return; }
-    let dx = 0, dy = 0;
+
+  return (rawDt) => {
+    const dt = Math.min(0.05, Math.max(0.001, rawDt || 0.016));
+    if (!canMove() || document.hidden) held.clear();
+
+    let dx = 0;
+    let dy = 0;
     held.forEach(([x,y]) => { dx += x; dy += y; });
     const length = Math.hypot(dx,dy);
-    if (!length) return;
-    const distance = getSpeed() * 60 * Math.min(dt, 0.05);
-    player.x = Math.max(0, Math.min(1, player.x + dx/length * distance));
-    player.y = Math.max(0, Math.min(1, player.y + dy/length * distance));
+    const targetX = length ? dx / length : 0;
+    const targetY = length ? dy / length : 0;
+
+    // Responsive on press, softer on release: still arcade-like but no hard step.
+    const response = length ? 12 : 8;
+    const blend = 1 - Math.exp(-response * dt);
+    vx += (targetX - vx) * blend;
+    vy += (targetY - vy) * blend;
+    if (!length && Math.abs(vx) < 0.015) vx = 0;
+    if (!length && Math.abs(vy) < 0.015) vy = 0;
+
+    const speedPerSecond = (getSpeed ? getSpeed() : 0) * 60;
+    player.x = Math.max(0, Math.min(1, player.x + vx * speedPerSecond * dt));
+    player.y = Math.max(0, Math.min(1, player.y + vy * speedPerSecond * dt));
+    player._motionX = vx;
+    player._motionY = vy;
+    player._motionSpeed = Math.min(1, Math.hypot(vx, vy));
+
+    const now = performance.now();
+    if (length && player._motionSpeed > 0.45 && now >= nextChirpAt) {
+      try { window.__HIRUNDU_CHIRP?.('soft'); } catch {}
+      nextChirpAt = now + 1700 + Math.random() * 2200;
+    }
   };
+}
+
+// Gives one static PNG a subtle sense of wingbeats without requiring a sprite sheet.
+export function drawAnimatedBird(ctx, image, x, y, size, player, now = performance.now(), shakeX = 0, shakeY = 0) {
+  const mx = Number(player?._motionX) || 0;
+  const my = Number(player?._motionY) || 0;
+  const motion = Math.min(1, Number(player?._motionSpeed) || Math.hypot(mx, my));
+  const period = motion > 0.15 ? 74 : 118;
+  const flap = Math.sin(now / period);
+  const bob = Math.sin(now / (motion > 0.15 ? 105 : 155)) * (1.2 + motion * 1.5);
+  const scaleY = 0.95 + flap * (0.045 + motion * 0.025);
+  const scaleX = 1.015 - flap * 0.018;
+  const tilt = Math.max(-0.15, Math.min(0.15, my * 0.10 + mx * 0.035));
+
+  ctx.save();
+  ctx.translate(x + shakeX, y + shakeY + bob);
+  ctx.rotate(tilt);
+  ctx.scale(scaleX, scaleY);
+  if (image?.complete && image.naturalWidth) {
+    ctx.drawImage(image, -size / 2, -size / 2, size, size);
+  } else {
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
