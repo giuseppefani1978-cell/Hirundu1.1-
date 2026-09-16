@@ -154,7 +154,34 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
     <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
       <nav className="real-map__actions passport-page__navigation">
         <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
-        {(['otranto','gallipoli','lecce','adriatico','capo','arneo','nardo','messapia','itria'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{BONUS_MAPS[city].title}</button>)}
+        {(['otranto','gallipoli','lecce','adriatico','capo','arneo','nardo','messapia','itria'] as const).map((city) => {
+          const step = itinerary.find((item) => item.key === city);
+          const completed = Boolean(step?.completed);
+          const available = Boolean(step?.available || completed);
+          const active = key === city;
+          const className = [
+            "app-button",
+            "passport-page__city-tab",
+            active ? "passport-page__city-tab--active" : "",
+            completed ? "passport-page__city-tab--completed" : "",
+            !available ? "passport-page__city-tab--locked" : "",
+          ].filter(Boolean).join(" ");
+
+          return (
+            <button
+              key={city}
+              className={className}
+              aria-pressed={active}
+              data-status={completed ? "completed" : available ? "available" : "locked"}
+              onClick={() => navigate(`/passport/${city}`)}
+            >
+              <span className="passport-page__city-label">{BONUS_MAPS[city].title}</span>
+              <span className="passport-page__city-status" aria-hidden>
+                {completed ? "✓" : active ? "•" : ""}
+              </span>
+            </button>
+          );
+        })}
       </nav>
       <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
       <nav className="real-map__actions">
