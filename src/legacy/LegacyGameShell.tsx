@@ -1,6 +1,7 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect, useState } from "react";
 import { t } from "../i18n.js";
 import { copy } from "../ui/copy.js";
+import { PERF_EVENT, PAUSE_EVENT, setGamePaused, toggleGamePaused } from "../game_flow.js";
 
 export type LegacyGameShellProps = {
   level?: number;
@@ -14,6 +15,36 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   { level = 1, onStartClick, onDiscoveriesClick, versionLabel = "v2025-08-20-g", debug = false },
   canvasRef
 ) {
+  const [paused, setPaused] = useState(false);
+  const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
+
+  useEffect(() => {
+    const onPause = (event: Event) => {
+      const detail = (event as CustomEvent<{ paused?: boolean }>).detail;
+      setPaused(Boolean(detail?.paused));
+    };
+    const onPerf = (event: Event) => {
+      const detail = (event as CustomEvent<{ fps?: number; jank?: number; worstFrameMs?: number }>).detail;
+      if (detail) setPerf({
+        fps: Number(detail.fps || 0),
+        jank: Number(detail.jank || 0),
+        worstFrameMs: Number(detail.worstFrameMs || 0),
+      });
+    };
+    window.addEventListener(PAUSE_EVENT, onPause as EventListener);
+    window.addEventListener(PERF_EVENT, onPerf as EventListener);
+    return () => {
+      window.removeEventListener(PAUSE_EVENT, onPause as EventListener);
+      window.removeEventListener(PERF_EVENT, onPerf as EventListener);
+      setGamePaused(false);
+    };
+  }, []);
+
+  const restart = () => {
+    setGamePaused(false);
+    window.setTimeout(() => document.getElementById("replayFloat")?.click(), 0);
+  };
+
   return (
     <>
       <div
@@ -84,6 +115,9 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
           <button id="musicBtn" type="button">
             {t.musicOff}
           </button>
+          <button id="pauseBtn" type="button" aria-label={copy.pause} onClick={() => toggleGamePaused()}>
+            {paused ? "▶" : "Ⅱ"}
+          </button>
           <button id="replayFloat" type="button">
             {t.replay}
           </button>
@@ -111,6 +145,42 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
               <p id="bdText"></p>
             </div>
           </div>
+
+          {paused ? (
+            <div className="game-pause" role="dialog" aria-modal="true" aria-label={copy.pause}>
+              <div className="game-pause__card">
+                <div className="game-pause__icon">Ⅱ</div>
+                <h2>{copy.pause}</h2>
+                <p>{copy.pauseHint}</p>
+                <button type="button" className="game-pause__primary" onClick={() => setGamePaused(false)}>
+                  ▶ {copy.resume}
+                </button>
+                <button type="button" onClick={restart}>↻ {copy.restartLevel}</button>
+                <button type="button" onClick={() => document.getElementById("musicBtn")?.click()}>
+                  ♪ {copy.musicStart}
+                </button>
+                {onDiscoveriesClick ? (
+                  <button type="button" onClick={() => { setGamePaused(false); onDiscoveriesClick(); }}>
+                    🎁 {copy.bonus}
+                  </button>
+                ) : null}
+                {debug ? (
+                  <div className="game-pause__perf">
+                    <strong>{copy.performance}</strong>
+                    <span>{copy.fps}: {perf.fps}</span>
+                    <span>{copy.jank}: {perf.jank}</span>
+                    <span>{copy.worstFrame}: {perf.worstFrameMs} ms</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {debug ? (
+            <div id="perfHud" className="perf-hud">
+              {perf.fps} FPS · jank {perf.jank} · {perf.worstFrameMs} ms
+            </div>
+          ) : null}
 
           <div className="touch" id="touch">
             <div className="dpad">
