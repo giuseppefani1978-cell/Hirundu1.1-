@@ -1,5 +1,5 @@
 import { copy } from './ui/copy.js';
-import { createLevelSession, setupHuntControls } from './legacy/levelSession.js';
+import { createLevelSession, setupHuntControls, drawAnimatedBird } from './legacy/levelSession.js';
 // src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
@@ -535,12 +535,7 @@ export function boot(options = {}){
     }
 
     if (mode === 'play') {
-      if (birdImg.complete && birdImg.naturalWidth){
-        ctx2.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      } else {
-        ctx2.fillStyle = '#333';
-        ctx2.beginPath(); ctx2.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx2.fill();
-      }
+      drawAnimatedBird(ctx2, birdImg, bx, by, bw, player, performance.now(), sx, sy);
     }
 
     // progression vers prochaine étoile
