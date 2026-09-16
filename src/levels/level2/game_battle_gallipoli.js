@@ -117,7 +117,15 @@ function _loadSprites() {
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
     jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC; // fond Gallipoli
+    bgImg.onload = done;
+    const webp = BTL_BG_SRC.replace(/\.png$/i, '.webp');
+    bgImg.onerror = () => {
+      if (bgImg.src !== BTL_BG_SRC) {
+        bgImg.onerror = done;
+        bgImg.src = BTL_BG_SRC;
+      } else done();
+    };
+    bgImg.src = webp;
   });
 }
 
