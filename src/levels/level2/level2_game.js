@@ -17,7 +17,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
-import { FLOW_PHASES, clearGameFlow, setGameFlowPhase } from '../../game_flow.js';
+import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
@@ -307,7 +307,7 @@ export function boot(options = {}){
   function updatePadAVisibilityForMode() {}
 
   // D-pad (actif seulement en mode 'play')
-  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play', session);
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play' && !isGamePaused(), session);
 
   // Start button
   const startBtn = document.getElementById('startBtn');
@@ -423,7 +423,7 @@ export function boot(options = {}){
   // ---------- Game loop ----------
   function draw(ts){
     if(!running || !session.active) return;
-    if (document.hidden) { lastTS = 0; requestAnimationFrame(draw); return; }
+    if (document.hidden || isGamePaused()) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
