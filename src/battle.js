@@ -448,15 +448,18 @@ export function tickBattle(dt){
           }
         }
 
-        // tirs (selon boss)
-        if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
-          if (state.foeShotKind === 'spore') {
-            _fireFoeSporeBurst();
-          } else {
-            _fireFoeZap();
-          }
+        // Trois patterns lisibles : haut, bas, puis visée directe.
+        if (state.telegraph && now >= state.telegraph.fireAt) {
+          _executeFoePattern(state.telegraph.pattern);
+          state.telegraph = null;
+        }
+        if (!state.telegraph && now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
+          const pattern = ['high','low','aim'][state.patternIndex % 3];
+          state.patternIndex += 1;
+          state.telegraph = { pattern, fireAt: now + BTL.TELEGRAPH_MS, until: now + BTL.TELEGRAPH_MS };
           const profile=REGIONAL_BOSSES[state.foeType];
-          state.foe.fireAt = now + (profile ? _rnd(profile.fireMin,profile.fireMax) : state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX));
+          const cooldown = profile ? _rnd(profile.fireMin,profile.fireMax) : state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
+          state.foe.fireAt = state.telegraph.fireAt + cooldown;
         }
       }
     }
@@ -470,18 +473,25 @@ export function tickBattle(dt){
 
       if (!inGrace){
         if (s.from === 'player'){
-          const dx = s.x - state.foe.x, dy = s.y - 0;
+          const dx = s.x - state.foe.x, dy = s.y - state.foe.y;
           if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
             state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
             state.shots.splice(i,1);
             continue;
           }
         } else {
-          const dx = s.x - state.player.x, dy = s.y - 0;
-          if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
+          const dx = s.x - state.player.x, dy = s.y - state.player.y;
+          const d2 = dx*dx + dy*dy;
+          if (now < state.invulnerableUntil && d2 <= BTL.PERFECT_DODGE_R*BTL.PERFECT_DODGE_R){
+            _awardPerfectDodge(now);
+            state.shots.splice(i,1);
+            continue;
+          }
+          if (d2 <= BTL.HIT_R*BTL.HIT_R){
             state.player.hp = Math.max(0, state.player.hp - s.dmg);
             state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
             state.slowUntil = now + (s.kind === 'spore' ? (BTL.SPORE_SLOW_MS || BTL.HIT_SLOW_MS) : BTL.HIT_SLOW_MS);
+            state.combo = 0;
             state.shots.splice(i,1);
             continue;
           }
@@ -540,6 +550,7 @@ export function renderBattle(ctx, _view, sprites){
 
   const w = dw, h = dh;
   state.w = w; state.h = h;
+  const renderNow = performance.now();
 
   // Shake hit
   if (state.shakeT > 0) {
@@ -583,16 +594,29 @@ export function renderBattle(ctx, _view, sprites){
   const foeBaseline = h - BTL.FLOOR_H + state.foe.y;
   const pY = playerBaseline - P_H;
 
-  // Joueur
-  ctx.save();
-  ctx.translate(state.player.x, pY);
-  if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
-  if (sprites?.birdImg?.naturalWidth) {
-    ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
-  } else {
-    ctx.fillStyle='#e63946';
-    ctx.fillRect(0,0,P_W,P_H);
+  // Joueur : inclinaison selon la trajectoire et lignes de vitesse.
+  const dodgeActive = renderNow < state.dodgeUntil;
+  const tilt = dodgeActive ? 0.08 * state.dodgeDir : Math.max(-0.34, Math.min(0.46, state.player.vy / 1250));
+  if (dodgeActive || state.player.vy > 500) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.38)';
+    ctx.lineWidth = 2;
+    const trailY = pY + P_H * 0.55;
+    for (let i=0;i<4;i++){
+      const len = 22 + i*11;
+      ctx.beginPath();
+      ctx.moveTo(state.player.x - 8 - i*5, trailY + (i-1.5)*7);
+      ctx.lineTo(state.player.x - len, trailY + (i-1.5)*7);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
+  ctx.save();
+  ctx.translate(state.player.x + P_W/2, pY + P_H/2);
+  ctx.rotate(tilt);
+  if (state.player.facing < 0) ctx.scale(-1,1);
+  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, -P_W/2, -P_H/2, P_W, P_H);
+  else { ctx.fillStyle='#e63946'; ctx.fillRect(-P_W/2,-P_H/2,P_W,P_H); }
   ctx.restore();
 
   // --- Ennemi (agrandi + fade si mort)
@@ -629,6 +653,25 @@ export function renderBattle(ctx, _view, sprites){
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+
+  // Télégraphie de l’attaque : lisible avant le tir.
+  if (state.telegraph && renderNow < state.telegraph.until) {
+    const pulse = 0.55 + 0.35 * Math.sin(renderNow / 55);
+    ctx.save();
+    ctx.globalAlpha = Math.max(.35, pulse);
+    ctx.strokeStyle = '#ffe066';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(state.foe.x - 4, Math.max(72, foeBaseline - drawH * .45), 44, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff7bf';
+    ctx.font = '900 17px system-ui';
+    ctx.textAlign = 'center';
+    const label = state.telegraph.pattern === 'high' ? '↓ ' + battleWords.high : state.telegraph.pattern === 'low' ? '↑ ' + battleWords.low : '◎ ' + battleWords.aim;
+    ctx.fillText(label, Math.max(120, state.foe.x - 92), 58);
+    ctx.restore();
+  }
 
   // Explosion ennemi
   if (state.foeDeath && !state.foeDeath.done){
@@ -708,8 +751,21 @@ export function renderBattle(ctx, _view, sprites){
   ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.name ?? (state.foeType==='resino'?'Resino':state.foeType==='scirocco'?'Scirocco':state.foeType==='nacra'?'Nacra':'')} ♥ ${state.foe.hp}`, Math.max(16,w-140),28);
   ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.token ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★')}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
 
+  // Feedback court, sans encombrer le HUD.
+  if (renderNow < state.feedbackUntil && state.feedbackText) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '900 20px system-ui';
+    ctx.fillStyle = '#fff3a6';
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    ctx.shadowBlur = 8;
+    const combo = state.combo > 1 ? '  ×' + state.combo : '';
+    ctx.fillText(state.feedbackText + combo, Math.min(w-110, Math.max(110, state.player.x + 44)), Math.max(74, pY - 14));
+    ctx.restore();
+  }
+
   // READY / GO
-  const now = performance.now();
+  const now = renderNow;
   if (now < state.goAt){
     ctx.font='700 42px system-ui';
     ctx.fillStyle='rgba(255,255,255,.9)';
@@ -861,12 +917,12 @@ function _fireSpecial(){
 }
 
 // ---- Tir ennemi — ZAP (générique jelly/crow)
-function _fireFoeZapOnce() {
+function _fireFoeZapOnce(targetY = state.player.y, speedMul = 1) {
   const dx = (state.player.x - state.foe.x);
-  const dy = (state.player.y - state.foe.y);
+  const dy = (targetY - state.foe.y);
   const L  = Math.max(1, Math.hypot(dx, dy));
-  const vx = (dx / L) * BTL.FOE_ZAP_SPEED;
-  const vy = (dy / L) * BTL.FOE_ZAP_SPEED;
+  const vx = (dx / L) * BTL.FOE_ZAP_SPEED * speedMul;
+  const vy = (dy / L) * BTL.FOE_ZAP_SPEED * speedMul;
 
   state.shots.push({
     x: state.foe.x - 36,
@@ -887,12 +943,12 @@ function _fireFoeZap(){
 }
 
 // ---- Tir ennemi — SPORES (Sputacchina)
-function _fireFoeSporeOnce() {
+function _fireFoeSporeOnce(targetY = state.player.y, speedMul = 1) {
   const dx = (state.player.x - state.foe.x);
-  const dy = (state.player.y - state.foe.y);
+  const dy = (targetY - state.foe.y);
   const L  = Math.max(1, Math.hypot(dx, dy));
-  const vx = (dx / L) * BTL.SPORE_SPEED;
-  const vy = (dy / L) * BTL.SPORE_SPEED;
+  const vx = (dx / L) * BTL.SPORE_SPEED * speedMul;
+  const vy = (dy / L) * BTL.SPORE_SPEED * speedMul;
 
   state.shots.push({
     x: state.foe.x - 36,
@@ -912,6 +968,19 @@ function _fireFoeSporeBurst(){
   }
 }
 
+function _executeFoePattern(pattern){
+  const highY = -Math.max(145, state.h * 0.38);
+  const lowY = -18;
+  const fireOne = (targetY, speedMul=1) => {
+    if (state.foeShotKind === 'spore') _fireFoeSporeOnce(targetY, speedMul);
+    else _fireFoeZapOnce(targetY, speedMul);
+  };
+  if (pattern === 'high') { fireOne(highY, 1.02); return; }
+  if (pattern === 'low') { fireOne(lowY, 1.04); return; }
+  fireOne(state.player.y, 1.0);
+  setTimeout(() => { if (state.active) fireOne(state.player.y, 1.06); }, state.foeShotKind === 'spore' ? 150 : 120);
+}
+
 function _rnd(a,b){ return a + Math.random()*(b-a); }
 function _consume(name){ if (state.input[name]){ state.input[name]=false; return true; } return false; }
 
@@ -922,11 +991,15 @@ function _onKeyDown(e){
   if (!state.active || isGamePaused()) return;
   if (e.repeat) return;
   const k = e.key;
+  const lower = k?.toLowerCase?.();
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Shift',' '].includes(k)) e.preventDefault();
   if (k === 'ArrowLeft')  state.input.left  = true;
   if (k === 'ArrowRight') state.input.right = true;
   if (k === 'ArrowUp')    state.input.up    = true;
-  if (k && k.toLowerCase() === 'a') state.input.atk = true;
-  if (k && k.toLowerCase() === 'b') state.input.spc = true;
+  if (k === 'ArrowDown')  state.input.down  = true;
+  if (k === 'Shift' || k === ' ') state.input.dodge = true;
+  if (lower === 'a') state.input.atk = true;
+  if (lower === 'b') state.input.spc = true;
 }
 function _onKeyUp(e){
   if (!state.active) return;
@@ -934,6 +1007,7 @@ function _onKeyUp(e){
   if (k === 'ArrowLeft')  state.input.left  = false;
   if (k === 'ArrowRight') state.input.right = false;
   if (k === 'ArrowUp')    state.input.up    = false;
+  if (k === 'ArrowDown')  state.input.down  = false;
 }
 
 // ---------------------------------------------------------
@@ -954,14 +1028,16 @@ function _ensureBattleUI(show){
       left:12px;
       bottom: max(8px, env(safe-area-inset-bottom, 0px));
       display:flex;
-      gap:8px;
+      gap:6px;
       align-items:center;
       pointer-events:auto;
     `;
     move.innerHTML = `
-      <button data-act="left"  class="__padbtn">←</button>
-      <button data-act="up"    class="__padbtn">↑</button>
-      <button data-act="right" class="__padbtn">→</button>
+      <button data-act="left" class="__padbtn __movebtn" aria-label="Left">←</button>
+      <button data-act="up" class="__padbtn __movebtn" aria-label="Flap">↑</button>
+      <button data-act="down" class="__padbtn __movebtn" aria-label="${battleWords.dive}">↓</button>
+      <button data-act="right" class="__padbtn __movebtn" aria-label="Right">→</button>
+      <button data-act="dodge" class="__padbtn __dodgebtn">↯ ${battleWords.dodge}</button>
     `;
 
     // pad A/B (droite)
@@ -986,6 +1062,13 @@ function _ensureBattleUI(show){
       .__padbtn{
         min-width:84px; padding:12px 14px; border-radius:12px; border:0;
         font:700 14px system-ui; background:#eee; box-shadow:0 4px 10px rgba(0,0,0,.25);
+        touch-action:none; user-select:none;
+      }
+      .__movebtn{ min-width:48px; width:48px; padding:11px 6px; font-size:20px; }
+      .__dodgebtn{ min-width:82px; padding:11px 9px; background:#dbeafe; }
+      @media (max-width:740px){
+        .__movebtn{ min-width:43px; width:43px; padding:9px 5px; }
+        .__dodgebtn{ min-width:68px; font-size:11px; }
       }
     `;
 
@@ -1027,9 +1110,11 @@ function _ensureBattleUI(show){
     const press = (act, on)=> {
       if (act === 'left')  state.input.left  = on;
       if (act === 'right') state.input.right = on;
-      if (act === 'up')    state.input.up    = on;
-      if (on === true && act === 'atk') state.input.atk = true; // trigger once
-      if (on === true && act === 'spc') state.input.spc = true; // trigger once
+      if (on === true && act === 'up') state.input.up = true;
+      if (on === true && act === 'down') state.input.down = true;
+      if (on === true && act === 'dodge') state.input.dodge = true;
+      if (on === true && act === 'atk') state.input.atk = true;
+      if (on === true && act === 'spc') state.input.spc = true;
     };
 
     root.querySelectorAll('.__padbtn').forEach(b=>{
