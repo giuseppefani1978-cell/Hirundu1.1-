@@ -14,6 +14,7 @@ const battleWords = {
 }[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
+import { FLOW_PHASES, setGameFlowPhase } from './game_flow.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -231,6 +232,7 @@ export function setBattleAmmo(ammo){
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  setGameFlowPhase(FLOW_PHASES.BATTLE, { boss: foeType });
   state.shots.length = 0;
   for (const key of Object.keys(state.input)) state.input[key] = false;
   state.ammo = { ...state.initialAmmo };
@@ -672,6 +674,8 @@ export function renderBattle(ctx, _view, sprites){
 // Internes
 // ---------------------------------------------------------
 function _endBattle(victory){
+  setGameFlowPhase(victory ? FLOW_PHASES.VICTORY : FLOW_PHASES.DEFEAT, { boss: state.foeType });
+
   // 1) Phase fin
   state.phase   = 'end';
   state.victory = !!victory;
