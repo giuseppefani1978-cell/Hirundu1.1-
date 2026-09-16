@@ -577,7 +577,7 @@ export function boot(options = {}){
       level: levelId,
       boss: regional?.bossName || 'Lecce',
       bossSprite: regional?.bossSprite || withBase('assets/sputacchina_boss.png'),
-      backdrop: regional?.backdrop || withBase('assets/battle_bg_lecce.png'),
+      backdrop: regional?.backdrop || withBase('assets/battle_bg_lecce.webp'),
       title: `⚔️ ${copy.battle} · ${regional?.bossName || 'Lecce'}`,
       collectibleLabel: regional ? inventoryLabel : undefined,
       collectibleIcon: regional ? collectibleIcon : undefined,
