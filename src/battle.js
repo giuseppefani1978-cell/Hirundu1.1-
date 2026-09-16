@@ -648,7 +648,8 @@ export function renderBattle(ctx, _view, sprites){
   }
 
   // Personnages
-  const P_W = 96, P_H = 108;
+  // V9.7: Hirundu is ~20% larger; boss dimensions remain unchanged.
+  const P_W = 116, P_H = 130;
   const playerBaseline = h - BTL.FLOOR_H + state.player.y;
   const foeBaseline = h - BTL.FLOOR_H + state.foe.y;
   const pY = playerBaseline - P_H;
@@ -673,22 +674,36 @@ export function renderBattle(ctx, _view, sprites){
     ctx.restore();
   }
   const flightEnergy = Math.min(1, Math.abs(state.player.vx) / BTL.SPEED + Math.abs(state.player.vy) / 900);
-  const flapPeriod = dodgeActive ? 58 : flightEnergy > 0.65 ? 72 : 102;
+  // More readable wingbeat: ~4 Hz in active flight, calmer while gliding.
+  const flapPeriod = dodgeActive ? 34 : flightEnergy > 0.65 ? 40 : 62;
   const flap = Math.sin(renderNow / flapPeriod);
-  const wingScaleY = 0.96 + flap * (0.035 + flightEnergy * 0.025);
-  const wingScaleX = 1.012 - flap * 0.014;
-  const bob = Math.sin(renderNow / 115) * (0.7 + flightEnergy * 0.7);
+  const wingScaleY = 0.965 + flap * (0.065 + flightEnergy * 0.035);
+  const wingScaleX = 1.018 - flap * (0.022 + flightEnergy * 0.008);
+  const bob = Math.sin(renderNow / 105) * (0.9 + flightEnergy * 1.0);
+
   ctx.save();
   ctx.translate(state.player.x + P_W/2, pY + P_H/2 + bob);
   ctx.rotate(tilt);
+
+  // A faint secondary pose during strong beats gives a wing-motion impression
+  // without adding a heavy sprite sheet.
+  if (sprites?.birdImg?.naturalWidth && flightEnergy > 0.18 && Math.abs(flap) > 0.45) {
+    ctx.save();
+    ctx.globalAlpha = 0.10 + 0.07 * flightEnergy;
+    const ghostScaleY = flap > 0 ? 1.07 : 0.90;
+    ctx.scale((state.player.facing < 0 ? -1 : 1) * 1.01, ghostScaleY);
+    ctx.drawImage(sprites.birdImg, -P_W/2 - 2, -P_H/2, P_W, P_H);
+    ctx.restore();
+  }
+
   ctx.scale((state.player.facing < 0 ? -1 : 1) * wingScaleX, wingScaleY);
   if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, -P_W/2, -P_H/2, P_W, P_H);
   else { ctx.fillStyle='#e63946'; ctx.fillRect(-P_W/2,-P_H/2,P_W,P_H); }
   ctx.restore();
 
-  // --- Ennemi (agrandi + fade si mort)
-  const F_W_BASE = Math.round(P_W * 1.8);
-  const F_H_BASE = Math.round(P_H * 1.8);
+  // --- Ennemi (size kept independent from the enlarged bird)
+  const F_W_BASE = 173;
+  const F_H_BASE = 194;
 
   let foeImg = null;
   if (REGIONAL_BOSSES[state.foeType] || ['jelly','nacra','scirocco','resino'].includes(state.foeType)) foeImg = sprites?.jellyImg;
