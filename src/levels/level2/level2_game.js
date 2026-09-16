@@ -566,6 +566,8 @@ export function boot(options = {}){
     cleanupIntro = startBattleIntro({
       level: 2,
       boss: 'Gallipoli',
+      bossSprite: withBase('assets/crow.PNG'),
+      backdrop: withBase('assets/battle_bg_gallipoli.png'),
       title: `⚔️ ${copy.battle} · Gallipoli`,
       subtitle: copy.battleHint,
       startLabel: copy.fight,
