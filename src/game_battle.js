@@ -38,6 +38,7 @@ let _generation = 0;
 let _lastTS = 0;
 let _bottomExtra = 16;
 let _sprites = null;
+const _spriteCache = new Map();
 let _onWin = null;
 let _onLose = null;
 
@@ -99,7 +100,12 @@ function _onResize() {
 }
 
 function _loadSprites({ bossSprite, backdrop } = {}) {
-  return new Promise((resolve) => {
+  const bossSrc = bossSprite || SPRITES_SRC.jelly;
+  const backdropSrc = backdrop || BTL_BG_SRC;
+  const cacheKey = `${bossSrc}|${backdropSrc}`;
+  if (_spriteCache.has(cacheKey)) return _spriteCache.get(cacheKey);
+
+  const pending = new Promise((resolve) => {
     const birdImg   = new Image();
     const spiderImg = new Image();
     const crowImg   = new Image();
@@ -112,9 +118,15 @@ function _loadSprites({ bossSprite, backdrop } = {}) {
     birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
-    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSprite || SPRITES_SRC.jelly;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = backdrop || BTL_BG_SRC;
+    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSrc;
+    bgImg.onload = done;      bgImg.onerror = done;      bgImg.src   = backdropSrc;
   });
+  _spriteCache.set(cacheKey, pending);
+  return pending;
+}
+
+export function preloadBattleAssets(options = {}) {
+  return _loadSprites(options);
 }
 
 // ---------------------------
@@ -240,7 +252,7 @@ export async function startBattleFlow(
   setAmmoRaw(ammo || {});
 
   // sprites
-  _sprites = await _loadSprites({ bossSprite, backdrop });
+  _sprites = await preloadBattleAssets({ bossSprite, backdrop });
   if (generation !== _generation) return;
 
   // sizing + listeners
