@@ -1153,3 +1153,11 @@ function _playVictoryMusic(){
 function _stopVictoryMusic(){
   try{ if (state.musicVictory){ state.musicVictory.pause(); state.musicVictory = null; } }catch{}
 }
+if (typeof window !== 'undefined') {
+  window.addEventListener('hirundu:pause', (event) => {
+    const track = state.musicBattle;
+    if (!track || track.paused) return;
+    const from = Number.isFinite(track.volume) ? track.volume : 0.60;
+    _fadeHtmlAudio(track, from, event.detail?.paused ? 0.12 : 0.60, 220);
+  });
+}
