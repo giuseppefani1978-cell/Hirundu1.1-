@@ -14,7 +14,7 @@ const battleWords = {
 }[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
-import { FLOW_PHASES, setGameFlowPhase } from './game_flow.js';
+import { FLOW_PHASES, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -837,7 +837,7 @@ function _consume(name){ if (state.input[name]){ state.input[name]=false; return
 // Entrées clavier
 // ---------------------------------------------------------
 function _onKeyDown(e){
-  if (!state.active) return;
+  if (!state.active || isGamePaused()) return;
   if (e.repeat) return;
   const k = e.key;
   if (k === 'ArrowLeft')  state.input.left  = true;
