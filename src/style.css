@@ -232,7 +232,7 @@ body.mode-battle canvas#c {
   padding:8px 6px;
   display:flex; flex-direction:column; align-items:center; gap:6px;
 }
-.hud h3{ margin:0; font-size:14px; line-height:1; text-align:center; }
+.hud h3{ margin:0; max-width:100%; overflow-wrap:anywhere; font-size:14px; line-height:1.1; text-align:center; }
 .hud .score{ margin:0; font-weight:800; font-size:13px; line-height:1.1; }
 .stars{ display:flex; flex-direction:column; gap:4px; margin-top:2px; align-items:center; }
 .star{ width:15px; height:15px; opacity:.95; }
