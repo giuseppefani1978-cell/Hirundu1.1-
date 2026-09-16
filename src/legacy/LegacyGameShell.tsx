@@ -39,11 +39,11 @@ function normalizeStoredPlayerName(value: string | null): string {
   return name;
 }
 
-function hasSavedPlayerName(): boolean {
+function getSavedPlayerName(): string {
   try {
-    return Boolean(normalizeStoredPlayerName(window.localStorage.getItem("player_name")));
+    return normalizeStoredPlayerName(window.localStorage.getItem("player_name"));
   } catch {
-    return false;
+    return "";
   }
 }
 
@@ -63,7 +63,9 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   const [paused, setPaused] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
-  const shouldAskName = !hasSavedPlayerName();
+  const [savedPlayerName] = useState(() => getSavedPlayerName());
+  const [editingPlayerName, setEditingPlayerName] = useState(false);
+  const shouldAskName = !savedPlayerName || editingPlayerName;
 
   useEffect(() => {
     const onPause = (event: Event) => {
@@ -147,11 +149,25 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                     type="text"
                     maxLength={40}
                     autoComplete="nickname"
-                    defaultValue=""
+                    defaultValue={savedPlayerName}
                     placeholder={copy.player}
                   />
                 </label>
-              ) : null}
+              ) : (
+                <div className="overlay-card__player-profile" aria-label={savedPlayerName}>
+                  <span className="overlay-card__player-profile-name">👤 {savedPlayerName}</span>
+                  <button
+                    type="button"
+                    className="overlay-card__player-profile-edit"
+                    onClick={() => {
+                      setEditingPlayerName(true);
+                      window.setTimeout(() => document.getElementById("playerName")?.focus(), 0);
+                    }}
+                  >
+                    {copy.editPlayer}
+                  </button>
+                </div>
+              )}
               <div className="overlay-card__actions">
                 <button
                   id="startBtn"
