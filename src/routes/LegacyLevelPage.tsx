@@ -7,10 +7,12 @@ import LegacyGameShell from "../legacy/LegacyGameShell";
 import {
   bootLegacyLevel,
   getNextLevelId,
+  preloadNextLevel,
   type LegacyLevelId,
 } from "../legacy/bootLevel";
 import { initLegacyChrome } from "../legacy/initLegacyChrome";
 import { removeVictoryCTA } from "../bonus_transition.js";
+import { startPerformanceMonitor, stopPerformanceMonitor } from "../game_flow.js";
 import "./LegacyLevelPage.css";
 
 const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> = {
@@ -87,7 +89,12 @@ function LegacyLevelPage() {
     const boot = async () => {
       try {
         cleanupLevel = await bootLegacyLevel(level, controller.signal, { testBattle });
-        if (cancelled) cleanupLevel?.();
+        if (cancelled) {
+          cleanupLevel?.();
+        } else {
+          startPerformanceMonitor();
+          window.setTimeout(() => { void preloadNextLevel(level); }, 650);
+        }
       } catch (error) {
         console.error("Unable to boot legacy level", error);
       }
@@ -127,6 +134,7 @@ function LegacyLevelPage() {
       cancelled = true;
       controller.abort();
       cleanupLevel?.();
+      stopPerformanceMonitor();
       disposeBattle();
       window.cancelAnimationFrame(raf);
       document.removeEventListener(event, handleWin);
