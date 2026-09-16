@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: v9-3-webp
+  cancel-in-progress: true
+
 jobs:
   webp:
     runs-on: ubuntu-latest
