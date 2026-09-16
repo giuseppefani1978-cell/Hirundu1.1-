@@ -212,6 +212,19 @@ export function boot(options = {}){
     accentColor: '#38bdf8',
   });
 
+  // V9.1: warm the battle chunk + heavy regional background while the player hunts.
+  // The promise is deliberately fire-and-forget; gameplay must never wait for preloading.
+  if (regional) {
+    setTimeout(() => {
+      void import('../../game_battle.js')
+        .then((mod) => mod.preloadBattleAssets?.({
+          bossSprite: regional.bossSprite,
+          backdrop: regional.backdrop,
+        }))
+        .catch(() => undefined);
+    }, 0);
+  }
+
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
   birdImg.src   = ASSETS.BIRD_URL;
