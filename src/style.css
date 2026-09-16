@@ -1225,3 +1225,54 @@ body.mode-battle #pauseBtn{
   #hud { gap:4px !important; padding:8px 4px !important; }
   #hud .stars { gap:2px !important; }
 }
+
+
+/* =========================================================
+   V9.8 — HUNT HUD + PLAYER PROFILE
+   ========================================================= */
+
+/* The collectible cloud belongs to the active hunt only. */
+body:not([data-game-phase="hunt"]) #hud {
+  display:none !important;
+}
+
+body[data-game-phase="hunt"] #hud {
+  display:flex !important;
+  left:calc(8px + var(--safe-left)) !important;
+  top:auto !important;
+  bottom:calc(60px + var(--safe-bottom)) !important;
+  transform:none !important;
+}
+
+/* Keep the nickname capture compact and touch-friendly on the intro card. */
+.overlay-card__player-name {
+  display:grid;
+  gap:6px;
+  margin:4px 0 2px;
+  color:#0f172a;
+  font:700 13px/1.25 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+
+.overlay-card__player-name input {
+  width:100%;
+  min-height:44px;
+  box-sizing:border-box;
+  border:1px solid rgba(15,23,42,.20);
+  border-radius:12px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.90);
+  color:#0f172a;
+  font:600 16px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  outline:none;
+}
+
+.overlay-card__player-name input:focus {
+  border-color:var(--overlay-accent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--overlay-accent) 22%, transparent);
+}
+
+@media (max-height:700px) {
+  body[data-game-phase="hunt"] #hud {
+    bottom:calc(34px + var(--safe-bottom)) !important;
+  }
+}
