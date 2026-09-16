@@ -12,7 +12,32 @@ let huntTrack = null;
 let loopTimer = null;
 let finaleLoopTimer = null;
 let musicRequest = 0;
+let huntFadeTimer = 0;
 const musicVoices = new Set();
+
+function clearHuntFade() {
+  if (huntFadeTimer) {
+    window.clearInterval(huntFadeTimer);
+    huntFadeTimer = 0;
+  }
+}
+
+function fadeTrack(track, from, to, duration = 420, onDone) {
+  if (!track || typeof window === 'undefined') { onDone?.(); return; }
+  clearHuntFade();
+  const steps = 10;
+  let step = 0;
+  try { track.volume = Math.max(0, Math.min(1, from)); } catch {}
+  huntFadeTimer = window.setInterval(() => {
+    step += 1;
+    const p = Math.min(1, step / steps);
+    try { track.volume = Math.max(0, Math.min(1, from + (to - from) * p)); } catch {}
+    if (p >= 1) {
+      clearHuntFade();
+      onDone?.();
+    }
+  }, Math.max(20, Math.round(duration / steps)));
+}
 export const AUDIO_STATE_EVENT = 'hirundu:audio-state';
 function notifyAudioState() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(AUDIO_STATE_EVENT));
@@ -106,20 +131,21 @@ function playPhrase() {
   loopTimer = setTimeout(playPhrase, 2800);
 }
 
-export async function startMusic() {
+export async function startMusic({ fadeInMs = 0 } = {}) {
   if (isMusicOn()) return;
   const request = ++musicRequest;
   try {
     if (!huntTrack) {
       huntTrack = new window.Audio(withBase('assets/hunt_loop.wav'));
       huntTrack.loop = true;
-      huntTrack.volume = 0.65;
+      huntTrack.volume = fadeInMs > 0 ? 0 : 0.65;
       huntTrack.preload = 'auto';
       for (const event of ['playing','pause','ended','error']) huntTrack.addEventListener(event, notifyAudioState);
     }
     musicOn = true;
     await huntTrack.play();
     if (request !== musicRequest) return;
+    if (fadeInMs > 0) fadeTrack(huntTrack, 0, 0.65, fadeInMs);
   } catch (error) {
     if (request === musicRequest) musicOn = false;
     console.warn('Hunt audio unavailable', error);
@@ -128,8 +154,10 @@ export async function startMusic() {
 
 export function stopMusic() {
   ++musicRequest;
+  clearHuntFade();
   musicOn = false;
   huntTrack?.pause();
+  if (huntTrack) huntTrack.volume = 0.65;
   if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
   musicVoices.forEach((o) => { try { o.stop(); } catch {} });
   musicVoices.clear();
@@ -184,16 +212,30 @@ let _wasPlayingBeforeBattle = false;
 
 /** Coupe la musique de fond (et la finale) pour laisser la place à la musique de battle */
 export function pauseBgForBattle() {
-  _wasPlayingBeforeBattle = musicOn === true;
-  // coupe SEULEMENT la boucle (pas le contexte, sinon plus de SFX)
-  stopMusic();
+  _wasPlayingBeforeBattle = isMusicOn();
+  ++musicRequest;
+  musicOn = false;
+  if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+  musicVoices.forEach((o) => { try { o.stop(); } catch {} });
+  musicVoices.clear();
   stopFinaleLoop();
+
+  const track = huntTrack;
+  if (track && !track.paused) {
+    const startVolume = Number.isFinite(track.volume) ? track.volume : 0.65;
+    fadeTrack(track, startVolume, 0, 420, () => {
+      try { track.pause(); track.volume = 0.65; } catch {}
+      notifyAudioState();
+    });
+  } else {
+    notifyAudioState();
+  }
 }
 
-/** Réactive la musique de fond si elle était active avant la battle */
+/** Réactive la musique de fond avec un fondu si elle était active avant la battle */
 export async function resumeBgAfterBattle() {
   if (_wasPlayingBeforeBattle) {
-    try { await startMusic(); } catch {}
+    try { await startMusic({ fadeInMs: 520 }); } catch {}
   }
   _wasPlayingBeforeBattle = false;
 }
