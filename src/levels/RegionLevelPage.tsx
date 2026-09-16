@@ -21,7 +21,7 @@ const text = {
  shelter:['Rejoins l’abri vert avant la rafale.','Raggiungi il riparo verde prima della raffica.','Reach the green shelter before the gust.','Llega al refugio verde antes de la ráfaga.'],
  battle:['Déplace-toi à gauche ou à droite pour esquiver. Tire seulement quand le point faible apparaît.','Spostati a sinistra o a destra per schivare. Spara solo quando appare il punto debole.','Move left or right to dodge. Fire only when the weak spot appears.','Muévete a izquierda o derecha para esquivar. Dispara solo cuando aparezca el punto débil.'],
  lost:['Bataille perdue','Battaglia persa','Battle lost','Batalla perdida'],retry:['Recommencer la bataille','Riprova la battaglia','Retry battle','Reintentar batalla'],
- finish:['Les six niveaux sont terminés !','Hai completato i sei livelli!','All six levels complete!','¡Has completado los seis niveles!'],
+ finish:['Les neuf niveaux sont terminés !','Hai completato i nove livelli!','All nine levels complete!','¡Has completado los nueve niveles!'],
  saved:['Ta chasse reprend au dernier lieu découvert.','La caccia riprende dall’ultimo luogo scoperto.','Your hunt resumes from the last discovered place.','La búsqueda continúa desde el último lugar descubierto.'],
  music:['Musique','Musica','Music','Música'],lane:['Couloir','Corsia','Lane','Carril'],
  again:['Recommencer cette chasse','Ricomincia questa caccia','Restart this hunt','Reiniciar esta búsqueda'],
@@ -34,7 +34,7 @@ export function attackLanes(id:number,round:number):number[] {
 export default function RegionLevelPage(){
  const {levelId}=useParams(); const location=useLocation();
  const id=Number(levelId); const region=regionById(id);
- if([4,5,6].includes(id))return <Navigate to={`/level/${id}${location.search}`} replace/>;
+ if([4,5,6,7,8,9].includes(id))return <Navigate to={`/level/${id}${location.search}`} replace/>;
  if(!region) return <Navigate to="/" replace/>;
  return <RegionalGame key={`${id}:${location.search}`} id={id}/>;
 }
