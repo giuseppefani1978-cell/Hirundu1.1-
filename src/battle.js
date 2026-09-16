@@ -7,11 +7,11 @@
 import { copy } from './ui/copy.js';
 import { LANG } from './i18n.js';
 const battleWords = {
- fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE'},
- it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA'},
- en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM'},
- es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA'},
-}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM'};
+ fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie'},
+ it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita'},
+ en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle'},
+ es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida'},
+}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
 import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
@@ -25,8 +25,11 @@ const BTL = {
   FLAP_VY: -560,
   DIVE_VY: 620,
   FLAP_COOLDOWN_MS: 180,
-  H_RESPONSE: 12,
-  H_RELEASE: 8,
+  H_RESPONSE: 8.5,
+  H_RELEASE: 5.5,
+  V_RESPONSE: 8,
+  FLIGHT_ASSIST_MS: 210,
+  DODGE_RESPONSE: 18,
   BOSS_SAFE_X: 150,
   BOSS_HARD_X: 88,
   BOSS_SAFE_ALT: -150,
@@ -134,6 +137,8 @@ let state = {
   combo: 0,
   comboUntil: 0,
   chirpReadyAt: 0,
+  verticalAssistUntil: 0,
+  verticalTargetVy: 0,
   renderTilt: 0,
   lastRenderAt: 0,
 
@@ -297,6 +302,8 @@ export function startBattle(foeType='jelly'){
   state.combo = 0;
   state.comboUntil = 0;
   state.chirpReadyAt = 0;
+  state.verticalAssistUntil = 0;
+  state.verticalTargetVy = 0;
   state.renderTilt = 0;
   state.lastRenderAt = 0;
   // configure tir selon le boss
@@ -388,7 +395,9 @@ export function tickBattle(dt){
     if (!readyPhase){
       if (_consume('dodge') && now >= state.dodgeCooldownUntil) _startDodge(now);
       if (now < state.dodgeUntil) {
-        state.player.vx = BTL.DODGE_SPEED * state.dodgeDir * slowMul;
+        const dodgeTargetVx = BTL.DODGE_SPEED * state.dodgeDir * slowMul;
+        const dodgeBlend = 1 - Math.exp(-BTL.DODGE_RESPONSE * dt);
+        state.player.vx += (dodgeTargetVx - state.player.vx) * dodgeBlend;
       } else {
         const horizontalInput = (state.input.right ? 1 : 0) - (state.input.left ? 1 : 0);
         if (horizontalInput) state.player.facing = horizontalInput;
@@ -399,7 +408,8 @@ export function tickBattle(dt){
         if (!horizontalInput && Math.abs(state.player.vx) < 2) state.player.vx = 0;
       }
       if (_consume('up') && now >= state.flapReadyAt){
-        state.player.vy = Math.max(-720, Math.min(0, state.player.vy) - 420);
+        state.verticalTargetVy = Math.max(-620, Math.min(-430, state.player.vy - 220));
+        state.verticalAssistUntil = now + BTL.FLIGHT_ASSIST_MS;
         state.player.onGround = false;
         state.flapReadyAt = now + BTL.FLAP_COOLDOWN_MS;
         if (now >= state.chirpReadyAt) {
@@ -410,9 +420,14 @@ export function tickBattle(dt){
       if (_consume('down')){
         const nearBoss = Math.abs(state.player.x - state.foe.x) < BTL.BOSS_SAFE_X && state.player.y > BTL.BOSS_SAFE_ALT;
         const diveMax = nearBoss ? BTL.DIVE_NEAR_BOSS_MAX : BTL.DIVE_VY;
-        state.player.vy = Math.min(diveMax, Math.max(diveMax * 0.86, state.player.vy + 180));
+        state.verticalTargetVy = diveMax;
+        state.verticalAssistUntil = now + BTL.FLIGHT_ASSIST_MS;
         state.feedbackText = '↓ ' + battleWords.dive;
         state.feedbackUntil = now + 420;
+      }
+      if (now < state.verticalAssistUntil) {
+        const vBlend = 1 - Math.exp(-BTL.V_RESPONSE * dt);
+        state.player.vy += (state.verticalTargetVy - state.player.vy) * vBlend;
       }
     } else {
       state.input.up = false;
@@ -431,13 +446,15 @@ export function tickBattle(dt){
       if (absDx < BTL.BOSS_SAFE_X) {
         const away = bossDx === 0 ? -1 : Math.sign(bossDx);
         const proximity = 1 - absDx / BTL.BOSS_SAFE_X;
-        state.player.x += away * BTL.BOSS_REPEL_SPEED * proximity * dt;
+        state.player.x += away * BTL.BOSS_REPEL_SPEED * proximity * proximity * dt;
         if (state.player.vy > BTL.DIVE_NEAR_BOSS_MAX) {
-          const soften = 1 - Math.exp(-10 * dt);
+          const soften = 1 - Math.exp(-7 * dt);
           state.player.vy += (BTL.DIVE_NEAR_BOSS_MAX - state.player.vy) * soften;
         }
         if (absDx < BTL.BOSS_HARD_X && state.player.y > -110) {
-          state.player.x = state.foe.x + away * BTL.BOSS_HARD_X;
+          const safeX = state.foe.x + away * BTL.BOSS_HARD_X;
+          const safetyBlend = 1 - Math.exp(-9 * dt);
+          state.player.x += (safeX - state.player.x) * safetyBlend;
         }
         state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x));
       }
@@ -639,7 +656,7 @@ export function renderBattle(ctx, _view, sprites){
   // Joueur : inclinaison lissée + respiration/battement d’ailes simulé.
   const dodgeActive = renderNow < state.dodgeUntil;
   const targetTilt = dodgeActive ? 0.08 * state.dodgeDir : Math.max(-0.34, Math.min(0.46, state.player.vy / 1250));
-  state.renderTilt += (targetTilt - state.renderTilt) * (1 - Math.exp(-11 * renderDt));
+  state.renderTilt += (targetTilt - state.renderTilt) * (1 - Math.exp(-7 * renderDt));
   const tilt = state.renderTilt;
   if (dodgeActive || state.player.vy > 500) {
     ctx.save();
@@ -1070,11 +1087,11 @@ function _ensureBattleUI(show){
       pointer-events:auto;
     `;
     move.innerHTML = `
-      <button data-act="left" class="__padbtn __movebtn" aria-label="Left">←</button>
-      <button data-act="up" class="__padbtn __movebtn" aria-label="Flap">↑</button>
+      <button data-act="left" class="__padbtn __movebtn" aria-label="${battleWords.left}">←</button>
+      <button data-act="up" class="__padbtn __movebtn" aria-label="${battleWords.flap}">↑</button>
       <button data-act="down" class="__padbtn __movebtn" aria-label="${battleWords.dive}">↓</button>
-      <button data-act="right" class="__padbtn __movebtn" aria-label="Right">→</button>
-      <button data-act="dodge" class="__padbtn __dodgebtn">↯ ${battleWords.dodge}</button>
+      <button data-act="right" class="__padbtn __movebtn" aria-label="${battleWords.right}">→</button>
+      <button data-act="dodge" class="__padbtn __dodgebtn" aria-label="${battleWords.dodge}">↯ ${battleWords.dodge}</button>
     `;
 
     // pad A/B (droite)
@@ -1089,8 +1106,8 @@ function _ensureBattleUI(show){
       pointer-events:auto;
     `;
     ab.innerHTML = `
-      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • ${battleWords.attack}</button>
-      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • ${battleWords.special}</button>
+      <button data-act="atk" class="__padbtn" aria-label="${battleWords.attack}" style="background:#ffd166">A • ${battleWords.attack}</button>
+      <button data-act="spc" class="__padbtn" aria-label="${battleWords.special}" style="background:#06d6a0">B • ${battleWords.special}</button>
     `;
 
     // style boutons
@@ -1128,10 +1145,10 @@ function _ensureBattleUI(show){
     end.innerHTML = `
       <div style="background:#fff; padding:16px 18px; border-radius:14px;
                   box-shadow:0 8px 30px rgba(0,0,0,.35); text-align:center">
-        <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">Fin de la partie</div>
+        <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">${battleWords.end}</div>
         <button id="__battle_replay_btn"
                 style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
-                       background:#06d6a0; color:#083d2b">↻ Rejouer</button>
+                       background:#06d6a0; color:#083d2b">↻ ${copy.replay}</button>
       </div>
     `;
 
