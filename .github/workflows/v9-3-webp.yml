@@ -1,0 +1,47 @@
+name: V9.3 Generate WebP backgrounds
+
+on:
+  push:
+    branches: [ "ux/v9.3-polish" ]
+    paths-ignore:
+      - "public/assets/*.webp"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  webp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/v9.3-polish
+
+      - name: Install WebP tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y webp
+
+      - name: Generate compressed battle backgrounds
+        run: |
+          set -e
+          for src in             public/assets/battle_bg_salento.PNG             public/assets/battle_bg_gallipoli.png             public/assets/battle_bg_lecce.png             public/assets/battle_bg_acaya.png             public/assets/battle_bg_leuca.png             public/assets/battle_bg_copertino.png             public/assets/battle_bg_nardo.png             public/assets/battle_bg_messapia.png             public/assets/battle_bg_ostuni.png
+          do
+            [ -f "$src" ] || continue
+            dst="${src%.*}.webp"
+            cwebp -quiet -q 82 -m 6 "$src" -o "$dst"
+            echo "$src -> $dst"
+          done
+
+      - name: Commit generated WebP assets
+        run: |
+          git config user.name "HIRUNDU Assets Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/assets/*.webp
+          if git diff --cached --quiet; then
+            echo "WebP assets already up to date."
+            exit 0
+          fi
+          git commit -m "V9.3: generate compressed WebP battle backgrounds"
+          git push origin HEAD:ux/v9.3-polish
