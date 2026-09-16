@@ -3,11 +3,13 @@ import LanguageSelect from '../ui/LanguageSelect';
 import { copy } from '../ui/copy.js';
 import { t } from '../i18n.js';
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./StartPage.css";
 
 export default function StartPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const debug = new URLSearchParams(location.search).has("debug");
 
   return (
     <div className="start-page">
@@ -35,7 +37,7 @@ export default function StartPage() {
               🎁 {copy.bonus}
             </button>
           </div>
-          <TestShortcuts />
+          {debug ? <TestShortcuts /> : null}
         </div>
       </div>
       {/* PATCH : suppression du Hall of Fame sur la page d’accueil.
