@@ -415,13 +415,80 @@ export function hideCTA() {
   }, 200);
 }
 
-// Read the inline name field during the start gesture; never open a blocking dialog.
+// Player profile is local-first: one nickname per browser/device.
+// The anonymous id prepares future opt-in leaderboard synchronization.
+const PLAYER_NAME_KEY = 'player_name';
+const PLAYER_ID_KEY = 'hirundu_player_id_v1';
+const GENERIC_PLAYER_NAMES = new Set(['joueur', 'giocatore', 'player', 'jugador']);
+
+function normalizePlayerName(value) {
+  if (value == null) return '';
+  let candidate = value;
+
+  if (typeof candidate === 'string') {
+    const raw = candidate.trim();
+    if (!raw) return '';
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'string') candidate = parsed;
+      else if (parsed && typeof parsed === 'object' && 'name' in parsed) candidate = parsed.name;
+      else candidate = raw;
+    } catch {
+      candidate = raw;
+    }
+  } else if (typeof candidate === 'object' && 'name' in candidate) {
+    candidate = candidate.name;
+  }
+
+  const name = String(candidate ?? '').trim().replace(/\s+/g, ' ').slice(0, 40);
+  if (!name) return '';
+
+  const normalizeToken = (text) => String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  const token = normalizeToken(name);
+  const fallbackToken = normalizeToken(copy.player);
+  if (GENERIC_PLAYER_NAMES.has(token) || (fallbackToken && token === fallbackToken)) return '';
+  return name;
+}
+
+export function getStoredPlayerName() {
+  try { return normalizePlayerName(localStorage.getItem(PLAYER_NAME_KEY)); }
+  catch { return ''; }
+}
+
+export function hasStoredPlayerName() {
+  return !!getStoredPlayerName();
+}
+
+export function getOrCreatePlayerId() {
+  try {
+    const stored = (localStorage.getItem(PLAYER_ID_KEY) || '').trim();
+    if (stored) return stored;
+    const generated = globalThis.crypto?.randomUUID?.()
+      || `hirundu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(PLAYER_ID_KEY, generated);
+    return generated;
+  } catch {
+    return '';
+  }
+}
+
+// Read the inline nickname during the start gesture; never open a blocking dialog.
+// Generic fallbacks are not persisted, so the nickname field can reappear later.
 export function readPlayerName() {
-  let stored = '';
-  try { stored = localStorage.getItem('player_name') || ''; } catch {}
-  try { const parsed = JSON.parse(stored); if (typeof parsed === 'string') stored = parsed; } catch {}
-  const name = (document.getElementById('playerName')?.value || stored || copy.player).trim().slice(0, 40) || copy.player;
-  try { localStorage.setItem('player_name', name); } catch {}
+  const input = normalizePlayerName(document.getElementById('playerName')?.value || '');
+  const stored = getStoredPlayerName();
+  const name = input || stored || copy.player;
+
+  if (input) {
+    try { localStorage.setItem(PLAYER_NAME_KEY, input); } catch {}
+  }
+  if (input || stored) getOrCreatePlayerId();
+
   const field = document.getElementById('playerNameField');
   if (field) { field.hidden = true; field.style.display = 'none'; }
   return name;
