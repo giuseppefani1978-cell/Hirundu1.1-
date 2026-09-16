@@ -15,7 +15,7 @@ export function startLevel4(options = {}) {
     mission: tr(['Guide Hirundu avec les flèches vers le lieu de chaque énigme. Évite les ennemis et ramasse les bonus.','Guida Hirundu con le frecce verso il luogo di ogni enigma. Evita i nemici e raccogli i bonus.','Guide Hirundu with the arrows to each clue’s place. Avoid enemies and collect bonuses.','Guía a Hirundu con las flechas hasta el lugar de cada enigma. Evita enemigos y recoge bonos.']),
     inventoryLabel: tr(['Coquillages','Conchiglie','Shells','Conchas']),
     bossName: 'Nacra', bossSprite: withBase('assets/boss-4.svg'),
-    backdrop: withBase('assets/battle_bg_acaya.png'),
+    backdrop: withBase('assets/battle_bg_acaya.webp'),
     pois: region.places.map((p,i)=>({key:`adriatico-${i}`,name:p.name,town:p.town,icon:p.icon,clue:tr(p.clue),x:positions[i][0],y:positions[i][1]})),
   }});
 }
