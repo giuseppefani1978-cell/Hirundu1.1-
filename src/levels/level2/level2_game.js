@@ -17,6 +17,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
+import { FLOW_PHASES, clearGameFlow, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
@@ -126,6 +127,7 @@ export function boot(options = {}){
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: 2 });
   let cleanupIntro = null;
   let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
@@ -542,6 +544,7 @@ export function boot(options = {}){
 
   // ---------- Battle flow ----------
   function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: 2, boss: 'Gallipoli' });
     mode = 'battle_intro';
     ui.showTouch(false);
     updatePadAVisibilityForMode();
@@ -561,6 +564,8 @@ export function boot(options = {}){
     } catch {}
 
     cleanupIntro = startBattleIntro({
+      level: 2,
+      boss: 'Gallipoli',
       title: `⚔️ ${copy.battle} · Gallipoli`,
       subtitle: copy.battleHint,
       startLabel: copy.fight,
@@ -736,6 +741,7 @@ onProceed: async () => {
 
   // ---------- modes ----------
   function triggerWin() {
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: 2, boss: 'Gallipoli' });
     mode = 'win';
     updatePadAVisibilityForMode();
     finalizeRun({ won: true });
@@ -748,6 +754,7 @@ onProceed: async () => {
   }
 
   function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: 2, boss: 'Gallipoli' });
     mode = 'dead';
     running = false;
     updatePadAVisibilityForMode();
@@ -757,6 +764,7 @@ onProceed: async () => {
   // ---------- controls ----------
   function startGame() {
     try {
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: 2 });
       document.body.classList.remove('mode-battle');
       playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
@@ -894,6 +902,7 @@ onProceed: async () => {
     stopFinaleLoop();
     ui.onClickMusic(null);
     ui.onClickReplay(null);
+    clearGameFlow();
   };
 }
 
