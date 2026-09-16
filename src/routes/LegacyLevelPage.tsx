@@ -110,9 +110,15 @@ function LegacyLevelPage() {
       unlockBonus(bonusKey as BonusProgressEntry["key"]);
       storeToast(bonusKey);
       const next = getNextLevelId(level);
-      navigate(`/bonus/${bonusKey}`, {
-        state: { fromLevel: level, nextLevel: next, unlockedKey: bonusKey },
-      });
+      if (next) {
+        navigate(`/level/${next}`, {
+          state: { fromLevel: level, unlockedKey: bonusKey },
+        });
+      } else {
+        navigate(`/bonus/${bonusKey}`, {
+          state: { fromLevel: level, nextLevel: null, unlockedKey: bonusKey },
+        });
+      }
     };
 
     document.addEventListener(event, handleWin);
@@ -138,7 +144,14 @@ function LegacyLevelPage() {
 
   return (
     <div className="legacy-level-page">
-      <LegacyGameShell key={`${level}:${testBattle}:${debug}`} level={level} ref={canvasRef} versionLabel={versionLabel} debug={debug} />
+      <LegacyGameShell
+        key={`${level}:${testBattle}:${debug}`}
+        level={level}
+        ref={canvasRef}
+        versionLabel={versionLabel}
+        debug={debug}
+        onDiscoveriesClick={() => navigate("/bonus")}
+      />
     </div>
   );
 }
