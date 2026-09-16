@@ -4,6 +4,49 @@ import { copy } from "../ui/copy.js";
 import { PERF_EVENT, PAUSE_EVENT, setGamePaused, toggleGamePaused } from "../game_flow.js";
 import { AUDIO_STATE_EVENT, isMusicOn } from "../audio.js";
 
+const GENERIC_PLAYER_NAMES = new Set(["joueur", "giocatore", "player", "jugador"]);
+
+function normalizeStoredPlayerName(value: string | null): string {
+  if (!value) return "";
+  let candidate: unknown = value.trim();
+  if (!candidate) return "";
+
+  try {
+    const parsed = JSON.parse(String(candidate));
+    if (typeof parsed === "string") candidate = parsed;
+    else if (parsed && typeof parsed === "object" && "name" in parsed) {
+      candidate = (parsed as { name?: unknown }).name;
+    }
+  } catch {
+    // Legacy plain-string values are valid.
+  }
+
+  const name = String(candidate ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+  if (!name) return "";
+
+  const token = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  const fallback = String(copy.player || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  if (GENERIC_PLAYER_NAMES.has(token) || (fallback && token === fallback)) return "";
+  return name;
+}
+
+function hasSavedPlayerName(): boolean {
+  try {
+    return Boolean(normalizeStoredPlayerName(window.localStorage.getItem("player_name")));
+  } catch {
+    return false;
+  }
+}
+
 export type LegacyGameShellProps = {
   level?: number;
   onStartClick?: () => void;
@@ -20,6 +63,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   const [paused, setPaused] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
+  const shouldAskName = !hasSavedPlayerName();
 
   useEffect(() => {
     const onPause = (event: Event) => {
@@ -91,12 +135,23 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 <img id="heroTa" alt="Tarantula" />
               </div>
               <p className="overlay-card__footnote" id="overlayFootnote"></p>
-              {level === 1 && (() => { try { return !localStorage.getItem('player_name'); } catch { return true; } })() && <label id="playerNameField" htmlFor="playerName" style={{display:'grid', gap:'6px', margin:'12px 0', textAlign:'left'}}>
-                {copy.name}
-                <input id="playerName" type="text" maxLength={40} autoComplete="nickname"
-                  defaultValue={(() => { try { return localStorage.getItem('player_name') || ''; } catch { return ''; } })()}
-                  placeholder={copy.player} style={{fontSize:'16px', padding:'10px', borderRadius:'8px', width:'100%', boxSizing:'border-box'}} />
-              </label>}
+              {shouldAskName ? (
+                <label
+                  id="playerNameField"
+                  htmlFor="playerName"
+                  className="overlay-card__player-name"
+                >
+                  <span>{copy.name}</span>
+                  <input
+                    id="playerName"
+                    type="text"
+                    maxLength={40}
+                    autoComplete="nickname"
+                    defaultValue=""
+                    placeholder={copy.player}
+                  />
+                </label>
+              ) : null}
               <div className="overlay-card__actions">
                 <button
                   id="startBtn"
