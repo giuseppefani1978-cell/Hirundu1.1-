@@ -6,7 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-for (const language of ['fr','it','en','es']) test(`six hunts and victory routing work in ${language}`, async () => {
+for (const language of ['fr','it','en','es']) test(`nine hunts and victory routing work in ${language}`, async () => {
  const dom = new JSDOM('<div id="root"></div>',{url:`https://example.test/Hirundu1.1-/?lang=${language}`,pretendToBeVisual:true});
  const w=dom.window;
  for(const key of ['window','document','localStorage','location','navigator','Event','CustomEvent','HTMLElement','Image','screen']) Object.defineProperty(globalThis,key,{value:key==='window'?w:w[key],configurable:true,writable:true});
@@ -50,13 +50,13 @@ for (const language of ['fr','it','en','es']) test(`six hunts and victory routin
   const transitions = await server.ssrLoadModule('/src/level_transition.js');
   const {t, LANG} = await server.ssrLoadModule('/src/i18n.js');
   assert.equal(LANG, language);
-  for(const n of [1,2,3,4,5,6]) {
+  for(const n of [1,2,3,4,5,6,7,8,9]) {
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    transitions.queueLevelTransition({targetLevel:n, subtitle:'ANCIEN TEXTE FRANÇAIS', startLabel:'ANCIEN BOUTON FRANÇAIS'});
    const dispose=await bootLegacyLevel(n);
    assert.ok(!w.document.getElementById('subtitleP').textContent.includes('ANCIEN'), 'saved text cannot override current language');
    assert.ok(!w.document.getElementById('startBtn').textContent.includes('ANCIEN'));
-   assert.equal(w.document.getElementById('hudLabel').textContent, n===6 ? {fr:'Pins',it:'Pini',en:'Pines',es:'Pinos'}[language] : n===5 ? {fr:'Gouttes',it:'Gocce',en:'Drops',es:'Gotas'}[language] : n===4 ? {fr:'Coquillages',it:'Conchiglie',en:'Shells',es:'Conchas'}[language] : n===1 ? t.hudStars : t['level'+n].hudLabel);
+   assert.equal(w.document.getElementById('hudLabel').textContent, n===9 ? {fr:'Cristaux',it:'Cristalli',en:'Crystals',es:'Cristales'}[language] : n===8 ? {fr:'Amphores',it:'Anfore',en:'Amphorae',es:'Ánforas'}[language] : n===7 ? {fr:'Olives',it:'Olive',en:'Olives',es:'Aceitunas'}[language] : n===6 ? {fr:'Pins',it:'Pini',en:'Pines',es:'Pinos'}[language] : n===5 ? {fr:'Gouttes',it:'Gocce',en:'Drops',es:'Gotas'}[language] : n===4 ? {fr:'Coquillages',it:'Conchiglie',en:'Shells',es:'Conchas'}[language] : n===1 ? t.hudStars : t['level'+n].hudLabel);
    assert.equal(w.document.getElementById('replayFloat').textContent, t.replay);
    const nameInput=w.document.getElementById('playerName');
    assert.equal(!!nameInput,n===1,'only the first level asks for a name');
@@ -71,7 +71,7 @@ for (const language of ['fr','it','en','es']) test(`six hunts and victory routin
    assert.equal(w.document.querySelectorAll('#__bonus_cta, #__otranto_bonus_link, #__gallipoli_bonus_link, #__lecce_bonus_link').length,0);
    dispose?.();frames.clear();
   }
-  for (const n of [1,2,3,4,5,6]) {
+  for (const n of [1,2,3,4,5,6,7,8,9]) {
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
    assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
@@ -111,7 +111,7 @@ for (const language of ['fr','it','en','es']) test(`six hunts and victory routin
   battle.setupBattleInputs();
   let victories = 0;
   battle.setBattleCallbacks({onWin:()=> { victories++; }});
-  for (const [foe,key,level] of [['jelly','otranto',1],['crow','gallipoli',2],['sputacchina','lecce',3],['nacra','adriatico',4],['scirocco','capo',5],['resino','arneo',6]]) {
+  for (const [foe,key,level] of [['jelly','otranto',1],['crow','gallipoli',2],['sputacchina','lecce',3],['nacra','adriatico',4],['scirocco','capo',5],['resino','arneo',6],['macina','nardo',7],['argillo','messapia',8],['calcara','itria',9]]) {
    w.location.hash='/level/'+level;
    battle.startBattle(foe);
    battle.finishBattleForTest(true);
