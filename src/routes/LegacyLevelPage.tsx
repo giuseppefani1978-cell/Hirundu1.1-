@@ -68,6 +68,7 @@ function LegacyLevelPage() {
   const params = new URLSearchParams(location.search);
   const testBattle = params.get("test") === "battle";
   const debug = params.has("debug");
+  const showPerf = params.has("perf") || debug;
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const versionLabel =
@@ -117,15 +118,19 @@ function LegacyLevelPage() {
       unlockBonus(bonusKey as BonusProgressEntry["key"]);
       storeToast(bonusKey);
       const next = getNextLevelId(level);
-      if (next) {
-        navigate(`/level/${next}`, {
-          state: { fromLevel: level, unlockedKey: bonusKey },
-        });
-      } else {
-        navigate(`/bonus/${bonusKey}`, {
-          state: { fromLevel: level, nextLevel: null, unlockedKey: bonusKey },
-        });
-      }
+      document.body.classList.add("game-level-exit");
+      window.setTimeout(() => {
+        document.body.classList.remove("game-level-exit");
+        if (next) {
+          navigate(`/level/${next}`, {
+            state: { fromLevel: level, unlockedKey: bonusKey },
+          });
+        } else {
+          navigate(`/bonus/${bonusKey}`, {
+            state: { fromLevel: level, nextLevel: null, unlockedKey: bonusKey },
+          });
+        }
+      }, 180);
     };
 
     document.addEventListener(event, handleWin);
@@ -142,7 +147,7 @@ function LegacyLevelPage() {
       cleanBonus();
       removeVictoryCTA();
       try {
-        document.body.classList.remove("mode-battle-intro", "mode-battle");
+        document.body.classList.remove("mode-battle-intro", "mode-battle", "game-level-exit");
         document.body.removeAttribute("data-level-theme");
       } catch {
         // ignore cleanup issues
@@ -158,6 +163,7 @@ function LegacyLevelPage() {
         ref={canvasRef}
         versionLabel={versionLabel}
         debug={debug}
+        showPerf={showPerf}
         onDiscoveriesClick={() => navigate("/bonus")}
       />
     </div>
