@@ -154,7 +154,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
     <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
       <nav className="real-map__actions passport-page__navigation">
         <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
-        {(['otranto','gallipoli','lecce','adriatico','capo','arneo'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{BONUS_MAPS[city].title}</button>)}
+        {(['otranto','gallipoli','lecce','adriatico','capo','arneo','nardo','messapia','itria'] as const).map(city => <button key={city} className="app-button" aria-pressed={key === city} onClick={() => navigate(`/passport/${city}`)}>{BONUS_MAPS[city].title}</button>)}
       </nav>
       <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
       <nav className="real-map__actions">
@@ -245,7 +245,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
 }
 
 function filterPoisForMap(ids: string[] | undefined, pois: EnrichedPoi[]): EnrichedPoi[] {
-  if (!ids?.length) return pois.filter(poi => !poi.id.startsWith("poi_giurdignano_") && !poi.id.startsWith("poi_leuca_") && !poi.id.startsWith("poi_copertino_"));
+  if (!ids?.length) return pois.filter(poi => !/^poi_(giurdignano|leuca|copertino|nardo|ostuni|manduria)_/.test(poi.id));
   const set = new Set(ids);
   return pois.filter((poi) => set.has(poi.id));
 }
