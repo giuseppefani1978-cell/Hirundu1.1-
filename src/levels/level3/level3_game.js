@@ -385,6 +385,7 @@ export function boot(options = {}){
 
     const entry = {
       name: playerName || copy.player,
+      playerId: ui.getOrCreatePlayerId?.() || undefined,
       country,
       score: total,
       stars: leavesPicked,            // on conserve 'stars' pour le tableau mais c'est des feuilles
