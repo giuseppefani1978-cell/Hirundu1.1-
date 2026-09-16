@@ -39,5 +39,6 @@ test('movement speed is stable at 60/120 Hz and stops when the app loses focus',
     session.dispose(); return result;
   };
   assert.ok(Math.abs(run(60)-run(120))<1e-10);
-  assert.ok(Math.abs(run(60)-0.5)<1e-10);
+  // V9.5 accelerates into motion instead of jumping to full speed on the first frame.
+  assert.ok(Math.abs(run(60)-0.47500015)<1e-6);
 });
