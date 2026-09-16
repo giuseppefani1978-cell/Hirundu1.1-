@@ -15,7 +15,7 @@ import {
   isBattleActive as isActiveRaw
 } from '../../battle.js';
 
-const BTL_BG_SRC = withBase('assets/battle_bg_gallipoli.png');  // 🖼 ton fond spécifique
+const BTL_BG_SRC = withBase('assets/battle_bg_gallipoli.webp');  // 🖼 ton fond spécifique
 
 // ---------------------------
 // Config assets (sprites)
