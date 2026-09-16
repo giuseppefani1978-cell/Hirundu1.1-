@@ -13,7 +13,7 @@ export function startLevel8(options = {}) {
     mission: tr(['Guide Hirundu avec les flèches vers le lieu de chaque énigme. Évite les ennemis et ramasse les bonus.','Guida Hirundu con le frecce verso il luogo di ogni enigma. Evita i nemici e raccogli i bonus.','Guide Hirundu with the arrows to each clue’s place. Avoid enemies and collect bonuses.','Guía a Hirundu con las flechas hasta el lugar de cada enigma. Evita enemigos y recoge bonos.']),
     inventoryLabel: tr(["Amphores","Anfore","Amphorae","Ánforas"]),
     bossName: 'Argillo', bossSprite: withBase('assets/boss-9.svg'),
-    backdrop: withBase('assets/battle_bg_messapia.png'),
+    backdrop: withBase('assets/battle_bg_messapia.webp'),
     pois: region.places.map((p,i)=>({key:`messapia-${i}`,name:p.name,town:p.town,icon:p.icon,clue:tr(p.clue),x:positions[i][0],y:positions[i][1]})),
   }});
 }
