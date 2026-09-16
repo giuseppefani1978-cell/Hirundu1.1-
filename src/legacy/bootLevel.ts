@@ -25,6 +25,11 @@ function normalizeLevel(level: number | string | null | undefined): LegacyLevelI
   return 1;
 }
 
+export async function preloadLegacyLevel(level: number | string | null | undefined): Promise<void> {
+  const normalized = normalizeLevel(level);
+  try { await boots[normalized](); } catch { /* preload is best-effort */ }
+}
+
 export async function bootLegacyLevel(
   level: number | string | null | undefined,
   signal?: AbortSignal,
@@ -38,6 +43,11 @@ export async function bootLegacyLevel(
   if (typeof start !== "function") throw new Error("Level entrypoint missing");
   const cleanup = start(options);
   return typeof cleanup === "function" ? cleanup : undefined;
+}
+
+export async function preloadNextLevel(current: LegacyLevelId): Promise<void> {
+  const next = getNextLevelId(current);
+  if (next) await preloadLegacyLevel(next);
 }
 
 export function getNextLevelId(current: LegacyLevelId): LegacyLevelId | null {
