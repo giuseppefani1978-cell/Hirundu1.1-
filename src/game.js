@@ -604,7 +604,7 @@ cleanupIntro = startBattleIntro({
   level: 1,
   boss: 'Otranto',
   bossSprite: withBase('assets/jellyfish_boss.PNG'),
-  backdrop: withBase('assets/battle_bg_salento.PNG'),
+  backdrop: withBase('assets/battle_bg_salento.webp'),
   title: `⚔️ ${copy.battle} · Otranto`,
   subtitle: copy.battleHint,
   startLabel: copy.fight,
