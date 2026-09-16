@@ -14,7 +14,7 @@ const battleWords = {
 }[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
-import { FLOW_PHASES, isGamePaused, setGameFlowPhase } from './game_flow.js';
+import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const BTL = {
   FLOOR_H: 0,
