@@ -109,6 +109,7 @@ export function startBattleIntro({
   else window.setTimeout(reveal, 0);
 
   let cleaned = false;
+  let removalTimer = 0;
   let canProceed = true;
 
   const stopOrientationWatch = watchRequiredOrientation('landscape', ({ mobile, matches }) => {
@@ -130,16 +131,30 @@ export function startBattleIntro({
   });
 
   function cleanup({ animate = false } = {}) {
-    if (cleaned) return;
-    cleaned = true;
-    stopOrientationWatch?.();
-    button.removeEventListener('click', proceed);
+    if (!cleaned) {
+      cleaned = true;
+      stopOrientationWatch?.();
+      button.removeEventListener('click', proceed);
+      document.getElementById('__battle_rotate__')?.remove();
+      document.body.classList.remove('mode-battle-intro', 'mobile-portrait');
+      document.body.style.overflow = previousOverflow;
+    }
+
+    // A later level cleanup must be able to override the cosmetic fade.
+    if (removalTimer) {
+      window.clearTimeout(removalTimer);
+      removalTimer = 0;
+    }
+
     overlay.classList.remove('is-visible');
-    if (animate) window.setTimeout(() => overlay.remove(), 180);
-    else overlay.remove();
-    document.getElementById('__battle_rotate__')?.remove();
-    document.body.classList.remove('mode-battle-intro', 'mobile-portrait');
-    document.body.style.overflow = previousOverflow;
+    if (animate && overlay.isConnected) {
+      removalTimer = window.setTimeout(() => {
+        removalTimer = 0;
+        overlay.remove();
+      }, 180);
+    } else {
+      overlay.remove();
+    }
   }
 
   function proceed() {
