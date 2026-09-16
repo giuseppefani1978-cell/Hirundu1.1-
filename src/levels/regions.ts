@@ -1,5 +1,5 @@
 import { LANG } from '../i18n.js';
-export type Words = [string, string, string, string];
+export type Words = readonly [string, string, string, string];
 export const tr = (words: Words): string => words[({fr:0,it:1,en:2,es:3} as Record<string,number>)[LANG] ?? 0];
 export type Place = { name: string; town: string; icon: string; clue: Words };
 const p = (name:string,town:string,icon:string,...clue:Words):Place => ({name,town,icon,clue});
@@ -39,7 +39,379 @@ export const regions = [
  p('Palazzo Marchesale','Campi Salentina','🏛️','À Campi Salentina, trouve le palais des marquis.','A Campi Salentina, trova il palazzo dei marchesi.','In Campi Salentina, find the marquises’ palace.','En Campi Salentina, encuentra el palacio de los marqueses.'),
  p('Chiesa di Sant’Antonio Abate','Novoli','⛪','À Novoli, quelle église est dédiée à Sant’Antonio Abate ?','A Novoli, quale chiesa è dedicata a Sant’Antonio Abate?','In Novoli, which church is dedicated to Sant’Antonio Abate?','En Novoli, ¿qué iglesia está dedicada a Sant’Antonio Abate?'),
  p('Palazzo Petrucci','Trepuzzi','🏛️','Trouve le palais Petrucci à Trepuzzi.','Trova il palazzo Petrucci a Trepuzzi.','Find Palazzo Petrucci in Trepuzzi.','Encuentra el palacio Petrucci en Trepuzzi.')
- ]}
+ ]},
+{
+  "id": 7,
+  "key": "nardo",
+  "title": [
+    "Les chemins de Nardò",
+    "I sentieri di Nardò",
+    "The paths of Nardò",
+    "Los caminos de Nardò"
+  ],
+  "token": "🫒",
+  "boss": "Macina",
+  "places": [
+    {
+      "name": "Piazza Salandra",
+      "town": "Nardò",
+      "icon": "🏛️",
+      "clue": [
+        "Trouve la place baroque Salandra au cœur de Nardò.",
+        "Trova la piazza barocca Salandra nel cuore di Nardò.",
+        "Find baroque Piazza Salandra in the heart of Nardò.",
+        "Encuentra la plaza barroca Salandra en el corazón de Nardò."
+      ]
+    },
+    {
+      "name": "Porta di San Sebastiano",
+      "town": "Galatone",
+      "icon": "🚪",
+      "clue": [
+        "À Galatone, cherche l’ancienne porte San Sebastiano.",
+        "A Galatone, cerca l’antica Porta di San Sebastiano.",
+        "In Galatone, find the old San Sebastiano gate.",
+        "En Galatone, busca la antigua puerta de San Sebastiano."
+      ]
+    },
+    {
+      "name": "Basilica di Santa Caterina d’Alessandria",
+      "town": "Galatina",
+      "icon": "⛪",
+      "clue": [
+        "À Galatina, trouve la basilique dédiée à Santa Caterina d’Alessandria.",
+        "A Galatina, trova la basilica di Santa Caterina d’Alessandria.",
+        "In Galatina, find the basilica dedicated to Santa Caterina d’Alessandria.",
+        "En Galatina, encuentra la basílica dedicada a Santa Caterina d’Alessandria."
+      ]
+    },
+    {
+      "name": "Palazzo Baronale",
+      "town": "Collepasso",
+      "icon": "🏛️",
+      "clue": [
+        "Quel palais baronnial se trouve à Collepasso ?",
+        "Quale palazzo baronale si trova a Collepasso?",
+        "Which baronial palace stands in Collepasso?",
+        "¿Qué palacio baronial se encuentra en Collepasso?"
+      ]
+    },
+    {
+      "name": "Castello Angioino",
+      "town": "Gallipoli",
+      "icon": "🏰",
+      "clue": [
+        "Trouve le château angevin à l’entrée de la vieille ville de Gallipoli.",
+        "Trova il castello angioino all’ingresso della città vecchia di Gallipoli.",
+        "Find the Angevin castle at the entrance to Gallipoli’s old town.",
+        "Encuentra el castillo angevino a la entrada del casco antiguo de Gallipoli."
+      ]
+    },
+    {
+      "name": "Palazzo Marchesale Del Tufo",
+      "town": "Matino",
+      "icon": "🏛️",
+      "clue": [
+        "À Matino, cherche le palais des marquis Del Tufo.",
+        "A Matino, cerca il palazzo dei marchesi Del Tufo.",
+        "In Matino, find the palace of the Del Tufo marquises.",
+        "En Matino, busca el palacio de los marqueses Del Tufo."
+      ]
+    },
+    {
+      "name": "Basilica di Santa Maria della Coltura",
+      "town": "Parabita",
+      "icon": "⛪",
+      "clue": [
+        "Quelle basilique de Parabita est dédiée à Santa Maria della Coltura ?",
+        "Quale basilica di Parabita è dedicata a Santa Maria della Coltura?",
+        "Which basilica in Parabita is dedicated to Santa Maria della Coltura?",
+        "¿Qué basílica de Parabita está dedicada a Santa Maria della Coltura?"
+      ]
+    },
+    {
+      "name": "Santa Maria della Croce — Casaranello",
+      "town": "Casarano",
+      "icon": "🖼️",
+      "clue": [
+        "Rejoins l’église de Casaranello, dans la commune de Casarano.",
+        "Raggiungi la chiesa di Casaranello, nel comune di Casarano.",
+        "Reach the church of Casaranello in the town of Casarano.",
+        "Llega a la iglesia de Casaranello, en el municipio de Casarano."
+      ]
+    },
+    {
+      "name": "Castello Brancaccio",
+      "town": "Ruffano",
+      "icon": "🏰",
+      "clue": [
+        "À Ruffano, trouve le château Brancaccio.",
+        "A Ruffano, trova Castello Brancaccio.",
+        "In Ruffano, find Castello Brancaccio.",
+        "En Ruffano, encuentra el castillo Brancaccio."
+      ]
+    },
+    {
+      "name": "Castello di Felline",
+      "town": "Alliste",
+      "icon": "🏰",
+      "clue": [
+        "À Felline, dans la commune d’Alliste, trouve le château du bourg.",
+        "A Felline, nel comune di Alliste, trova il castello del borgo.",
+        "In Felline, in the municipality of Alliste, find the village castle.",
+        "En Felline, en el municipio de Alliste, encuentra el castillo del pueblo."
+      ]
+    }
+  ]
+},
+{
+  "id": 8,
+  "key": "messapia",
+  "title": [
+    "Les gardiens messapiens",
+    "I guardiani messapici",
+    "The Messapian guardians",
+    "Los guardianes mesapios"
+  ],
+  "token": "🏺",
+  "boss": "Argillo",
+  "places": [
+    {
+      "name": "Mura messapiche",
+      "town": "Manduria",
+      "icon": "🪨",
+      "clue": [
+        "À Manduria, trouve les murailles de l’ancienne cité messapienne.",
+        "A Manduria, trova le mura dell’antica città messapica.",
+        "In Manduria, find the walls of the ancient Messapian city.",
+        "En Manduria, encuentra las murallas de la antigua ciudad mesapia."
+      ]
+    },
+    {
+      "name": "Castello Svevo",
+      "town": "Oria",
+      "icon": "🏰",
+      "clue": [
+        "Quel château domine la colline d’Oria ?",
+        "Quale castello domina la collina di Oria?",
+        "Which castle overlooks the hill of Oria?",
+        "¿Qué castillo domina la colina de Oria?"
+      ]
+    },
+    {
+      "name": "Castello Normanno-Svevo",
+      "town": "Mesagne",
+      "icon": "🏰",
+      "clue": [
+        "À Mesagne, rejoins le château normand-souabe.",
+        "A Mesagne, raggiungi il castello normanno-svevo.",
+        "In Mesagne, reach the Norman-Swabian castle.",
+        "En Mesagne, llega al castillo normando-suevo."
+      ]
+    },
+    {
+      "name": "Castello Imperiali",
+      "town": "Francavilla Fontana",
+      "icon": "🏰",
+      "clue": [
+        "Cherche le château Imperiali à Francavilla Fontana.",
+        "Cerca Castello Imperiali a Francavilla Fontana.",
+        "Find Castello Imperiali in Francavilla Fontana.",
+        "Busca el castillo Imperiali en Francavilla Fontana."
+      ]
+    },
+    {
+      "name": "Quartiere delle Ceramiche",
+      "town": "Grottaglie",
+      "icon": "🏺",
+      "clue": [
+        "Dans quelle ville trouve-t-on le quartier des céramistes ? Cherche Grottaglie.",
+        "In quale città si trova il quartiere dei ceramisti? Cerca Grottaglie.",
+        "Which town has the ceramics quarter? Look for Grottaglie.",
+        "¿Qué ciudad tiene el barrio de los ceramistas? Busca Grottaglie."
+      ]
+    },
+    {
+      "name": "Torrione di Avetrana",
+      "town": "Avetrana",
+      "icon": "🗼",
+      "clue": [
+        "À Avetrana, trouve le grand donjon appelé Torrione.",
+        "Ad Avetrana, trova il grande torrione.",
+        "In Avetrana, find the great keep called Torrione.",
+        "En Avetrana, encuentra la gran torre llamada Torrione."
+      ]
+    },
+    {
+      "name": "Dune di Campomarino",
+      "town": "Maruggio",
+      "icon": "🌊",
+      "clue": [
+        "Quelles dunes bordent Campomarino, dans la commune de Maruggio ?",
+        "Quali dune costeggiano Campomarino, nel comune di Maruggio?",
+        "Which dunes border Campomarino in the municipality of Maruggio?",
+        "¿Qué dunas bordean Campomarino, en el municipio de Maruggio?"
+      ]
+    },
+    {
+      "name": "Chiesa di San Giovanni Battista",
+      "town": "Sava",
+      "icon": "⛪",
+      "clue": [
+        "À Sava, cherche l’église de San Giovanni Battista.",
+        "A Sava, cerca la chiesa di San Giovanni Battista.",
+        "In Sava, find the church of San Giovanni Battista.",
+        "En Sava, busca la iglesia de San Giovanni Battista."
+      ]
+    },
+    {
+      "name": "Palazzo Marchesale",
+      "town": "Lizzano",
+      "icon": "🏛️",
+      "clue": [
+        "Rejoins le palais des marquis à Lizzano.",
+        "Raggiungi il palazzo marchesale a Lizzano.",
+        "Reach the marquises’ palace in Lizzano.",
+        "Llega al palacio de los marqueses de Lizzano."
+      ]
+    },
+    {
+      "name": "Castello Muscettola",
+      "town": "Torricella",
+      "icon": "🏰",
+      "clue": [
+        "Quel château de Torricella porte le nom de Muscettola ?",
+        "Quale castello di Torricella porta il nome di Muscettola?",
+        "Which castle in Torricella is named Muscettola?",
+        "¿Qué castillo de Torricella lleva el nombre de Muscettola?"
+      ]
+    }
+  ]
+},
+{
+  "id": 9,
+  "key": "itria",
+  "title": [
+    "Les lumières d’Ostuni",
+    "Le luci di Ostuni",
+    "The lights of Ostuni",
+    "Las luces de Ostuni"
+  ],
+  "token": "💎",
+  "boss": "Calcara",
+  "places": [
+    {
+      "name": "Cattedrale di Ostuni",
+      "town": "Ostuni",
+      "icon": "⛪",
+      "clue": [
+        "Quelle cathédrale domine la ville blanche d’Ostuni ?",
+        "Quale cattedrale domina la città bianca di Ostuni?",
+        "Which cathedral overlooks the white town of Ostuni?",
+        "¿Qué catedral domina la ciudad blanca de Ostuni?"
+      ]
+    },
+    {
+      "name": "Castello Dentice di Frasso",
+      "town": "Carovigno",
+      "icon": "🏰",
+      "clue": [
+        "À Carovigno, trouve le château au sommet du centre historique.",
+        "A Carovigno, trova il castello in cima al centro storico.",
+        "In Carovigno, find the castle at the top of the old town.",
+        "En Carovigno, encuentra el castillo en lo alto del casco antiguo."
+      ]
+    },
+    {
+      "name": "Castello Dentice di Frasso",
+      "town": "San Vito dei Normanni",
+      "icon": "🏰",
+      "clue": [
+        "Rejoins le château de San Vito dei Normanni, et non celui de Carovigno.",
+        "Raggiungi il castello di San Vito dei Normanni, non quello di Carovigno.",
+        "Reach the castle in San Vito dei Normanni, rather than the one in Carovigno.",
+        "Llega al castillo de San Vito dei Normanni, no al de Carovigno."
+      ]
+    },
+    {
+      "name": "Castello Ducale",
+      "town": "Ceglie Messapica",
+      "icon": "🏰",
+      "clue": [
+        "À Ceglie Messapica, retrouve le château ducal.",
+        "A Ceglie Messapica, ritrova il Castello Ducale.",
+        "In Ceglie Messapica, find the ducal castle.",
+        "En Ceglie Messapica, encuentra el castillo ducal."
+      ]
+    },
+    {
+      "name": "Chiesa di San Nicola",
+      "town": "Cisternino",
+      "icon": "⛪",
+      "clue": [
+        "À Cisternino, cherche l’église dédiée à San Nicola.",
+        "A Cisternino, cerca la chiesa dedicata a San Nicola.",
+        "In Cisternino, find the church dedicated to San Nicola.",
+        "En Cisternino, busca la iglesia dedicada a San Nicola."
+      ]
+    },
+    {
+      "name": "Chiesa di San Giorgio",
+      "town": "Locorotondo",
+      "icon": "⛪",
+      "clue": [
+        "À Locorotondo, trouve l’église principale dédiée à San Giorgio.",
+        "A Locorotondo, trova la chiesa madre di San Giorgio.",
+        "In Locorotondo, find the main church of San Giorgio.",
+        "En Locorotondo, encuentra la iglesia principal de San Giorgio."
+      ]
+    },
+    {
+      "name": "Palazzo Ducale",
+      "town": "Martina Franca",
+      "icon": "🏛️",
+      "clue": [
+        "Quel palais ducal borde la Piazza Roma à Martina Franca ?",
+        "Quale Palazzo Ducale si affaccia su Piazza Roma a Martina Franca?",
+        "Which ducal palace faces Piazza Roma in Martina Franca?",
+        "¿Qué palacio ducal se encuentra en Piazza Roma, en Martina Franca?"
+      ]
+    },
+    {
+      "name": "Museo Archeologico di Egnazia",
+      "town": "Fasano",
+      "icon": "🏺",
+      "clue": [
+        "Dans la commune de Fasano, trouve le musée archéologique d’Egnazia.",
+        "Nel comune di Fasano, trova il museo archeologico di Egnazia.",
+        "In the municipality of Fasano, find Egnazia’s archaeological museum.",
+        "En el municipio de Fasano, encuentra el museo arqueológico de Egnazia."
+      ]
+    },
+    {
+      "name": "Trulli del Rione Monti",
+      "town": "Alberobello",
+      "icon": "🛖",
+      "clue": [
+        "À Alberobello, cherche les trulli du quartier Rione Monti.",
+        "Ad Alberobello, cerca i trulli del Rione Monti.",
+        "In Alberobello, find the trulli of the Rione Monti district.",
+        "En Alberobello, busca los trulli del barrio Rione Monti."
+      ]
+    },
+    {
+      "name": "Chiesa di San Michele Arcangelo",
+      "town": "San Michele Salentino",
+      "icon": "⛪",
+      "clue": [
+        "À San Michele Salentino, trouve l’église de l’archange Michel.",
+        "A San Michele Salentino, trova la chiesa di San Michele Arcangelo.",
+        "In San Michele Salentino, find the church of the Archangel Michael.",
+        "En San Michele Salentino, encuentra la iglesia del arcángel Miguel."
+      ]
+    }
+  ]
+}
 ] as const;
 export const regionById = (id:number) => regions.find(r=>r.id===id);
 export const regionByKey = (key:string) => regions.find(r=>r.key===key);

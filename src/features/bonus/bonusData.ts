@@ -13,6 +13,9 @@ export type BonusMapConfig = {
 };
 
 export const BONUS_MAPS = {
+  nardo: { title: "Nardò", lat:40.1798,lng:18.0316,zoom:14,radiusKm:3,markerText:"Nardò",partnerIds:[],poiIds:["poi_nardo_salandra"] },
+  itria: { title: "Ostuni", lat:40.7346,lng:17.5784,zoom:14,radiusKm:3,markerText:"Ostuni",partnerIds:[],poiIds:["poi_ostuni_cattedrale"] },
+  messapia: { title: "Manduria", lat:40.4074,lng:17.6422,zoom:14,radiusKm:3,markerText:"Manduria",partnerIds:[],poiIds:["poi_manduria_mura"] },
   adriatico: { title: "Giurdignano", lat:40.12366,lng:18.43169,zoom:14,radiusKm:3, markerText: "Giurdignano",partnerIds:[],poiIds:["poi_giurdignano_san_salvatore"] },
   capo: { title: "Santa Maria di Leuca", lat:39.7959,lng:18.36846,zoom:14,radiusKm:3, markerText:"Santa Maria di Leuca",partnerIds:[],poiIds:["poi_leuca_faro"] },
   arneo: { title: "Copertino", lat:40.273,lng:18.043,zoom:14,radiusKm:3, markerText:"Copertino",partnerIds:[],poiIds:["poi_copertino_castello"] },

@@ -179,7 +179,7 @@ export function getProgressList(): BonusProgressEntry[] {
       unlocked: readBooleanFlag("level2_won") || readBooleanFlag("level3_unlocked") || readBooleanFlag("bonus_lecce_unlocked"),
       href: "/index.html#lecce",
     },
-    ...(["adriatico","capo","arneo"] as const).map((key,i)=>({id:i+4,name:BONUS_MAPS[key].title,key,done:readBooleanFlag(`level${i+4}_won`),unlocked:readBooleanFlag(`level${i+3}_won`),href:`/level/${i+4}`})),
+    ...(["adriatico","capo","arneo","nardo","messapia","itria"] as const).map((key,i)=>({id:i+4,name:BONUS_MAPS[key].title,key,done:readBooleanFlag(`level${i+4}_won`),unlocked:readBooleanFlag(`level${i+3}_won`),href:`/level/${i+4}`})),
   ];
 }
 
@@ -296,7 +296,7 @@ export function resetBonusProgress(): void {
   if (!storage) return;
 
   const keys = new Set(PROGRESS_STORAGE_KEYS);
-  for(const id of [4,5,6]){keys.add(`level${id}_won`);keys.add(`level${id}_won_at`);keys.add(`region${id}_hunt`);}
+  for(const id of [4,5,6,7,8,9]){keys.add(`level${id}_won`);keys.add(`level${id}_won_at`);keys.add(`region${id}_hunt`);}
   keys.add(PASSPORT_STORAGE_KEY);
 
   keys.forEach((key) => {
