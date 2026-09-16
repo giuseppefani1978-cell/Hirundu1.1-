@@ -115,7 +115,15 @@ function _loadSprites() {
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     sputImg.onload = done;   sputImg.onerror = done;   sputImg.src   = SPRITES_SRC.sputacchina;
     dustImg.onload = done;   dustImg.onerror = done;   dustImg.src   = SPRITES_SRC.dust;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src     = BTL_BG_SRC;
+    bgImg.onload = done;
+    const webp = BTL_BG_SRC.replace(/\.png$/i, '.webp');
+    bgImg.onerror = () => {
+      if (bgImg.src !== BTL_BG_SRC) {
+        bgImg.onerror = done;
+        bgImg.src = BTL_BG_SRC;
+      } else done();
+    };
+    bgImg.src = webp;
   });
 }
 
