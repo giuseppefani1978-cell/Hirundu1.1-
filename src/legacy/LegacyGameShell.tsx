@@ -5,12 +5,13 @@ import { copy } from "../ui/copy.js";
 export type LegacyGameShellProps = {
   level?: number;
   onStartClick?: () => void;
+  onDiscoveriesClick?: () => void;
   versionLabel?: string;
   debug?: boolean;
 };
 
 const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(function LegacyGameShell(
-  { level = 1, onStartClick, versionLabel = "v2025-08-20-g", debug = false },
+  { level = 1, onStartClick, onDiscoveriesClick, versionLabel = "v2025-08-20-g", debug = false },
   canvasRef
 ) {
   return (
@@ -58,14 +59,25 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                   defaultValue={(() => { try { return localStorage.getItem('player_name') || ''; } catch { return ''; } })()}
                   placeholder={copy.player} style={{fontSize:'16px', padding:'10px', borderRadius:'8px', width:'100%', boxSizing:'border-box'}} />
               </label>}
-              <button
-                id="startBtn"
-                type="button"
-                className="overlay-card__button"
-                onClick={onStartClick}
-              >
-                ▶︎ {copy.start}
-              </button>
+              <div className="overlay-card__actions">
+                <button
+                  id="startBtn"
+                  type="button"
+                  className="overlay-card__button"
+                  onClick={onStartClick}
+                >
+                  ▶︎ {copy.start}
+                </button>
+                {onDiscoveriesClick ? (
+                  <button
+                    type="button"
+                    className="overlay-card__secondary"
+                    onClick={onDiscoveriesClick}
+                  >
+                    🎁 {copy.bonus}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
