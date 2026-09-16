@@ -137,9 +137,8 @@ function _loop(ts) {
   const H = Math.max(1, Math.round(rect.height));
   // viewport plein écran sans bandes
 const vp = { ox:0, oy:0, dw:W, dh:H };
-renderBattle(_ctx, vp, _sprites);
 
-  // rendu battle
+  // One render per animation frame. Rendering twice created needless GPU/CPU work.
   renderBattle(_ctx, vp, _sprites);
 }
 
