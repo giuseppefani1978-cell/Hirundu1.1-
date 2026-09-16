@@ -15,7 +15,7 @@ import {
   isBattleActive as isActiveRaw
 } from '../../battle.js';
 
-const BTL_BG_SRC = withBase('assets/battle_bg_lecce.png'); // 🖼 fond baroque doré de Lecce
+const BTL_BG_SRC = withBase('assets/battle_bg_lecce.webp'); // 🖼 fond baroque doré de Lecce
 
 // ---------------------------
 // Config assets (sprites)
