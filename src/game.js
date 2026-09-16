@@ -15,6 +15,7 @@ import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from './hof/storage.js';
 import { prepareLevelIntro, queueLevelTransition } from './level_transition.js';
+import { FLOW_PHASES, clearGameFlow, setGameFlowPhase } from './game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -145,6 +146,7 @@ export function boot(options = {}){
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
   const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: 1 });
   let cleanupIntro = null;
   let cleanupBattle = null;
   const requestAnimationFrame = session.frame;
@@ -578,6 +580,7 @@ export function boot(options = {}){
 
   // ---------- Battle flow (handoff only) ----------
   function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: 1, boss: 'Otranto' });
     mode = 'battle_intro';
     ui.showTouch(false);
     updatePadAVisibilityForMode(); // cache pendant intro/battle
@@ -598,6 +601,8 @@ export function boot(options = {}){
     } catch {}
 
 cleanupIntro = startBattleIntro({
+  level: 1,
+  boss: 'Otranto',
   title: `⚔️ ${copy.battle} · Otranto`,
   subtitle: copy.battleHint,
   startLabel: copy.fight,
@@ -781,6 +786,7 @@ cleanupIntro = startBattleIntro({
 
   // ---------- modes ----------
   function triggerWin(){
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: 1, boss: 'Otranto' });
     mode = 'win';
     updatePadAVisibilityForMode();
     finalizeRun({won:true});
@@ -790,6 +796,7 @@ cleanupIntro = startBattleIntro({
     // Navigation is handled once by LegacyLevelPage after the unlock event.
   }
   function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: 1, boss: 'Otranto' });
     mode = 'dead';
     running = false;
     updatePadAVisibilityForMode();
@@ -799,6 +806,7 @@ cleanupIntro = startBattleIntro({
   // ---------- controls ----------
   function startGame(){
     try{
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: 1 });
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
       playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
@@ -929,6 +937,7 @@ cleanupIntro = startBattleIntro({
     stopFinaleLoop();
     ui.onClickMusic(null);
     ui.onClickReplay(null);
+    clearGameFlow();
   };
 }
 
