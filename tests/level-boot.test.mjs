@@ -77,7 +77,7 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
    assert.equal(w.document.getElementById('playerName'),null,'saved name not requested again');
    const {copy}=await server.ssrLoadModule('/src/ui/copy.js');
-   assert.ok(w.document.getElementById('__battle_intro__').textContent.includes(copy.battleOrientation));
+   assert.ok(w.document.getElementById('__battle_intro__').textContent.includes(copy.rotateLandscape || copy.battleOrientation));
    const start = w.document.getElementById('__battle_start_btn');
    assert.equal(start.disabled,false,'portrait and timers do not block starting');
    start.click(); start.click();
