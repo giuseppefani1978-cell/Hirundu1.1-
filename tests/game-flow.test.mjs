@@ -77,3 +77,36 @@ test('V9.2 mobile game flow enforces portrait hunt and landscape battle intro', 
     dom.window.close();
   }
 });
+
+
+test('V9.3 pause state is explicit and reversible', async () => {
+  const dom = new JSDOM('<!doctype html><body></body>', {
+    url: 'https://example.test/Hirundu1.1-/?lang=fr',
+    pretendToBeVisual: true,
+  });
+  const w = dom.window;
+  for (const key of ['window','document','localStorage','sessionStorage','location','navigator','Event','CustomEvent','HTMLElement']) {
+    Object.defineProperty(globalThis, key, {
+      value: key === 'window' ? w : w[key],
+      configurable: true,
+      writable: true,
+    });
+  }
+  w.matchMedia = () => ({ matches:false, addEventListener(){}, removeEventListener(){} });
+  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
+  try {
+    const flow = await server.ssrLoadModule('/src/game_flow.js');
+    flow.setGameFlowPhase(flow.FLOW_PHASES.HUNT, { level: 4 });
+    assert.equal(flow.isGamePaused(), false);
+    flow.setGamePaused(true);
+    assert.equal(flow.isGamePaused(), true);
+    assert.equal(w.document.body.classList.contains('game-paused'), true);
+    flow.setGamePaused(false);
+    assert.equal(flow.isGamePaused(), false);
+    assert.equal(w.document.body.classList.contains('game-paused'), false);
+    flow.clearGameFlow();
+  } finally {
+    await server.close();
+    dom.window.close();
+  }
+});
