@@ -192,11 +192,6 @@ function __persistUnlocksForFoe(foeType){
   } catch(e){ console.error(e); }
 }
 
-function __redirectAfterWin(foeType){
-  const key = REGIONAL_BOSSES[foeType]?.key ?? (foeType === 'resino' ? 'arneo' : foeType === 'scirocco' ? 'capo' : foeType === 'nacra' ? 'adriatico' : foeType === 'crow' ? 'gallipoli' : foeType === 'sputacchina' ? 'lecce' : 'otranto');
-  window.location.hash = `/bonus/${key}`;
-}
-
 export function disposeBattle() {
   state.active = false;
   _stopBattleTheme();
@@ -695,7 +690,7 @@ function _endBattle(victory){
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
       btn.disabled = false;
-      btn.textContent = victory ? copy.bonus : copy.replay;
+      btn.textContent = victory ? copy.continue : copy.replay;
       btn.style.padding = '12px 16px';
       btn.style.fontSize = '16px';
       btn.style.transform = 'none';
@@ -707,8 +702,8 @@ function _endBattle(victory){
             const foe = state.foeType;
             __persistUnlocksForFoe(foe);
             try { state.onWin(); } finally {
+              // Route ownership belongs to the level/React flow, never to the battle engine.
               disposeBattle();
-              __redirectAfterWin(foe);
             }
           } else {
             state.ui.endOverlay.style.display = 'none';
