@@ -7,11 +7,11 @@
 import { copy } from './ui/copy.js';
 import { LANG } from './i18n.js';
 const battleWords = {
- fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !'},
- it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!'},
- en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'},
- es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!'},
-}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!'};
+ fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE'},
+ it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA'},
+ en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM'},
+ es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA'},
+}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
 import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
@@ -21,6 +21,16 @@ const BTL = {
   GRAV: 1200,
   SPEED: 300,
   JUMP_VY: -620,
+  PLAYER_GRAV: 760,
+  FLAP_VY: -560,
+  DIVE_VY: 720,
+  FLAP_COOLDOWN_MS: 180,
+  DODGE_SPEED: 820,
+  DODGE_MS: 220,
+  DODGE_COOLDOWN_MS: 900,
+  DODGE_INVULN_MS: 270,
+  PERFECT_DODGE_R: 76,
+  TELEGRAPH_MS: 620,
   PLAYER_HP: 120,
   FOE_HP: 200,
   SHOT: 760,
@@ -86,7 +96,7 @@ let state = {
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
 
-  input: { left:false, right:false, up:false, atk:false, spc:false },
+  input: { left:false, right:false, up:false, down:false, dodge:false, atk:false, spc:false },
 
   onWin: ()=>{}, onLose: ()=>{},
 
@@ -105,6 +115,17 @@ let state = {
   // feedback
   shakeT: 0,
   slowUntil: 0,
+  flapReadyAt: 0,
+  dodgeUntil: 0,
+  dodgeCooldownUntil: 0,
+  invulnerableUntil: 0,
+  dodgeDir: 1,
+  telegraph: null,
+  patternIndex: 0,
+  feedbackText: '',
+  feedbackUntil: 0,
+  combo: 0,
+  comboUntil: 0,
 
   // FX fin de partie
   fx: { fireworks: [] },
@@ -210,7 +231,7 @@ export function disposeBattle() {
   window.removeEventListener('orientationchange', _updateRotateOverlay);
   window.removeEventListener('resize', _updateRotateOverlay);
   window.removeEventListener(PAUSE_EVENT, _onBattlePause);
-  state.input = { left:false, right:false, up:false, atk:false, spc:false };
+  state.input = { left:false, right:false, up:false, down:false, dodge:false, atk:false, spc:false };
   if (state.ui.root) state.ui.root.style.display = 'none';
 }
 
@@ -254,6 +275,17 @@ export function startBattle(foeType='jelly'){
   state.active = true;
   state.foeType = foeType;
   state.victoryDance = false;
+  state.flapReadyAt = 0;
+  state.dodgeUntil = 0;
+  state.dodgeCooldownUntil = 0;
+  state.invulnerableUntil = 0;
+  state.dodgeDir = 1;
+  state.telegraph = null;
+  state.patternIndex = 0;
+  state.feedbackText = '';
+  state.feedbackUntil = 0;
+  state.combo = 0;
+  state.comboUntil = 0;
   // configure tir selon le boss
   state.foeShotKind = (foeType === 'sputacchina') ? 'spore' : 'zap';
 
@@ -329,9 +361,9 @@ export function tickBattle(dt){
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
 
-  // Physique de base
-  _applyPhysics(state.player, dt);
-  _applyPhysics(state.foe, dt);
+  // Hirundu reste en vol; le boss conserve sa physique existante.
+  _applyPhysics(state.player, dt, true);
+  _applyPhysics(state.foe, dt, false);
 
   // ----------------------------------------------------------------
   // GAMEPLAY — uniquement pendant 'play'
@@ -342,20 +374,34 @@ export function tickBattle(dt){
     state.player.vx = 0;
 
     if (!readyPhase){
-      if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
-      if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
-      if (state.input.up && state.player.onGround){
-        state.player.vy = BTL.JUMP_VY;
+      if (_consume('dodge') && now >= state.dodgeCooldownUntil) _startDodge(now);
+      if (now < state.dodgeUntil) {
+        state.player.vx = BTL.DODGE_SPEED * state.dodgeDir * slowMul;
+      } else {
+        if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
+        if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
+      }
+      if (_consume('up') && now >= state.flapReadyAt){
+        state.player.vy = Math.min(0, state.player.vy) + BTL.FLAP_VY;
         state.player.onGround = false;
+        state.flapReadyAt = now + BTL.FLAP_COOLDOWN_MS;
+      }
+      if (_consume('down')){
+        state.player.vy = Math.max(BTL.DIVE_VY, state.player.vy + 220);
+        state.feedbackText = '↓ ' + battleWords.dive;
+        state.feedbackUntil = now + 420;
       }
     } else {
-      // purge pour éviter un buffer d’attaques pendant READY
+      state.input.up = false;
+      state.input.down = false;
+      state.input.dodge = false;
       state.input.atk = false;
       state.input.spc = false;
     }
+    if (state.combo > 0 && now >= state.comboUntil) state.combo = 0;
 
     // Clamp horizontal
-    state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
+    state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x + state.player.vx * dt));
 
     // Attaques joueur
     if (!readyPhase){
@@ -748,10 +794,35 @@ function _endBattle(victory){
   if (!victory) _stopBattleTheme();
 }
 
-function _applyPhysics(ent, dt){
-  ent.vy += BTL.GRAV * dt;
+function _applyPhysics(ent, dt, isPlayer=false){
+  ent.vy += (isPlayer ? BTL.PLAYER_GRAV : BTL.GRAV) * dt;
   ent.y  += ent.vy * dt;
+  if (isPlayer) {
+    const ceiling = -Math.max(150, state.h * 0.58);
+    if (ent.y < ceiling) { ent.y = ceiling; if (ent.vy < 0) ent.vy *= 0.25; }
+  }
   if (ent.y >= 0){ ent.y = 0; ent.vy = 0; ent.onGround = true; }
+  else ent.onGround = false;
+}
+
+function _startDodge(now){
+  const dir = state.input.left ? -1 : state.input.right ? 1 : (state.player.facing || 1);
+  state.dodgeDir = dir;
+  state.player.facing = dir;
+  state.dodgeUntil = now + BTL.DODGE_MS;
+  state.invulnerableUntil = now + BTL.DODGE_INVULN_MS;
+  state.dodgeCooldownUntil = now + BTL.DODGE_COOLDOWN_MS;
+  state.feedbackText = '↯ ' + battleWords.dodge;
+  state.feedbackUntil = now + 360;
+}
+
+function _awardPerfectDodge(now){
+  state.combo += 1;
+  state.comboUntil = now + 2400;
+  state.feedbackText = battleWords.perfect;
+  state.feedbackUntil = now + 720;
+  state.shakeT = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.08);
+  try { navigator.vibrate?.(18); } catch {}
 }
 
 function _fireNormal(){
