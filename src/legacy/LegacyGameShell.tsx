@@ -6,10 +6,11 @@ export type LegacyGameShellProps = {
   level?: number;
   onStartClick?: () => void;
   versionLabel?: string;
+  debug?: boolean;
 };
 
 const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(function LegacyGameShell(
-  { level = 1, onStartClick, versionLabel = "v2025-08-20-g" },
+  { level = 1, onStartClick, versionLabel = "v2025-08-20-g", debug = false },
   canvasRef
 ) {
   return (
@@ -27,6 +28,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
           padding: "4px 6px",
           borderRadius: "6px",
           pointerEvents: "none",
+          display: debug ? "block" : "none",
         }}
       >
         {versionLabel} • host=<span id="__host__"></span>
@@ -139,6 +141,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
           padding: "6px 8px",
           font: "12px system-ui",
           cursor: "pointer",
+          display: debug ? "block" : "none",
         }}
       >
         Force Refresh
