@@ -54,6 +54,26 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    transitions.queueLevelTransition({targetLevel:n, subtitle:'ANCIEN TEXTE FRANÇAIS', startLabel:'ANCIEN BOUTON FRANÇAIS'});
    const dispose=await bootLegacyLevel(n);
+   if(n===3){
+    const iframe=w.document.getElementById('hirundu-level3-rebound');
+    assert.ok(iframe,'level 3 boots the replacement runtime');
+    assert.equal(new URL(iframe.src).searchParams.get('lang'),language);
+    const send=(data,source=iframe.contentWindow,origin=w.location.origin)=>w.dispatchEvent(new w.MessageEvent('message',{source,origin,data:{source:'hirundu-level3',...data}}));
+    send({type:'victory',score:1200,leaves:10,elapsed:30},w);
+    assert.equal(w.localStorage.getItem('level3_won'),null,'foreign frame cannot award victory');
+    send({type:'victory',score:1200,leaves:10,elapsed:30},iframe.contentWindow,'https://untrusted.test');
+    assert.equal(w.localStorage.getItem('level3_won'),null,'foreign origin cannot award victory');
+    send({type:'victory',score:1200,leaves:9,elapsed:30});
+    assert.equal(w.localStorage.getItem('level3_won'),null,'incomplete hunt cannot award victory');
+    send({type:'victory',score:1200,leaves:10,elapsed:30});
+    assert.equal(w.localStorage.getItem('level3_won'),'true');
+    assert.equal(storage.isBonusUnlocked('lecce'),true);
+    let next=0;const onNext=()=>next++;w.document.addEventListener('lecce:unlocked',onNext);
+    send({type:'continue'});assert.equal(next,1,'continue uses the existing level route');
+    w.document.removeEventListener('lecce:unlocked',onNext);
+    dispose?.();assert.equal(w.document.getElementById('hirundu-level3-rebound'),null,'unmount removes isolated runtime');
+    frames.clear();continue;
+   }
    assert.ok(!w.document.getElementById('subtitleP').textContent.includes('ANCIEN'), 'saved text cannot override current language');
    assert.ok(!w.document.getElementById('startBtn').textContent.includes('ANCIEN'));
    assert.equal(w.document.getElementById('hudLabel').textContent, n===9 ? {fr:'Cristaux',it:'Cristalli',en:'Crystals',es:'Cristales'}[language] : n===8 ? {fr:'Amphores',it:'Anfore',en:'Amphorae',es:'Ánforas'}[language] : n===7 ? {fr:'Olives',it:'Olive',en:'Olives',es:'Aceitunas'}[language] : n===6 ? {fr:'Pins',it:'Pini',en:'Pines',es:'Pinos'}[language] : n===5 ? {fr:'Gouttes',it:'Gocce',en:'Drops',es:'Gotas'}[language] : n===4 ? {fr:'Coquillages',it:'Conchiglie',en:'Shells',es:'Conchas'}[language] : n===1 ? t.hudStars : t['level'+n].hudLabel);
@@ -74,6 +94,14 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
   for (const n of [1,2,3,4,5,6,7,8,9]) {
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
+   if(n===3){
+    const iframe=w.document.getElementById('hirundu-level3-rebound');
+    assert.equal(new URL(iframe.src).searchParams.get('test'),'battle');
+    w.localStorage.removeItem('level3_won');
+    w.dispatchEvent(new w.MessageEvent('message',{source:iframe.contentWindow,origin:w.location.origin,data:{source:'hirundu-level3',type:'victory',score:1000,leaves:10,elapsed:10}}));
+    assert.equal(w.localStorage.getItem('level3_won'),null,'direct battle practice does not unlock progression');
+    dispose?.();frames.clear();continue;
+   }
    assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
    assert.equal(w.document.getElementById('playerName'),null,'saved name not requested again');
    const {copy}=await server.ssrLoadModule('/src/ui/copy.js');

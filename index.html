@@ -3,16 +3,16 @@
   <head>
     <script>
   (function () {
-    var base = "/Hirundu1.1-/";
+    var base = "%BASE_URL%";
     var p = location.pathname;
     // 1) Si quelqu’un arrive sur .../index.html → redirige vers .../
     if (p.endsWith("/index.html") || p === "/index.html") {
-      location.replace(base + (location.hash || ""));
+      location.replace(base + location.search + (location.hash || ""));
       return;
     }
     // 2) Si on est sur le dépôt mais sans le slash final, normalise
-    if (p === "/Hirundu1.1-" ) {
-      location.replace(base + (location.hash || ""));
+    if (p === base.replace(/\/$/, "") ) {
+      location.replace(base + location.search + (location.hash || ""));
     }
   })();
 </script>

@@ -1,3 +1,4 @@
+import { bootReboundLevel3 } from './reboundLevel3.js';
 import { copy } from '../../ui/copy.js';
 import { createLevelSession, setupHuntControls, drawAnimatedBird } from '../../legacy/levelSession.js';
 // =====================================================
@@ -120,6 +121,7 @@ function getCountry(){
 // BOOT (structure identique L2)
 // =====================================================
 export function boot(options = {}){
+  if (!options.region) return bootReboundLevel3(options);
   // Optional regional content reuses the established hunt and battle shell.
   const regional = options.region;
   const levelId = regional?.id || (regional ? 4 : 3);
