@@ -62,24 +62,62 @@
       }
     </script>
 
-    <!-- Bouton d’installation Android (PWA) -->
+    <!-- Installation Android (PWA) : disponible uniquement depuis le menu Pause -->
     <script>
-      let deferredPrompt;
-      window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        const btn = document.createElement("button");
-        btn.textContent = "📲 Installer l’app";
-        btn.style.cssText =
-          "position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);";
-        document.body.appendChild(btn);
-        btn.addEventListener("click", async () => {
-          btn.remove();
-          deferredPrompt.prompt();
-          try { await deferredPrompt.userChoice; } catch {}
+      (() => {
+        let deferredPrompt = null;
+
+        const isStandalone = () =>
+          window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          window.navigator.standalone === true;
+
+        const publishInstallState = () => {
+          const available = Boolean(deferredPrompt) && !isStandalone();
+          window.__HIRUNDU_PWA_INSTALL_AVAILABLE__ = available;
+          window.dispatchEvent(new CustomEvent("hirundu:pwa-install-state", {
+            detail: { available }
+          }));
+        };
+
+        window.__HIRUNDU_INSTALL_APP__ = async () => {
+          if (!deferredPrompt || isStandalone()) {
+            publishInstallState();
+            return { outcome: "unavailable" };
+          }
+
+          const promptEvent = deferredPrompt;
           deferredPrompt = null;
+          // Dès que l'utilisateur choisit « Installer », le CTA disparaît du menu pause.
+          publishInstallState();
+
+          try {
+            await promptEvent.prompt();
+            return await promptEvent.userChoice;
+          } catch (error) {
+            console.warn("PWA install prompt failed", error);
+            return { outcome: "error" };
+          }
+        };
+
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          if (isStandalone()) return;
+          deferredPrompt = e;
+          publishInstallState();
         });
-      });
+
+        window.addEventListener("appinstalled", () => {
+          deferredPrompt = null;
+          try { localStorage.setItem("hirundu_pwa_installed", "true"); } catch {}
+          publishInstallState();
+        });
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", publishInstallState, { once: true });
+        } else {
+          publishInstallState();
+        }
+      })();
     </script>
 
     <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
