@@ -1,0 +1,1100 @@
+import { copy } from '../../ui/copy.js';
+import { createLevelSession, setupHuntControls, drawAnimatedBird } from '../../legacy/levelSession.js';
+// =====================================================
+// NIVEAU 3 — SALENTO NORD / LECCE (structure identique au N2)
+// Objectif : Collecter 10 FEUILLES D’OLIVIER -> Boss "Esprit de pierre" à Lecce
+// Dépendances: i18n.js, audio.js, ui.js, battle_intro.js, bonus_maps.js
+// =====================================================
+
+import { t, poiName, poiInfo } from '../../i18n.js';
+import { withBase } from '../../paths';
+import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
+import {
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
+  ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
+} from '../../audio.js';
+import * as ui from '../../ui.js';
+import { startBattleIntro } from '../../battle_intro.js';
+import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
+import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
+import { prepareLevelIntro } from '../../level_transition.js';
+import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
+
+const DEBUG = false;
+function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
+
+// ------------------------
+// Config
+// ------------------------
+const APP_VERSION = (window.APP_VERSION || 'v2025-10-28');
+const APP_Q = `?v=${APP_VERSION}`;
+const asset = (p) => `${withBase(p)}${APP_Q}`;
+
+const LEVEL_ID = 'L3';
+const INVENTORY_LABEL = (t.level3?.hudLabel || 'Feuilles');
+
+// ⚠️ PATCH: retirer les espaces des noms de fichiers (et renommer les fichiers dans /assets)
+const ASSETS = {
+  MAP_URL:            asset('assets/salento-map.PNG'),
+  BIRD_URL:           asset('assets/aracne .PNG'),           // PATCH
+  TARANTULA_URL:      asset('assets/tarantula .PNG'),        // PATCH
+  CROW_URL:           asset('assets/crow.PNG'),
+  JELLY_URL:          asset('assets/jellyfish.PNG'),
+  BONUS_PASTICCIOTTO: asset('assets/bonus-pasticciotto.PNG'),
+  BONUS_RUSTICO:      asset('assets/rustico.PNG'),
+  BONUS_CAFFE:        asset('assets/caffeleccese .PNG'),     // PATCH
+};
+
+// UI carte
+const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
+function computeMapViewport(canvasW, canvasH, mapW, mapH, fitWidth = false){
+  const availW = canvasW;
+  const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
+  const baseScale = Math.min(availW / mapW, availH / mapH);
+  const scale = Math.min(baseScale * UI_CONST.MAP_ZOOM, fitWidth ? canvasW / mapW : Infinity);
+  const dw = mapW * scale, dh = mapH * scale;
+  const ox = (canvasW - dw) / 2;
+  const oy = UI_CONST.TOP + (availH - dh) / 2;
+  return { ox, oy, dw, dh, scale };
+}
+
+// ------------------------
+// Données chasse — L3 : 10 FEUILLES
+// ------------------------
+const POIS = [
+  { key:'lecce',            x:0.53, y:0.28 },
+  { key:'acaya',            x:0.74, y:0.35 },
+  { key:'parco_rauccio',    x:0.78, y:0.22 },
+  { key:'san_cataldo',      x:0.85, y:0.28 },
+  { key:'cavallino',        x:0.39, y:0.36 },
+  { key:'rudiae',           x:0.48, y:0.30 },
+  { key:'punta_prosciutto', x:0.09, y:0.34 },
+  { key:'porto_selvaggio',  x:0.19, y:0.46 },
+  { key:'galatone',         x:0.37, y:0.45 },
+  { key:'calimera',         x:0.69, y:0.42 },
+];
+const LEAVES_TARGET = POIS.length;
+
+const PLAYER_BASE = { x:0.55, y:0.25, speed:0.0048, size:0.08 };
+const ENERGY = { MAX:100, START:100 };
+
+const ENEMY  = { JELLY:'jelly', CROW:'crow' };
+const ENEMY_CONFIG = {
+  MAX_ON_SCREEN: 3,
+  LIFETIME_S: 16,
+  BASE_SPAWN_MS: 4800,
+  SPAWN_JITTER_MS: 2600,
+  COLLIDE_RADIUS_PX: 36,
+  SPEED: { [ENEMY.JELLY]: 0.05, [ENEMY.CROW]: 0.08 },
+  FLEE:  { SPEED: 0.36, DURATION_MS_MIN: 1600, DURATION_MS_RAND: 700 },
+  SPRITE_PX: { [ENEMY.JELLY]: 42, [ENEMY.CROW]: 42 },
+};
+const BONUS_CONFIG = { LIFETIME_S:4, BASE_SPAWN_MS:4200, SPAWN_JITTER_MS:3000, PICK_RADIUS_PX:36, HEAL_AMOUNT:25 };
+const BONUS = { PASTICCIOTTO: 'pasticciotto', RUSTICO: 'rustico', CAFFE: 'caffe' };
+const BONUS_TYPES = {
+  PASTICCIOTTO: { key:'pasticciotto', score: 20, heal: 15, prob: 0.5 },
+  RUSTICO:      { key:'rustico',      score: 40, heal: 25, prob: 0.35 },
+  CAFFE:        { key:'caffe',        score: 70, heal: 40, prob: 0.15 }
+};
+const SHAKE = { MAX_S:2.4, DECAY_PER_S:1.0, HIT_ADD:0.6, BONUS_ADD:0.2 };
+const SCORE = { STAR: 100, BONUS: 20, HIT: -30, WIN: 200, GAMEOVER: 0 };
+
+// ----- HOF utilitaires (clé dédiée L3) -----
+const HOF_KEY = 'salento_hof_v3';
+function fmtTime(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(s/60), r = s%60;
+  return `${m}m${String(r).padStart(2,'0')}s`;
+}
+function getCountry(){
+  try{
+    const lang = navigator.language || (Intl.DateTimeFormat().resolvedOptions().locale);
+    const region = (lang && lang.includes('-')) ? lang.split('-')[1] : null;
+    if (!region) return { code:'??', flag:'🏳️', label:'??' };
+    const flag = region.replace(/./g, c => String.fromCodePoint(127397 + c.toUpperCase().charCodeAt()));
+    return { code:region, flag, label:region };
+  }catch{ return { code:'??', flag:'🏳️', label:'??' }; }
+}
+
+// =====================================================
+// BOOT (structure identique L2)
+// =====================================================
+export function boot(options = {}){
+  // Optional regional content reuses the established hunt and battle shell.
+  const regional = options.region;
+  const levelId = regional?.id || (regional ? 4 : 3);
+  const collectibleIcon = regional?.token || '🐚';
+  const places = regional?.pois || POIS;
+  const inventoryLabel = regional?.inventoryLabel || INVENTORY_LABEL;
+  const placeName = key => regional ? places.find(p => p.key === key)?.name || key : poiName(key);
+  const question = key => regional ? places.find(p => p.key === key)?.clue || '' : t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`;
+  const renderInventory = (n,total) => {
+    ui.renderStars(n,total);
+    if(regional) document.querySelectorAll('#stars .star').forEach((node,i)=>{
+      const shell=document.createElement('span');shell.textContent=collectibleIcon;shell.style.cssText=`display:block;font-size:20px;opacity:${i<n?1:.25}`;
+      node.replaceWith(shell);
+    });
+  };
+  const canvas = document.getElementById('c');
+  if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
+  const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: levelId });
+  let cleanupIntro = null;
+  let cleanupBattle = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
+
+  // UI init
+  ui.initUI();
+  removeVictoryCTA();
+  setupVictoryCTAHandlers();
+
+  // Titres L3 + HUD "Feuilles"
+  const hudLabel = document.getElementById('hudLabel');
+  if (hudLabel) hudLabel.textContent = inventoryLabel;
+
+  ui.updateScore(0, LEAVES_TARGET);
+  renderInventory(0, LEAVES_TARGET);
+  ui.updateEnergy(100);
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
+  ui.onClickReplay(() => startGame());
+
+  // Déplacer le bouton Rejouer sous le score live (comme L2)
+  const replayBtn = document.getElementById('replayFloat');
+  if (replayBtn){
+    replayBtn.style.position = 'fixed';
+    replayBtn.style.top = 'auto';
+    replayBtn.style.right = '8px';
+    replayBtn.style.left = 'auto';
+    replayBtn.style.bottom = '16px';
+    replayBtn.style.zIndex = '10001';
+  }
+
+  // Score live (top-right)
+  ensureScoreLive();
+  try { ensureBonusQuickLinkInHud(); } catch {}
+
+  // Images (portée locale à boot, comme L2) -------------
+  const mapImg   = new Image();
+  const birdImg  = new Image();
+  const spiderImg= new Image();
+  const crowImg  = new Image();
+  const jellyImg = new Image();
+  const imgPasticciotto = new Image();
+  const imgRustico      = new Image();
+  const imgCaffe        = new Image();
+
+  imgPasticciotto.src = ASSETS.BONUS_PASTICCIOTTO;
+  imgRustico.src      = ASSETS.BONUS_RUSTICO;
+  imgCaffe.src        = ASSETS.BONUS_CAFFE;
+
+  mapImg.onload    = () => { dbg('map load OK'); resize(); };
+  mapImg.onerror   = () => ui.assetFail('Map', ASSETS.MAP_URL);
+  birdImg.onerror  = () => ui.assetFail('Aracne', ASSETS.BIRD_URL);
+  spiderImg.onerror= () => ui.assetFail('Tarantula', ASSETS.TARANTULA_URL);
+  crowImg.onerror  = () => ui.assetFail('Crow', ASSETS.CROW_URL);
+  jellyImg.onerror = () => ui.assetFail('Jellyfish', ASSETS.JELLY_URL);
+
+  // Splash avatars
+  const heroAr = document.getElementById('heroAr');
+  const heroTa = document.getElementById('heroTa');
+  const tarAvatar = document.getElementById('tarAvatar');
+  if (heroAr) heroAr.src = ASSETS.BIRD_URL;
+  if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
+  if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
+
+  prepareLevelIntro({
+    level: levelId, theme: 'lecce', badge: `${copy.level} ${levelId}`,
+    title: regional?.title || t.level3.title, subtitle: regional?.subtitle || t.level3.subtitle, description: regional?.mission || copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: regional?.mission || copy.mission },
+    accentColor: '#38bdf8',
+  });
+
+  // V9.1: warm the battle chunk + heavy regional background while the player hunts.
+  // The promise is deliberately fire-and-forget; gameplay must never wait for preloading.
+  if (regional) {
+    setTimeout(() => {
+      void import('../../game_battle.js')
+        .then((mod) => mod.preloadBattleAssets?.({
+          bossSprite: regional.bossSprite,
+          backdrop: regional.backdrop,
+        }))
+        .catch(() => undefined);
+    }, 0);
+  }
+
+  // Charge assets
+  mapImg.src    = ASSETS.MAP_URL;
+  birdImg.src   = ASSETS.BIRD_URL;
+  spiderImg.src = ASSETS.TARANTULA_URL;
+  crowImg.src   = ASSETS.CROW_URL;
+  jellyImg.src  = ASSETS.JELLY_URL;
+
+  // ===== Canvas sizing =====
+  let W = 0, H = 0, dpr = 1;
+  function resizeCanvasHard() {
+    try { window.scrollTo(0,0); requestAnimationFrame(()=>window.scrollTo(0,0)); } catch {}
+  }
+  function resize(){
+    const vp = window.visualViewport;
+    W = Math.round(vp?.width  || window.innerWidth  || document.documentElement.clientWidth  || 360);
+    H = Math.round(vp?.height || window.innerHeight || document.documentElement.clientHeight || 640);
+
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    canvas.width  = Math.max(1, Math.floor(W * dpr));
+    canvas.height = Math.max(1, Math.floor(H * dpr));
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  session.listen(window, 'resize', resize, { passive:true });
+  if (window.visualViewport) {
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+  }
+  session.listen(window, 'orientationchange', () => {
+    setTimeout(resize, 60);
+    setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
+  }, { passive:true });
+
+  // ------- Game state -------
+  // modes: 'splash' | 'play' | 'battle_intro' | 'win' | 'dead'
+  let mode = 'splash';
+  let running = false;
+  let lastTS = 0;
+  let collected = new Set();
+  let QUEST = shuffle(places);
+  let currentIdx = 0;
+
+  // timers/questions
+  let askTimer = 0;
+  function askQuestionAt(idx){
+    if (idx >= 0 && idx < QUEST.length) {
+      const key = QUEST[idx].key;
+      ui.showAsk(question(key));
+    }
+  }
+  function queueNextAsk(delayMs = 1200){
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    askTimer = setTimeout(() => {
+      if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
+    }, delayMs);
+  }
+
+  const player = { x: PLAYER_BASE.x, y: PLAYER_BASE.y, speed: PLAYER_BASE.speed, size: PLAYER_BASE.size };
+  let energy = ENERGY.START;
+
+  let enemies = [];
+  let bonuses = [];
+  let enemySpawnAt = performance.now() + 900;
+  let bonusSpawnAt = performance.now() + 1500;
+
+  let playerSlowTimer = 0;
+  let hitShake = 0;
+
+  // anti double-collecte
+  let collectLockUntil = 0;
+
+  // SCORE runtime
+  let score = 0;
+  let hits = 0;
+  let bonusesPicked = 0;
+  let bonusScore = 0;
+  let leavesPicked = 0;
+  let pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
+  let gameStartAt = 0;
+  let finalized = false;
+  let playerName = null;
+  let country = getCountry();
+
+  function scoreReset(){
+    score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; leavesPicked = 0;
+    pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
+    gameStartAt = performance.now();
+    finalized = false;
+    collectLockUntil = 0;
+    updateScoreLive();
+  }
+
+  // Win animation state
+  const winFx = { t:0, fw:[], fwTimer:0 };
+
+  // D-pad (actif seulement en mode 'play')
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play' && !isGamePaused(), session);
+
+  // Start button
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) session.listen(startBtn, 'click', startGame);
+
+  // First clue is shown by resetGame() only after the player starts the hunt.
+
+  // helpers
+  function setEnergy(p){
+    energy = Math.max(0, Math.min(ENERGY.MAX, p|0));
+    ui.updateEnergy((energy / ENERGY.MAX) * 100);
+  }
+  function getSpeed(){
+    const slowFactor = (playerSlowTimer > 0) ? 0.45 : 1.0;
+    return PLAYER_BASE.speed * slowFactor;
+  }
+
+  function spawnEnemy(now){
+    if (enemies.length >= ENEMY_CONFIG.MAX_ON_SCREEN) return;
+    const type = (Math.random() < 0.5) ? ENEMY.JELLY : ENEMY.CROW;
+    const x = Math.random()*0.9 + 0.05;
+    const y = Math.random()*0.9 + 0.05;
+    const dir = Math.random() * Math.PI * 2;
+    const speed = ENEMY_CONFIG.SPEED[type];
+    enemies.push({ type, x, y, vx:Math.cos(dir)*speed, vy:Math.sin(dir)*speed, t:0, bornAt:now, state:'normal', fleeUntil:0 });
+  }
+  function spawnBonus(){
+    const r = Math.random();
+    let type = BONUS_TYPES.PASTICCIOTTO;
+    if (r < BONUS_TYPES.PASTICCIOTTO.prob) type = BONUS_TYPES.PASTICCIOTTO;
+    else if (r < BONUS_TYPES.PASTICCIOTTO.prob + BONUS_TYPES.RUSTICO.prob) type = BONUS_TYPES.RUSTICO;
+    else type = BONUS_TYPES.CAFFE;
+
+    bonuses.push({
+      type: type.key,
+      score: type.score,
+      heal: type.heal,
+      x: Math.random()*0.9+0.05,
+      y: Math.random()*0.9+0.05,
+      life: BONUS_CONFIG.LIFETIME_S,
+      age: 0,
+      pulse: 0
+    });
+  }
+  function bonusLabel(b){
+    const name =
+      (b.type === 'caffe') ? 'Caffè Leccese' :
+      (b.type === 'rustico') ? 'Rustico' : 'Pasticciotto';
+    return `+${b.score} ${name}  (+${b.heal} NRJ)`;
+  }
+
+  function finalizeRun({won}) {
+    if (finalized) return;
+    finalized = true;
+
+    const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
+
+    const entry = {
+      name: playerName || copy.player,
+      playerId: ui.getOrCreatePlayerId?.() || undefined,
+      country,
+      score: total,
+      stars: leavesPicked,            // on conserve 'stars' pour le tableau mais c'est des feuilles
+      bonuses: bonusesPicked,
+      hits,
+      time: performance.now() - gameStartAt,
+      date: new Date().toISOString(),
+      won: !!won,
+      bonusScore,
+      bonusBreakdown: { ...pickedCounts }
+    };
+    addHallOfFameEntry(entry, regional ? `salento_hof_v${levelId}` : HOF_KEY);
+
+    const title = won ? copy.won : copy.defeat;
+    const baseLines = [
+      `${title}`,
+      `Score: ${total} (Feuilles: +${leavesPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
+      `Bonus: ${pickedCounts.pasticciotto||0} Pasticciotto · ${pickedCounts.rustico||0} Rustico · ${pickedCounts.caffe||0} Caffè`,
+      `Temps: ${fmtTime(entry.time)}`,
+      ``,
+      `👉 Consulte le Hall of Fame depuis la page Bonus.`
+    ];
+    if(regional) baseLines.splice(0,baseLines.length,title,`${copy.points}: ${total}`,`${inventoryLabel}: ${leavesPicked}/10`,`${copy.hits}: ${hits}`,`${copy.time}: ${fmtTime(entry.time)}`);
+    ui.showSuccess(baseLines.join('\n'));
+    ui.showReplay(true);
+
+    if (won) {
+      const winMsg = (t.level3?.bonus_unlocked || 'BONUS débloqué !');
+      ui.showSuccess([...baseLines, `🌟 ${winMsg}`].join('\n'));
+      try { ensureBonusQuickLinkInHud(); } catch {}
+    }
+  }
+
+  // ---------- Game loop ----------
+  function draw(ts){
+    if(!running || !session.active) return;
+    if (document.hidden || isGamePaused()) { lastTS = 0; requestAnimationFrame(draw); return; }
+
+    if(ts){
+      if(!lastTS) lastTS = ts;
+      const dt = Math.min(0.05, (ts - lastTS)/1000);
+      lastTS = ts;
+
+      if (mode === 'play') {
+        movePlayer(dt);
+        tickEnemies(dt);
+        if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
+        if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
+      } else if (mode === 'win') {
+        tickWin(dt);
+      }
+    }
+
+    const mw = mapImg.naturalWidth || 1920;
+    const mh = mapImg.naturalHeight || 1080;
+    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh, Boolean(regional));
+
+    const ctx2 = canvas.getContext('2d');
+    ctx2.clearRect(0,0,W,H);
+
+    // Fond carte
+    if (mapImg.complete && mapImg.naturalWidth){
+      ctx2.drawImage(mapImg, ox, oy, dw, dh);
+    } else {
+      ctx2.fillStyle = '#bfe2f8';
+      ctx2.fillRect(ox, oy, dw || W, dh || (H - UI_CONST.TOP - UI_CONST.BOTTOM));
+      ctx2.fillStyle = '#0e2b4a'; ctx2.font = '14px system-ui';
+      ctx2.fillText(t.mapNotLoaded?.(ASSETS.MAP_URL) || `Map not loaded: ${ASSETS.MAP_URL}`, (ox||14), (oy||24));
+    }
+
+    // POIs
+    for (const p of places){
+      const x = ox + p.x*dw, y = oy + p.y*dh;
+      ctx2.save();
+      if (collected.has(p.key)){
+        if(regional){
+          ctx2.font='24px system-ui';ctx2.textAlign='center';ctx2.fillText(collectibleIcon,x,y);
+          ctx2.font='bold 11px system-ui';ctx2.lineWidth=3;ctx2.strokeStyle='#fff6d9';ctx2.fillStyle='#142d45';
+          const lines=[];let line='';
+          for(const word of p.name.split(' ')){
+            const next=line ? `${line} ${word}` : word;
+            if(line && ctx2.measureText(next).width>105){lines.push(line);line=word;}else line=next;
+          }
+          if(line)lines.push(line);
+          lines.forEach((label,i)=>{ctx2.strokeText(label,x,y+15+i*12);ctx2.fillText(label,x,y+15+i*12);});
+        }
+        else drawLeaf(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+      } else {
+        ctx2.save();
+        ctx2.strokeStyle = '#0a7a3c'; ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        ctx2.moveTo(x-6,y-6); ctx2.lineTo(x+6,y+6);
+        ctx2.moveTo(x-6,y+6); ctx2.lineTo(x+6,y-6);
+        ctx2.stroke();
+        ctx2.restore();
+      }
+      ctx2.restore();
+    }
+
+    // joueur + collisions + ennemis/bonus (mode play)
+    const playerScale = typeof player.size === 'number' ? player.size : PLAYER_BASE.size;
+    const bw = Math.min(120, Math.max(60, dw * playerScale));
+    const bx = ox + player.x*dw;
+    const by = oy + player.y*dh;
+
+    if (mode === 'play') {
+      const { collided } = handleCollisions({ bx, by, ox, oy, dw, dh });
+      if (collided) setEnergy(energy - 18);
+      if (energy <= 0) { return triggerGameOver(); }
+
+      drawBonuses(ctx2, bonuses, { ox, oy, dw, dh }, { imgPasticciotto, imgRustico, imgCaffe });
+      drawEnemies(ctx2, enemies, { ox, oy, dw, dh }, { crowImg, jellyImg });
+    }
+
+    let sx=0, sy=0;
+    if (mode === 'play' && hitShake > 0){
+      const a = Math.min(1, hitShake / SHAKE.MAX_S);
+      const mag = 6 * a;
+      sx = (Math.random()*2-1)*mag;
+      sy = (Math.random()*2-1)*mag;
+    }
+
+    if (mode === 'play') {
+      drawAnimatedBird(ctx2, birdImg, bx, by, bw, player, performance.now(), sx, sy);
+    }
+
+    // progression
+    if (mode === 'play' && currentIdx < QUEST.length){
+      const now = performance.now();
+      if (now >= collectLockUntil){
+        const p = QUEST[currentIdx];
+        const px = ox + p.x*dw, py = oy + p.y*dh;
+        const onTarget = Math.hypot(bx - px, by - py) < (regional ? 22 : 44);
+        if (onTarget){
+          collectLockUntil = now + 900;
+          collected.add(p.key);
+          ui.updateScore(collected.size, LEAVES_TARGET);
+          renderInventory(collected.size, LEAVES_TARGET);
+          starEmphasis();
+          ui.showEphemeralLabel(px, py - 28, placeName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+
+          score += SCORE.STAR; leavesPicked++; updateScoreLive();
+
+          const nameShort = placeName(p.key);
+          ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
+
+          currentIdx++;
+          if (currentIdx === QUEST.length){
+            enterBattleFlow();
+          } else {
+            queueNextAsk(1200);
+          }
+        }
+      }
+    }
+
+    if (mode === 'win') {
+      renderWin(ctx2, {ox, oy, dw, dh}, { birdImg, spiderImg }, winFx);
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  // ---------- Battle flow ----------
+  function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: levelId, boss: regional?.bossName || 'Lecce' });
+    mode = 'battle_intro';
+    ui.showTouch(false);
+
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+
+    try {
+      const bdText  = document.getElementById('bdText');
+      const bdTitle = document.getElementById('bdTitle');
+      const tar     = document.getElementById('tarTop');
+      if (bdText && bdTitle && tar) {
+        bdTitle.textContent = `${copy.battle} · ${regional?.bossName || 'Lecce'}`;
+        bdText.textContent  = copy.battleHint;
+        tar.classList.add('show');
+        setTimeout(()=> tar.classList.remove('show'), 2200);
+      }
+    } catch {}
+
+    cleanupIntro = startBattleIntro({
+      level: levelId,
+      boss: regional?.bossName || 'Lecce',
+      bossSprite: regional?.bossSprite || withBase('assets/sputacchina_boss.png'),
+      backdrop: regional?.backdrop || withBase('assets/battle_bg_lecce.webp'),
+      title: `⚔️ ${copy.battle} · ${regional?.bossName || 'Lecce'}`,
+      collectibleLabel: regional ? inventoryLabel : undefined,
+      collectibleIcon: regional ? collectibleIcon : undefined,
+      subtitle: copy.battleHint,
+      startLabel: copy.fight,
+      ammo: {
+        pasticciotto: pickedCounts.pasticciotto|0,
+        rustico:      pickedCounts.rustico|0,
+        caffe:        pickedCounts.caffe|0,
+        stars:        leavesPicked|0
+      },
+      onProceed: async () => {
+    if (!session.active) return;
+  try {
+    running = false;
+    mode = 'battle';
+
+    // ✅ 1) Forcer Vite à inclure le module spécifique N3
+    //    (le glob déclare explicitement le fichier pour l’emission du chunk)
+    const mods = import.meta.glob('./game_battle_lecce.js');
+
+    let mod;
+    if (regional) {
+      mod = await import('../../game_battle.js');
+    } else if (mods['./game_battle_lecce.js']) {
+      mod = await mods['./game_battle_lecce.js'](); // ← Vite réécrit l’URL vers le chunk émis
+    } else {
+      // ✅ 2) Fallback robuste vers le moteur commun
+      const url = new URL('../../game_battle.js', import.meta.url);
+      mod = await import(/* @vite-ignore */ url.href);
+    }
+
+    const { startBattleL3, startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
+
+    if (!session.active) return;
+    if (typeof startBattleL3 === 'function') {
+      await startBattleL3('golem', {
+        ammo: {
+          pasticciotto: pickedCounts.pasticciotto|0,
+          rustico:      pickedCounts.rustico|0,
+          caffe:        pickedCounts.caffe|0,
+          stars:        leavesPicked|0
+        },
+        onWin: () => {
+          if (!session.active) return;
+          document.body.classList.remove('mode-battle');
+          mode = 'win';
+          running = true;
+          requestAnimationFrame(draw);
+          triggerWin();
+        },
+        onLose: () => {
+          if (!session.active) return;
+          document.body.classList.remove('mode-battle');
+          triggerGameOver();
+        }
+      });
+    } else if (typeof startBattleFlow === 'function') {
+      if (!session.active) return;
+    await startBattleFlow(
+        {
+          pasticciotto: pickedCounts.pasticciotto | 0,
+          rustico:      pickedCounts.rustico | 0,
+          caffe:        pickedCounts.caffe | 0,
+          stars:        leavesPicked | 0,
+          boss:        'baroque_golem',
+          backdrop:    'lecce',
+        },
+        {
+          bottomExtra: 0,
+          bossSprite: regional?.bossSprite,
+          backdrop: regional?.backdrop,
+          foeType: regional ? regional.foeType || 'nacra' : 'jelly',
+          onWin: () => {
+          if (!session.active) return;
+            document.body.classList.remove('mode-battle');
+            mode = 'win';
+            running = true;
+            requestAnimationFrame(draw);
+            triggerWin();
+          },
+          onLose: () => {
+          if (!session.active) return;
+            document.body.classList.remove('mode-battle');
+            triggerGameOver();
+          },
+        }
+      );
+    } else {
+      throw new Error('Battle module not compatible');
+    }
+
+  } catch (err) {
+    console.error('Battle module load error:', err);
+    alert('Impossible de charger la battle. Retour à la carte.');
+    document.body.classList.remove('mode-battle');
+    mode = 'play';
+    running = true;
+    requestAnimationFrame(draw);
+  }
+}
+    });
+  }
+
+  // ---------- ticks ----------
+  function tickEnemies(dt){
+    const now = performance.now();
+    if (now > enemySpawnAt){
+      if (enemies.length < ENEMY_CONFIG.MAX_ON_SCREEN) spawnEnemy(now);
+      enemySpawnAt = now + ENEMY_CONFIG.BASE_SPAWN_MS + Math.random()*ENEMY_CONFIG.SPAWN_JITTER_MS;
+    }
+    if (now > bonusSpawnAt){
+      spawnBonus();
+      bonusSpawnAt = now + BONUS_CONFIG.BASE_SPAWN_MS + Math.random()*BONUS_CONFIG.SPAWN_JITTER_MS;
+    }
+    enemies = enemies.filter(e => (now - (e.bornAt || now)) < ENEMY_CONFIG.LIFETIME_S*1000);
+    const PAD = 0.02;
+    for (const e of enemies){
+      e.t += dt;
+      if (e.state === 'flee'){
+        if (now >= e.fleeUntil) e._remove = true;
+        else { e.vx*=0.995; e.vy*=0.995; }
+      } else if (e.type === ENEMY.JELLY){
+        e.vx += Math.sin(e.t*1.7)*0.0008;
+        e.vy += Math.cos(e.t*1.3)*0.0008;
+      }
+      e.x += e.vx*dt; e.y += e.vy*dt;
+      if (e.x < PAD || e.x > 1-PAD){ e.vx*=-1; e.x = Math.max(PAD, Math.min(1-PAD, e.x)); }
+      if (e.y < PAD || e.y > 1-PAD){ e.vy*=-1; e.y = Math.max(PAD, Math.min(1-PAD, e.y)); }
+    }
+    enemies = enemies.filter(e => !e._remove);
+
+    for (let i=bonuses.length-1;i>=0;i--){
+      const b = bonuses[i];
+      b.age += dt; b.pulse += dt;
+      if (b.age > b.life) bonuses.splice(i,1);
+    }
+  }
+
+  function tickWin(dt){
+    winFx.t += dt;
+    winFx.fwTimer -= dt;
+    if (winFx.fwTimer <= 0){
+      spawnFirework(winFx.fw);
+      winFx.fwTimer = 0.7 + Math.random()*0.7;
+    }
+    for (let i=winFx.fw.length-1;i>=0;i--){
+      const p = winFx.fw[i];
+      p.vx *= 0.98; p.vy = p.vy*0.98 + 18*dt;
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.life -= dt;
+      if (p.life <= 0) winFx.fw.splice(i,1);
+    }
+  }
+
+  // ---------- collisions ----------
+  function handleCollisions({ bx, by, ox, oy, dw, dh }){
+    let collided=false;
+    const now = performance.now();
+
+    // Ennemis
+    for (const e of enemies){
+      if (e.state === 'flee') continue;
+      const ex = ox + e.x*dw, ey = oy + e.y*dh;
+      if (Math.hypot(bx-ex, by-ey) < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
+        collided = true;
+        failSfx();
+        playerSlowTimer = Math.max(playerSlowTimer, 1.25);
+        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
+        const away = Math.atan2((ey - by), (ex - bx));
+        e.vx = Math.cos(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.vy = Math.sin(away) * ENEMY_CONFIG.FLEE.SPEED;
+        e.state='flee';
+        e.fleeUntil = now + ENEMY_CONFIG.FLEE.DURATION_MS_MIN + Math.random()*ENEMY_CONFIG.FLEE.DURATION_MS_RAND;
+
+        score += SCORE.HIT; hits++; updateScoreLive();
+      }
+    }
+
+    // Bonus
+    for (let i = bonuses.length - 1; i >= 0; i--) {
+      const b = bonuses[i];
+      const bpx = ox + b.x * dw, bpy = oy + b.y * dh;
+
+      if (Math.hypot(bx - bpx, by - bpy) < BONUS_CONFIG.PICK_RADIUS_PX) {
+        playerSlowTimer = 0;
+        hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.BONUS_ADD);
+
+        score += b.score; bonusScore += b.score; bonusesPicked++;
+        setEnergy(energy + b.heal);
+
+        ui.showEphemeralLabel(bpx, bpy - 24, bonusLabel(b), {
+          color: 'transparent', durationMs: 1000, dy: -28
+        });
+
+        pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
+        const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
+        ping(hz, 0.35);
+
+        bonuses.splice(i, 1);
+        updateScoreLive();
+      }
+    }
+    return { collided };
+  }
+
+  // ---------- modes ----------
+  function triggerWin() {
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: levelId, boss: regional?.bossName || 'Lecce' });
+    mode = 'win';
+    finalizeRun({ won: true });
+    stopMusic();
+    playFinaleLong();
+    winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
+
+    try {
+      if(regional){
+        try { localStorage.setItem(`region${levelId}_hunt`,'10'); } catch {}
+        document.dispatchEvent(new Event(`${regional.key || 'adriatico'}:unlocked`));
+      } else unlockLecceBonus();
+
+    } catch {}
+  }
+
+  function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: levelId, boss: regional?.bossName || 'Lecce' });
+    mode = 'dead';
+    running = false;
+    finalizeRun({won:false});
+  }
+
+  // ---------- controls ----------
+  function startGame() {
+    try {
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: levelId });
+      document.body.classList.remove('mode-battle');
+      playerName = ui.readPlayerName() || copy.player;
+      ui.hideOverlay();
+      ui.showTouch(true);
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
+      ui.setMusicLabel(isMusicOn());
+      resetGame();
+      gameStartAt = performance.now();
+      mode = 'play';
+      running = true;
+      lastTS = 0;
+      requestAnimationFrame(draw);
+    } catch (err) {
+      alert('Chargement du jeu impossible : ' + (err?.message || err));
+    }
+  }
+  function resetGame(){
+    collected = new Set();
+    QUEST = shuffle(places);
+    currentIdx = 0;
+
+    scoreReset();
+
+    player.x = PLAYER_BASE.x; player.y = PLAYER_BASE.y;
+    setEnergy(ENERGY.START);
+
+    enemies.length = 0; bonuses.length = 0;
+    enemySpawnAt = performance.now() + 900;
+    bonusSpawnAt = performance.now() + 1500;
+    playerSlowTimer = 0; hitShake = 0;
+
+    ui.updateScore(0, LEAVES_TARGET);
+    renderInventory(0, LEAVES_TARGET);
+    resetAudioForNewGame();
+
+    if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    askQuestionAt(0);
+  }
+
+  const handleHash = () => {
+    if (location.hash === '#hof') {
+      try {
+        window.location.assign(getHallOfFameBonusUrl());
+      } catch (error) {
+        console.warn('[L3] redirection Hall of Fame impossible', error);
+      }
+      return;
+    }
+    if (location.hash === '#bonus-lecce') {
+      try {
+        unlockLecceBonus();
+        openBonusMap('lecce');
+      } catch {}
+    }
+  };
+  session.listen(window, 'hashchange', handleHash);
+  handleHash();
+
+  // helpers UI
+  function ensureScoreLive(){
+    let el = document.getElementById('__score_live');
+    if (!el){
+      el = document.createElement('div');
+      el.id='__score_live';
+      el.style.cssText = `
+        position:fixed; top:8px; right:8px; z-index:10002;
+        background:linear-gradient(180deg, rgba(255,240,200,.95), rgba(255,226,160,.95));
+        color:#8a2a0a; border:1px solid #b08a3c; box-shadow:0 4px 10px rgba(0,0,0,.15);
+        padding:6px 10px; border-radius:10px; font:700 18px/1.1 "Courier New", ui-monospace, monospace;
+        text-shadow:0 1px 0 #fff, 0 0 8px rgba(255,200,0,.6);
+      `;
+      el.textContent = '000000';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  function updateScoreLive(){
+    const el = document.getElementById('__score_live');
+    if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
+  }
+
+  function unlockLecceBonus(){
+    try { unlockBonus('lecce'); } catch {}
+    try {
+      const KEY = 'bonus_unlocked_v1';
+      let obj;
+      try { obj = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { obj = {}; }
+      if (!obj || typeof obj !== 'object') obj = {};
+      if (obj.lecce !== true) {
+        obj.lecce = true;
+        localStorage.setItem(KEY, JSON.stringify(obj));
+      }
+      localStorage.setItem('lecce_bonus_unlocked', 'true');
+      localStorage.setItem('bonus_lecce_unlocked', 'true');
+      try { window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: JSON.stringify(obj) })); } catch {}
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'lecce_bonus_unlocked', newValue: 'true' })); } catch {}
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'bonus_lecce_unlocked', newValue: 'true' })); } catch {}
+      try { document.dispatchEvent(new Event('lecce:unlocked')); } catch {}
+      try { ensureBonusQuickLinkInHud(); } catch {}
+      console.log('[L3] ✅ Lecce débloqué ->', localStorage.getItem(KEY));
+    } catch (e) {
+      console.warn('⚠️ unlockLecceBonus() failed', e);
+    }
+  }
+
+  function hasLecceBonusUnlocked() {
+    if (isBonusUnlocked('lecce')) return true;
+    try {
+      const legacy = localStorage.getItem('bonus_lecce_unlocked') || localStorage.getItem('lecce_bonus_unlocked');
+      if (legacy === 'true' || legacy === '1') {
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
+  return () => {
+    running = false;
+    session.dispose();
+    document.getElementById("__score_live")?.remove();
+    cleanupIntro?.();
+    cleanupBattle?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+    clearGameFlow();
+  };
+}
+
+// ------------------------
+// Rendu utilitaires
+// ------------------------
+function drawLeaf(ctx, cx, cy, R){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,.18)'; ctx.shadowBlur=4; ctx.shadowOffsetY=2;
+  ctx.translate(cx, cy);
+  ctx.rotate(Math.PI/12);
+  ctx.beginPath();
+  ctx.ellipse(0,0,R*0.8,R*0.45, 0, 0, Math.PI*2);
+  ctx.fillStyle='#38a169';
+  ctx.fill();
+  ctx.strokeStyle='#276749';
+  ctx.lineWidth=Math.max(1.5, R*0.12);
+  ctx.stroke();
+  // nervure
+  ctx.beginPath();
+  ctx.moveTo(-R*0.6, 0); ctx.lineTo(R*0.6, 0);
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=Math.max(1, R*0.08); ctx.stroke();
+  ctx.restore();
+}
+
+function drawEnemies(ctx, enemies, bounds, sprites){
+  const { ox, oy, dw, dh } = bounds;
+  const { crowImg, jellyImg } = sprites;
+  const SIZE = 42;
+  const now = performance.now();
+  for (const e of enemies){
+    const x = ox + e.x*dw, y = oy + e.y*dh;
+    ctx.save();
+    if (e.state === 'flee'){
+      const remain = Math.max(0, (e.fleeUntil - now) / 700);
+      ctx.globalAlpha = Math.max(0.12, Math.min(1, remain));
+    }
+    if (e.type === 'jelly'){
+      if (jellyImg.complete && jellyImg.naturalWidth){
+        ctx.drawImage(jellyImg, x - SIZE/2, y - SIZE/2, SIZE, SIZE);
+      } else {
+        ctx.fillStyle='rgba(123,200,255,0.85)';
+        ctx.beginPath(); ctx.arc(x,y,18,Math.PI,0); ctx.fill();
+        ctx.fillRect(x-18,y,36,8);
+      }
+    } else {
+      const ang = Math.atan2(e.vy, e.vx);
+      ctx.translate(x,y); ctx.rotate(ang);
+      if (crowImg.complete && crowImg.naturalWidth){
+        ctx.drawImage(crowImg, -SIZE/2, -SIZE/2, SIZE, SIZE);
+      } else {
+        ctx.fillStyle='#242424';
+        ctx.beginPath(); ctx.moveTo(-20,0); ctx.lineTo(10,-8); ctx.lineTo(10,8); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-6,0,10,6,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ffd400'; ctx.fillRect(10,-2,6,4);
+      }
+    }
+    ctx.restore();
+  }
+}
+function drawBonuses(ctx, bonuses, bounds, images){
+  const { ox, oy, dw, dh } = bounds;
+  const { imgPasticciotto, imgRustico, imgCaffe } = images;
+
+  for (const b of bonuses){
+    const x = ox + b.x*dw, y = oy + b.y*dh;
+    ctx.save();
+    ctx.globalAlpha = 0.9 * (1 - b.age / b.life);
+
+    let img = null;
+    if (b.type === 'pasticciotto') img = imgPasticciotto;
+    else if (b.type === 'rustico')  img = imgRustico;
+    else if (b.type === 'caffe')    img = imgCaffe;
+
+    if (img && img.complete && img.naturalWidth){
+      const size = 42;
+      ctx.drawImage(img, x - size/2, y - size/2, size, size);
+    } else {
+      ctx.fillStyle = '#ffe06b';
+      ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// --------- Win scene rendering + FX ----------
+function renderWin(ctx, view, sprites, winFx){
+  const { ox, oy, dw, dh } = view;
+  const { birdImg, spiderImg } = sprites;
+  const cx = ox + dw/2;
+  const cy = oy + dh/2;
+
+  const t = winFx.t;
+  const base = Math.min(dw, dh) * 0.36;
+  const s = 0.9 + 0.08*Math.sin(t*4);
+  const rot = 0.08*Math.sin(t*3.2);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+
+  const w = base*s;
+  if (birdImg.complete && birdImg.naturalWidth) {
+    ctx.drawImage(birdImg, -w-14, -w, w, w);
+  } else {
+    ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(-w*0.5-10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
+  }
+  if (spiderImg.complete && spiderImg.naturalWidth) {
+    ctx.drawImage(spiderImg, 14, -w, w, w);
+  } else {
+    ctx.fillStyle='#b04123'; ctx.beginPath(); ctx.arc(w*0.5+10, 0, w*0.35, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  for (const p of winFx.fw){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / p.life0);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+function spawnFirework(store){
+  const COLORS = ['#ffd166','#ef476f','#06d6a0','#118ab2','#f78c6b'];
+  const cx = (Math.random()*0.5 + 0.25) * (window.innerWidth  || 800);
+  const cy = (Math.random()*0.4 + 0.20) * (window.innerHeight || 600);
+  const n = 36 + (Math.random()*24)|0;
+  const col = COLORS[(Math.random()*COLORS.length)|0];
+  for (let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2;
+    const sp = 90 + Math.random()*160;
+    store.push({
+      x: cx, y: cy,
+      vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+      r: 2 + Math.random()*2,
+      color: col,
+      life: 0.9 + Math.random()*0.8,
+      life0: 1.7
+    });
+  }
+}
+
+// ------------------------
+// Utils
+// ------------------------
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+/**
+ * D-pad tactile/souris. Ne bouge que si canMove() === true
+ */
