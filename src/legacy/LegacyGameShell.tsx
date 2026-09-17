@@ -5,6 +5,12 @@ import { PERF_EVENT, PAUSE_EVENT, setGamePaused, toggleGamePaused } from "../gam
 import { AUDIO_STATE_EVENT, isMusicOn } from "../audio.js";
 
 const GENERIC_PLAYER_NAMES = new Set(["joueur", "giocatore", "player", "jugador"]);
+const PWA_INSTALL_STATE_EVENT = "hirundu:pwa-install-state";
+
+type HirunduInstallWindow = Window & {
+  __HIRUNDU_PWA_INSTALL_AVAILABLE__?: boolean;
+  __HIRUNDU_INSTALL_APP__?: () => Promise<unknown>;
+};
 
 function normalizeStoredPlayerName(value: string | null): string {
   if (!value) return "";
@@ -47,6 +53,11 @@ function getSavedPlayerName(): string {
   }
 }
 
+function getInstallAvailable(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean((window as HirunduInstallWindow).__HIRUNDU_PWA_INSTALL_AVAILABLE__);
+}
+
 export type LegacyGameShellProps = {
   level?: number;
   onStartClick?: () => void;
@@ -62,6 +73,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
 ) {
   const [paused, setPaused] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
+  const [installAvailable, setInstallAvailable] = useState(getInstallAvailable);
   const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
   const [savedPlayerName] = useState(() => getSavedPlayerName());
   const [editingPlayerName, setEditingPlayerName] = useState(false);
@@ -81,14 +93,21 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
       });
     };
     const onAudio = () => setMusicEnabled(isMusicOn());
+    const onInstallState = (event: Event) => {
+      const detail = (event as CustomEvent<{ available?: boolean }>).detail;
+      setInstallAvailable(Boolean(detail?.available));
+    };
     onAudio();
+    setInstallAvailable(getInstallAvailable());
     window.addEventListener(PAUSE_EVENT, onPause as EventListener);
     window.addEventListener(PERF_EVENT, onPerf as EventListener);
     window.addEventListener(AUDIO_STATE_EVENT, onAudio);
+    window.addEventListener(PWA_INSTALL_STATE_EVENT, onInstallState as EventListener);
     return () => {
       window.removeEventListener(PAUSE_EVENT, onPause as EventListener);
       window.removeEventListener(PERF_EVENT, onPerf as EventListener);
       window.removeEventListener(AUDIO_STATE_EVENT, onAudio);
+      window.removeEventListener(PWA_INSTALL_STATE_EVENT, onInstallState as EventListener);
       setGamePaused(false);
     };
   }, []);
@@ -96,6 +115,21 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   const restart = () => {
     setGamePaused(false);
     window.setTimeout(() => document.getElementById("replayFloat")?.click(), 0);
+  };
+
+  const installApp = async () => {
+    const appWindow = window as HirunduInstallWindow;
+    const install = appWindow.__HIRUNDU_INSTALL_APP__;
+    if (!install) {
+      setInstallAvailable(false);
+      return;
+    }
+    setInstallAvailable(false);
+    try {
+      await install();
+    } catch (error) {
+      console.warn("Unable to open PWA install prompt", error);
+    }
   };
 
   return (
@@ -237,6 +271,11 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 <button type="button" onClick={() => document.getElementById("musicBtn")?.click()}>
                   ♪ {musicEnabled ? copy.musicStop : copy.musicStart}
                 </button>
+                {installAvailable ? (
+                  <button type="button" onClick={installApp}>
+                    📲 Installer l’app
+                  </button>
+                ) : null}
                 {onDiscoveriesClick ? (
                   <button type="button" onClick={() => { setGamePaused(false); onDiscoveriesClick(); }}>
                     🎁 {copy.bonus}
