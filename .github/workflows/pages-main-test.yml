@@ -29,6 +29,12 @@ jobs:
           ref: test/niveau4-vol-adriatique-2026-09-18
           path: candidate
 
+      - name: Checkout flight levels 4-6-8 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: test/niveaux4-6-8-vol-2026-09-18
+          path: candidate468
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -37,6 +43,7 @@ jobs:
           cache-dependency-path: |
             stable/package-lock.json
             candidate/package-lock.json
+            candidate468/package-lock.json
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -63,6 +70,22 @@ jobs:
           mkdir -p stable/dist/test-niveau4
           cp -R candidate/dist/. stable/dist/test-niveau4/
           cp candidate/dist/index.html stable/dist/test-niveau4/404.html
+
+      - name: Validate and build flight levels candidate
+        working-directory: candidate468
+        run: |
+          npm ci || npm install
+          node --check public/level4-flight/game.js
+          node --check public/level6-flight/game.js
+          npm test
+          npm run typecheck
+          npm run build -- --base=/Hirundu1.1-/test-vol-468/
+
+      - name: Add integrated flight levels test under /test-vol-468/
+        run: |
+          mkdir -p stable/dist/test-vol-468
+          cp -R candidate468/dist/. stable/dist/test-vol-468/
+          cp candidate468/dist/index.html stable/dist/test-vol-468/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
