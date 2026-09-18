@@ -1,6 +1,6 @@
 'use strict';
 // Adapted to this prototype from HIRUNDU src/battle.js:
-// side-view movement/jump, normal A, inventory-powered B, Macina wind blasts.
+// side-view movement/jump, normal A, inventory-powered B, Macina stone volleys and charges.
 const Battle={
  completed:false,data:null,snapshot:null,
  start(){
