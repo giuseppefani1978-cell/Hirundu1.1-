@@ -22,7 +22,21 @@ function say(message,seconds=2){S.notice=message;S.noticeUntil=S.clock+seconds;h
 function start(){Object.assign(S,{mode:'playing',phase:'free',round:0,clock:0,timer:0,offset:0,x:W*.5,y:H*.68,tx:W*.5,ty:H*.68,vx:0,vy:0,energy:100,shield:0,immune:0,obstacles:[],targets:[],foods:[],spawn:0,wave:0,foodTimer:0,coffee:0,rustico:0,found:[],notice:'',noticeUntil:0});$('cover').hidden=true;$('microPad').hidden=false;keys={};hud();}
 function overlay(mode){S.mode=mode;$('cover').hidden=false;$('microPad').hidden=true;padDX=0;padDY=0;keys={};label();}
 function pause(){if(S.mode==='playing')overlay('paused');}
-function targets(){S.phase='answers';S.timer=0;const ids=[S.round,(S.round+3)%10,(S.round+6)%10];for(let i=2;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}S.targets=ids.map((id,i)=>{const w=W/3-28;return {id,x:W*(i+.5)/3,y:-112,w,h:Math.min(150,w*1.43)};});hud();}
+function targets(){
+  S.phase='answers';S.timer=0;
+  const correct=S.round;
+  const usedIcons=new Set([places[correct].icon]);
+  const candidates=places.map((_,i)=>i).filter(i=>i!==correct).sort(()=>Math.random()-.5);
+  const ids=[correct];
+  for(const id of candidates){
+    if(!usedIcons.has(places[id].icon)){ids.push(id);usedIcons.add(places[id].icon);}
+    if(ids.length===3)break;
+  }
+  for(const id of candidates){if(ids.length===3)break;if(!ids.includes(id))ids.push(id);}
+  for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]];}
+  S.targets=ids.map((id,i)=>{const w=W/3-28;return {id,x:W*(i+.5)/3,y:-112,w,h:Math.min(150,w*1.43)};});
+  hud();
+}
 function hit(id){if(S.mode!=='playing'||S.phase!=='answers')return;if(id!==S.round){S.targets=S.targets.filter(t=>t.id!==id);say(T().wrong);return;}S.found.push(id);S.round++;S.targets=[];S.energy=Math.min(100,S.energy+5);say(T().good+' · '+places[id].name,2.4);if(S.round===10){overlay('battleReady');return;}S.phase='free';S.timer=0;S.spawn=-1.5;hud();}
 function damage(){if(S.shield>0||S.immune>0)return;S.energy=Math.max(0,S.energy-12);S.immune=1.5;say(T().hit,1.4);if(S.energy<=0)overlay('lost');}
 const trashKinds=['trash','bottle','can','carton'];
