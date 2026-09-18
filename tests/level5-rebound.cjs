@@ -49,6 +49,12 @@ const run=s=>vm.runInContext(s,sandbox);
   run('start()');
   assert.equal(run('state.mode'),'ready');
   assert.equal(run('state.bricks.length'),24,'Level 5 has three wall rows');
+  const l3Game=fs.readFileSync('public/level3-arkanoid/game.js','utf8');
+  const l5Game=fs.readFileSync('public/level5-arkanoid/game.js','utf8');
+  const viewport=/function mapViewport\(\)\{[^}]+\}/;
+  assert.equal(l5Game.match(viewport)?.[0],l3Game.match(viewport)?.[0],'Level 5 map uses exactly the same viewport sizing as Level 3');
+  const sharedCss=fs.readFileSync('public/level3-arkanoid/style.css','utf8');
+  assert.ok(sharedCss.includes('top:clamp(120px,30dvh,190px)'),'battle dialogue is kept below the bonus inventory');
   assert.equal(run('new Set(state.bricks.map(b=>Math.round(b.y))).size'),3,'wall rows occupy three heights');
   assert.equal(run('ids.length'),10);
   for(const l of ['fr','en','it','es']){
