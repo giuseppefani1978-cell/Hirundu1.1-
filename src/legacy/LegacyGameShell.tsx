@@ -12,6 +12,22 @@ type HirunduInstallWindow = Window & {
   __HIRUNDU_INSTALL_APP__?: () => Promise<unknown>;
 };
 
+const GAME_LANGUAGES = [
+  { value: "fr", label: "FR" },
+  { value: "en", label: "EN" },
+  { value: "it", label: "IT" },
+  { value: "es", label: "ES" },
+];
+
+function getGameLanguage(): string {
+  try {
+    const stored = (window.localStorage.getItem("__lang__") || "").slice(0, 2).toLowerCase();
+    if (GAME_LANGUAGES.some((item) => item.value === stored)) return stored;
+  } catch {}
+  const htmlLang = (document.documentElement.lang || navigator.language || "fr").slice(0, 2).toLowerCase();
+  return GAME_LANGUAGES.some((item) => item.value === htmlLang) ? htmlLang : "fr";
+}
+
 function normalizeStoredPlayerName(value: string | null): string {
   if (!value) return "";
   let candidate: unknown = value.trim();
@@ -73,6 +89,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
 ) {
   const [paused, setPaused] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
+  const [language, setLanguage] = useState(getGameLanguage);
   const [installAvailable, setInstallAvailable] = useState(getInstallAvailable);
   const [perf, setPerf] = useState({ fps: 0, jank: 0, worstFrameMs: 0 });
   const [savedPlayerName] = useState(() => getSavedPlayerName());
@@ -130,6 +147,18 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
     } catch (error) {
       console.warn("Unable to open PWA install prompt", error);
     }
+  };
+
+  const changeLanguage = (nextLanguage: string) => {
+    if (!GAME_LANGUAGES.some((item) => item.value === nextLanguage)) return;
+    setLanguage(nextLanguage);
+    try {
+      window.localStorage.setItem("__lang__", nextLanguage);
+      window.localStorage.setItem("hirundu_arcade_language", nextLanguage);
+    } catch {}
+    // i18n is module-level in the classic levels: reload this exact route so every
+    // label, clue and battle string switches together rather than mixing languages.
+    window.location.reload();
   };
 
   return (
@@ -271,6 +300,14 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 <button type="button" onClick={() => document.getElementById("musicBtn")?.click()}>
                   ♪ {musicEnabled ? copy.musicStop : copy.musicStart}
                 </button>
+                <label className="game-pause__language">
+                  <span>🌐 {copy.language}</span>
+                  <select value={language} onChange={(event) => changeLanguage(event.target.value)}>
+                    {GAME_LANGUAGES.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
                 {installAvailable ? (
                   <button type="button" onClick={installApp}>
                     📲 Installer l’app
