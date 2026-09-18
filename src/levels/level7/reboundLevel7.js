@@ -11,6 +11,7 @@ export function bootReboundLevel7(options = {}) {
   const frame = document.createElement('iframe');
   const url = new URL(withBase('level7-arkanoid/index.html'), window.location.href);
   url.searchParams.set('lang', LANG);
+  url.searchParams.set('build', '20260918-feedback-v3');
   if (options.testBattle) url.searchParams.set('test', 'battle');
 
   frame.id = 'hirundu-level7-rebound';
