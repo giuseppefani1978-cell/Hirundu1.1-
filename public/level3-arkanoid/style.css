@@ -816,3 +816,89 @@ body:not(.pause-active) #exitLevel[hidden]{display:none!important}
     right:max(116px,calc(env(safe-area-inset-right) + 116px));
   }
 }
+
+
+/* 2026-09-18 — portrait-first battle handoff, matching the classic levels. */
+@keyframes l3RotatePhone{
+  0%,18%{transform:rotate(0deg)}
+  52%,72%{transform:rotate(90deg)}
+  100%{transform:rotate(0deg)}
+}
+@media (orientation:portrait){
+  .battle-intro #cover{
+    padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));
+    place-items:center;
+  }
+  .battle-intro #cover .card{
+    width:min(420px,94vw);
+    max-width:420px;
+    max-height:calc(100dvh - 32px);
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    padding:16px;
+    overflow:auto;
+    text-align:center;
+  }
+  .battle-intro #battlePreview{
+    order:1;
+    width:100%;
+    height:142px;
+    min-height:142px;
+    margin:0;
+    border-radius:15px;
+  }
+  .battle-intro #battlePreview img{
+    width:118px;
+    right:18px;
+    bottom:6px;
+    transform:none;
+  }
+  .battle-intro #battlePreview strong{
+    left:14px;
+    right:auto;
+    bottom:12px;
+    font-size:19px;
+  }
+  .battle-intro #cardTag{order:2;margin:0 auto}
+  .battle-intro #cardTitle{order:3;margin:0;font-size:23px}
+  .battle-intro #cardText{order:4;margin:0;font-size:14px}
+  .battle-intro #orientationPrompt{
+    order:5;
+    display:block!important;
+    width:100%;
+    margin:3px 0;
+    padding:12px;
+    border-color:rgba(248,214,109,.42);
+    background:rgba(2,6,23,.76);
+  }
+  .battle-intro #orientationPrompt .rotation-icon{
+    display:block!important;
+    margin:0 auto 7px;
+    font-size:38px;
+    line-height:1;
+    transform-origin:center;
+    animation:l3RotatePhone 1.35s ease-in-out infinite;
+  }
+  .battle-intro #orientationPrompt strong{
+    display:block;
+    font-size:17px;
+  }
+  .battle-intro #orientationPrompt p{
+    margin:5px 0 0;
+    font-size:13px;
+  }
+  .battle-intro #battleSupplies{order:6;margin:0;width:100%}
+  .battle-intro #cardHelp{order:7;margin:0;font-size:12px}
+  .battle-intro #play{order:8;width:100%;margin:0}
+  .battle-intro.battle-orientation-ready #orientationPrompt .rotation-icon,
+  body.battle-orientation-ready.battle-intro #orientationPrompt .rotation-icon{
+    animation:none;
+    transform:rotate(90deg);
+  }
+}
+@media (orientation:landscape){
+  body.battle-intro #orientationPrompt .rotation-icon{
+    display:none!important;
+  }
+}
