@@ -43,10 +43,13 @@ export function bootReboundLevel3(options = {}) {
     }
     // The existing React level route owns navigation/progression to level 4.
     if (data.type === 'continue' && won) document.dispatchEvent(new Event('lecce:unlocked'));
-    if (data.type === 'discoveries' && won) window.location.hash='#/bonus/lecce';
+    if (data.type === 'discoveries') window.location.hash='#/bonus/lecce';
     if (data.type === 'exit') window.location.hash='#/';
     if (data.type === 'install') {
       Promise.resolve(window.__HIRUNDU_INSTALL_APP__?.()).catch(()=>{}).finally(installState);
+    }
+    if (data.type === 'music-toggle') {
+      document.getElementById('musicBtn')?.click();
     }
   };
   const onPause = event => { if(event.detail?.paused) send({type:'pause'}); };
