@@ -1,39 +1,54 @@
 # Niveau 4 — Chasse en vol sur l’Adriatique
 
 Branche : `test/niveau4-vol-adriatique-2026-09-18`.
-Base : `main`, commit `d21195f14363d43e84b19e65d349fdaa7a76ca27`.
 
-Copie du prototype testé dans Work le 18 septembre 2026, source `e02f83d67d997aaa8e57c552378e50c9ec6a38ec`. Seuls les chemins des sprites ont été adaptés pour rendre ce dossier autonome. Les dix POI, les questions FR/IT/EN/ES, le décor, les règles et le pilotage sont conservés.
+## Version affinée — 18 septembre 2026
+
+Cette branche conserve le prototype de chasse verticale du niveau 4 et sert de base au futur comportement des niveaux 6 et 8.
+
+Modifications intégrées :
+
+- vitesse de défilement unique, réglée par défaut sur un rythme **doux** ; le sélecteur de vitesse a été supprimé ;
+- pilotage de l’oiseau plus progressif avec inertie/amortissement, pour éviter les déplacements trop brusques ;
+- glisser au doigt toujours actif, complété par un **micro-pad discret** en bas à droite ;
+- réponses transformées en **cartes visuelles** avec l’icône du lieu, son nom et la commune ;
+- davantage d’obstacles pendant les phases de vol : déchets/poubelles, bouteille, canette, sac, plus quelques ennemis mobiles ;
+- les obstacles sont générés par vagues avec une voie volontairement laissée libre, afin de forcer le zigzag sans rendre le passage impossible ;
+- après le dixième lieu, la chasse mène maintenant à l’introduction de la **bataille normale du niveau 4**. La bataille elle-même n’est pas modifiée.
 
 ## Ouvrir le prototype
 
 Depuis la racine du dépôt :
+
 ```sh
 python3 -m http.server 8000 --directory public
 ```
-Ouvrir http://localhost:8000/level4-flight/ dans le navigateur.
 
-Le dossier est également copié par la compilation Vite habituelle. Son URL relative est `level4-flight/` sous la racine publiée du jeu. La création de cette branche ne publie pas automatiquement une nouvelle adresse GitHub Pages.
+Puis ouvrir :
 
-Test actuellement en ligne : https://hirundu-gameplay-niveau3.giuseppe-fani1978.chatgpt.site/level4/
+```
+http://localhost:8000/level4-flight/
+```
 
-## Fichiers à modifier
+Le dossier est également copié dans la compilation Vite. Depuis une version publiée du jeu, l’URL relative est `level4-flight/`.
+
+## Fichiers principaux
 
 | Fichier | Contenu |
 | --- | --- |
-| `game.js` | Pilotage, collisions, vitesse, obstacles, bonus, déroulement et textes d’interface |
-| `style.css` | Mise en page, couleurs, dimensions, bulle de la tarentule |
-| `places.js` | Dix lieux et leurs questions dans les quatre langues |
+| `game.js` | Pilotage, inertie, défilement, collisions, obstacles, bonus, réponses et transition vers la bataille |
+| `style.css` | Mise en page, cartes, micro-pad, bulle de Tarantula |
+| `places.js` | Dix lieux et leurs questions FR/IT/EN/ES |
 | `index.html` | Structure de l’écran |
 | `coast.webp` | Fond côtier déroulant |
-| `assets/` | Oiseau, tarentule, ennemis et nourriture |
+| `assets/` | Oiseau, Tarantula, ennemis et bonus |
 
-## Périmètre
+## Logique actuelle
 
-Prototype de chasse uniquement : dix coquillages, puis écran final. La bataille et la progression du jeu principal ne sont pas raccordées. Les niveaux 6 et 8 ne sont pas modifiés.
+La chasse débute par un vol libre, puis Tarantula pose une question et trois cartes-réponses arrivent depuis le haut. Le joueur doit déplacer Hirundu vers la bonne carte. Les mauvaises réponses disparaissent ; une réponse manquée revient plus tard.
 
-Sept secondes de vol libre, puis 3,5 secondes pour lire la question ; les réponses défilent ensuite lentement. Le décor utilise une illustration générée, alternée avec son reflet vertical pour assurer le raccord. Ce n’est pas une carte géographique exacte. Les barrages dorés et les ennemis sont des obstacles ; la côte est un décor.
+Le décor avance doucement. Les vagues d’obstacles utilisent trois couloirs implicites : deux peuvent être occupés et un reste traversable. Le joueur peut donc changer de trajectoire sans rencontrer de barrage totalement fermé.
 
-Glisser le doigt dans les quatre directions ; sur ordinateur utiliser les flèches. Café : +30 énergie ; rustico : bouclier de 8 secondes. Les réponses manquées repassent. La pause et la perte de focus figent le jeu.
+Café : +30 énergie. Rustico : bouclier temporaire. Pause et perte de focus figent le jeu.
 
-Vérifications effectuées avant sauvegarde : syntaxe JavaScript, dix découvertes, mauvaises réponses, cibles manquées, pause, bouclier, collisions, victoire/défaite, quatre langues et rendu du canvas. Ressenti tactile à valider sur appareil.
+Après 10/10, le bouton de continuation ouvre `#/level/4?test=battle` dans la même version publiée : on retrouve alors l’introduction d’orientation et la bataille existante du niveau 4.
