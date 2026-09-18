@@ -469,3 +469,14 @@ footer{
   .question p{font-size:13px}
   .targets-list{padding-left:58px;font-size:11px}
 }
+
+
+/* Give the level 3 map a little more vertical room without cropping it. */
+header{padding-top:max(3px,env(safe-area-inset-top));padding-bottom:3px}
+.question,.battle-active .question{margin-top:0}
+.question img,.battle-active .question img{width:42px;height:42px;margin-top:2px}
+.question>div{padding-top:6px;padding-bottom:6px}
+.question p,.battle-active .question p{font-size:13px;line-height:1.32}
+.targets-list{padding-top:3px;padding-bottom:4px}
+footer{padding-top:4px}
+.bottom button,.battle-controls button{min-height:44px}
