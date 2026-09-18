@@ -1,4 +1,4 @@
-@import url('../level3-arkanoid/style.css');
+@import url('../level3-arkanoid/style.css?v=20260918-feedback-v3');
 
 /* Level 7 keeps the stabilized L3/L5 UI and uses the Nardò battle backdrop. */
 .battle-intro #battlePreview{
