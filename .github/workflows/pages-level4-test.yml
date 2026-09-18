@@ -1,0 +1,78 @@
+name: Pages • Level 4 flight test
+
+on:
+  push:
+    branches: [ "test/niveau4-vol-adriatique-2026-09-18" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-level4-flight-test
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout level 4 candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: stable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            candidate/package-lock.json
+            stable/package-lock.json
+
+      - uses: actions/configure-pages@v5
+
+      - name: Validate candidate
+        working-directory: candidate
+        run: |
+          npm ci
+          node --check public/level4-flight/game.js
+          npm test
+          npm run typecheck
+          npm run build -- --base=/Hirundu1.1-/test-niveau4/
+
+      - name: Build current main at the usual address
+        working-directory: stable
+        run: |
+          npm ci
+          npm run build
+          cp dist/index.html dist/404.html
+
+      - name: Add the independent level 4 test
+        run: |
+          mkdir -p stable/dist/test-niveau4
+          cp -R candidate/dist/. stable/dist/test-niveau4/
+          cp candidate/dist/index.html stable/dist/test-niveau4/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: stable/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish main + level 4 test
+        id: deployment
+        uses: actions/deploy-pages@v4
