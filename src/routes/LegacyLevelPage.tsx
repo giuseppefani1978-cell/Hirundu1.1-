@@ -13,6 +13,7 @@ import {
 import { initLegacyChrome } from "../legacy/initLegacyChrome";
 import { removeVictoryCTA } from "../bonus_transition.js";
 import { startPerformanceMonitor, stopPerformanceMonitor } from "../game_flow.js";
+import { withBase } from "../paths";
 import "./LegacyLevelPage.css";
 
 const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> = {
@@ -56,10 +57,22 @@ function useLegacyLevelParam(): LegacyLevelId {
   return useMemo(() => parseLevelId(params.levelId), [params.levelId]);
 }
 
-export default function LevelPage() {
-  const {levelId}=useParams();
-  const {search}=useLocation();
+function FlightLevelRedirect({ level }: { level: 4 | 6 }) {
+  useEffect(() => {
+    window.location.replace(withBase(`level${level}-flight/`));
+  }, [level]);
+  return <div className="legacy-level-page" aria-live="polite">HIRUNDU · Niveau {level}</div>;
+}
 
+export default function LevelPage() {
+  const { levelId } = useParams();
+  const location = useLocation();
+  const numeric = Number(levelId);
+  const testBattle = new URLSearchParams(location.search).get("test") === "battle";
+
+  if (!testBattle && (numeric === 4 || numeric === 6)) {
+    return <FlightLevelRedirect level={numeric as 4 | 6} />;
+  }
   return <LegacyLevelPage/>;
 }
 function LegacyLevelPage() {
