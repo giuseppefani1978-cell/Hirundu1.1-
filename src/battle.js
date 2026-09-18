@@ -846,11 +846,73 @@ export function renderBattle(ctx, _view, sprites){
     _renderFireworks(ctx, w, h);
   }
 
-  // HUD
-  ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
-  ctx.fillText(`♥ ${state.player.hp}`, 16, 28);
-  ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.name ?? (state.foeType==='resino'?'Resino':state.foeType==='scirocco'?'Scirocco':state.foeType==='nacra'?'Nacra':'')} ♥ ${state.foe.hp}`, Math.max(16,w-140),28);
-  ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.token ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★')}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
+  // Energy bars — same readable visual language as the Level 3 battle.
+  const bossName = REGIONAL_BOSSES[state.foeType]?.name
+    ?? (state.foeType==='resino' ? 'Resino'
+      : state.foeType==='scirocco' ? 'Scirocco'
+      : state.foeType==='nacra' ? 'Nacra'
+      : state.foeType==='crow' ? 'Corvo'
+      : state.foeType==='sputacchina' ? 'Sputacchina'
+      : 'Guardiano');
+  const drawEnergyBar = (x, y, width, label, value, maxValue) => {
+    const height = 48;
+    const clamped = Math.max(0, Math.min(1, maxValue > 0 ? value / maxValue : 0));
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, 16);
+    ctx.fillStyle = 'rgba(255,253,245,.90)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(15,43,74,.18)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.font = '700 14px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.fillStyle = '#32475a';
+    ctx.fillText(label, x + 12, y + 18);
+
+    ctx.textAlign = 'right';
+    ctx.font = '900 15px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.fillStyle = '#102a43';
+    ctx.fillText(String(Math.max(0, Math.ceil(value))), x + width - 12, y + 18);
+
+    const trackX = x + 12, trackY = y + 27, trackW = width - 24, trackH = 11;
+    ctx.beginPath();
+    ctx.roundRect(trackX, trackY, trackW, trackH, 6);
+    ctx.fillStyle = 'rgba(15,43,74,.12)';
+    ctx.fill();
+    if (clamped > 0) {
+      ctx.beginPath();
+      ctx.roundRect(trackX, trackY, Math.max(trackH, trackW * clamped), trackH, 6);
+      ctx.fillStyle = '#2fbd62';
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  const energyBarW = Math.min(300, Math.max(190, w * 0.34));
+  const energyTop = 12;
+  drawEnergyBar(14, energyTop, energyBarW, 'Aracne', state.player.hp, BTL.PLAYER_HP);
+  drawEnergyBar(w - energyBarW - 14, energyTop, energyBarW, bossName, state.foe.hp, state.foeMaxHp || BTL.FOE_HP);
+
+  // Keep only the useful collectible count as a discreet center chip.
+  const token = REGIONAL_BOSSES[state.foeType]?.token
+    ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★');
+  ctx.save();
+  ctx.font = '800 13px system-ui';
+  const tokenText = `${token} ${state.ammo.stars}`;
+  const tokenW = Math.max(54, ctx.measureText(tokenText).width + 22);
+  const tokenX = (w - tokenW) / 2;
+  ctx.beginPath();
+  ctx.roundRect(tokenX, 17, tokenW, 30, 15);
+  ctx.fillStyle = 'rgba(255,253,245,.86)';
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#0e2b4a';
+  ctx.fillText(tokenText, w / 2, 32);
+  ctx.restore();
 
   // Short dialogue bubble, shared by every battle (same readable language as L3).
   if (renderNow < state.feedbackUntil && state.feedbackText) {
