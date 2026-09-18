@@ -3,6 +3,7 @@ import { LANG } from '../../i18n.js';
 import { markLevelWin, unlockBonus } from '../../features/bonus/bonusStorage';
 import { addHallOfFameEntry } from '../../hof/storage.js';
 import { FLOW_PHASES, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../../game_flow.js';
+import { AUDIO_STATE_EVENT, isMusicOn } from '../../audio.js';
 
 // Keep the validated prototype in its own document: its canvas/CSS and listeners
 // cannot alter the classic hunts used by levels 1, 2 and 4–9.
@@ -20,12 +21,13 @@ export function bootReboundLevel3(options = {}) {
   const finite = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   const send = data => frame.contentWindow?.postMessage({source:'hirundu-host', ...data}, window.location.origin);
   const installState = () => send({type:'install-state', available:!!window.__HIRUNDU_PWA_INSTALL_AVAILABLE__});
+  const musicState = () => send({type:'music-state', enabled:isMusicOn()});
   const phaseMap = {intro:FLOW_PHASES.LEVEL_INTRO,ready:FLOW_PHASES.HUNT,flying:FLOW_PHASES.HUNT,transition:FLOW_PHASES.HUNT,battleIntro:FLOW_PHASES.BATTLE_INTRO,battle:FLOW_PHASES.BATTLE,battleLost:FLOW_PHASES.DEFEAT,won:FLOW_PHASES.VICTORY};
   const onMessage = event => {
     if (!active || event.source !== frame.contentWindow || event.origin !== window.location.origin) return;
     const data = event.data;
     if (!data || data.source !== 'hirundu-level3') return;
-    if (data.type === 'ready') installState();
+    if (data.type === 'ready') { installState(); musicState(); }
     if (data.type === 'phase') {
       const phase = phaseMap[data.mode === 'paused' ? data.previous : data.mode];
       if (phase) setGameFlowPhase(phase, {level:3});
@@ -56,6 +58,7 @@ export function bootReboundLevel3(options = {}) {
   window.addEventListener('message',onMessage);
   window.addEventListener(PAUSE_EVENT,onPause);
   window.addEventListener('hirundu:pwa-install-state',installState);
+  window.addEventListener(AUDIO_STATE_EVENT,musicState);
   setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO,{level:3});
   document.body.appendChild(frame);
   return () => {
@@ -63,6 +66,7 @@ export function bootReboundLevel3(options = {}) {
     window.removeEventListener('message',onMessage);
     window.removeEventListener(PAUSE_EVENT,onPause);
     window.removeEventListener('hirundu:pwa-install-state',installState);
+    window.removeEventListener(AUDIO_STATE_EVENT,musicState);
     frame.remove();
     clearGameFlow();
   };
