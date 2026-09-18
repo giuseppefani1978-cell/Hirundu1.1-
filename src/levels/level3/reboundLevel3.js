@@ -11,6 +11,7 @@ export function bootReboundLevel3(options = {}) {
   const frame = document.createElement('iframe');
   const url = new URL(withBase('level3-arkanoid/index.html'));
   url.searchParams.set('lang', LANG);
+  url.searchParams.set('build', '20260918-feedback-v3');
   if (options.testBattle) url.searchParams.set('test', 'battle');
   frame.id = 'hirundu-level3-rebound';
   frame.title = 'HIRUNDU · Niveau 3 · Lecce';
