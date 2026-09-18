@@ -6,7 +6,7 @@ import { FLOW_PHASES, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../..
 import { AUDIO_STATE_EVENT, isMusicOn } from '../../audio.js';
 
 // Level 7 deliberately reuses the validated Level 3 rebound shell in an isolated iframe.
-// Content, POIs, boss, backdrop and difficulty are Level-5-specific.
+// Content, POIs, boss, backdrop and difficulty are Level-7-specific.
 export function bootReboundLevel7(options = {}) {
   const frame = document.createElement('iframe');
   const url = new URL(withBase('level7-arkanoid/index.html'), window.location.href);
