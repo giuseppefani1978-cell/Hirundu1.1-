@@ -57,7 +57,7 @@ function useLegacyLevelParam(): LegacyLevelId {
   return useMemo(() => parseLevelId(params.levelId), [params.levelId]);
 }
 
-function FlightLevelRedirect({ level }: { level: 4 | 6 }) {
+function FlightLevelRedirect({ level }: { level: 4 | 6 | 8 }) {
   useEffect(() => {
     window.location.replace(withBase(`level${level}-flight/`));
   }, [level]);
@@ -70,8 +70,8 @@ export default function LevelPage() {
   const numeric = Number(levelId);
   const testBattle = new URLSearchParams(location.search).get("test") === "battle";
 
-  if (!testBattle && (numeric === 4 || numeric === 6)) {
-    return <FlightLevelRedirect level={numeric as 4 | 6} />;
+  if (!testBattle && (numeric === 4 || numeric === 6 || numeric === 8)) {
+    return <FlightLevelRedirect level={numeric as 4 | 6 | 8} />;
   }
   return <LegacyLevelPage/>;
 }
