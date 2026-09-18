@@ -191,6 +191,6 @@ addEventListener('pointerup',e=>{if(activePadPointer===e.pointerId)resetPad();},
 addEventListener('pointercancel',e=>{if(activePadPointer===e.pointerId)resetPad();},{passive:true});
 addEventListener('blur',resetPad);
 addEventListener('resize',resize);
-Promise.all(['bird','tarantula','crow','jelly','coffee','rustico','coast'].map(name=>new Promise(resolve=>{const im=new Image();images[name]=im;im.onload=()=>resolve(true);im.onerror=()=>resolve(false);im.src=name==='coast'?'../assets/battle_bg_copertino.webp':'../level4-flight/assets/'+name+'.png';}))).then(result=>{loaded=result.every(Boolean);$('start').disabled=!loaded;if(!loaded)$('help').textContent='Chargement incomplet. Actualise la page pour réessayer.';});
+Promise.all(['bird','tarantula','crow','jelly','coffee','rustico','coast'].map(name=>new Promise(resolve=>{const im=new Image();images[name]=im;im.onload=()=>resolve(true);im.onerror=()=>resolve(false);im.src=name==='coast'?'coast.webp':'../level4-flight/assets/'+name+'.png';}))).then(result=>{loaded=result.every(Boolean);$('start').disabled=!loaded;if(!loaded)$('help').textContent='Chargement incomplet. Actualise la page pour réessayer.';});
 resize();label();$('start').disabled=true;const loading=setInterval(()=>{if(loaded){$('start').disabled=false;clearInterval(loading);}},150);
 function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;tick(dt);draw();requestAnimationFrame(frame);}requestAnimationFrame(frame);
