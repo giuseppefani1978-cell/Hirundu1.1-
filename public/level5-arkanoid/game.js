@@ -1,7 +1,7 @@
 'use strict';
 // Standalone alternative hunt for L3. Original assets, places and clues from HIRUNDU.
 const $=id=>document.getElementById(id), canvas=$('game'), ctx=canvas.getContext('2d');
-const effectHud=$('effect'),topTools=document.querySelector('header .tools');
+const effectHud=$('effect'),topTools=document.querySelector?.('header .tools');
 if(effectHud&&topTools)topTools.prepend(effectHud);
 const W=HUNT_MODEL.width,R=HUNT_MODEL.radius,PW=HUNT_MODEL.paddleWidth;
 // Level 5 uses the former Slow setting. Higher speeds belong to later levels.
