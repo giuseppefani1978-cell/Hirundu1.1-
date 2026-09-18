@@ -16,7 +16,14 @@ es:{subtitle:'NIVEL 3 · EL VUELO DE LAS HOJAS',speaker:'Tarantula',ask:'¿Dónd
 };
 let lang='fr';try{lang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('__lang__')||localStorage.getItem('hirundu_arcade_language')||navigator.language.slice(0,2)}catch{}if(!ui[lang])lang='fr';
 const languageLabels={fr:'Langue',en:'Language',it:'Lingua',es:'Idioma'};
-const pauseMusicLabels={fr:'♪ Musique',en:'♪ Music',it:'♪ Musica',es:'♪ Música'};
+const pauseMusicLabels={
+ fr:{on:'♪ Couper la musique',off:'♪ Activer la musique'},
+ en:{on:'♪ Mute music',off:'♪ Play music'},
+ it:{on:'♪ Disattiva musica',off:'♪ Attiva musica'},
+ es:{on:'♪ Silenciar música',off:'♪ Activar música'}
+};
+let hostMusicEnabled=true;
+function updatePauseMusicLabel(){const labels=pauseMusicLabels[lang]||pauseMusicLabels.en;$('pauseMusic').textContent=hostMusicEnabled?labels.on:labels.off;}
 const state={mode:'intro',previous:'ready',round:0,score:0,misses:0,wrong:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0,paddle:300,paddleTarget:300,paddleV:0,ball:{x:300,y:PY-R-12,vx:0,vy:0},targets:[],bricks:[],particles:[],trail:[],cooldown:0,transition:0,elapsed:0,message:0,hinted:false,found:[],assetsReady:false};
 const keys=new Set(), images={};let last=0,accumulator=0,scale=1,ox=0,oy=0;
 function text(){return ui[lang]}function place(id){return POI_TEXT[lang][id]}function active(){return ids[state.round]}
@@ -24,7 +31,7 @@ function notice(value,duration=2){$('message').textContent=value;state.message=d
 function rect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
 function question(){if(['battle','battleIntro','battleLost'].includes(state.mode)||(state.mode==='paused'&&state.previous==='battle'))return; $('question').textContent=text().ask+' '+place(ids[Math.min(9,state.round)]).info+' ?';$('round').textContent=Math.min(10,state.round+1)+'/10'; }
 function hud(){ $('leaves').textContent=state.found.length;$('score').textContent=state.score;$('energy').textContent=Math.round(state.energy);for(const kind of ['coffee','rustico','pasticciotto'])$(kind+'Count').textContent=state.food[kind]; }
-function translated(){const t=text();document.documentElement.lang=lang;$('language').value=lang;$('pauseLanguageLabel').textContent=languageLabels[lang]||'Language';$('pauseMusic').textContent=pauseMusicLabels[lang]||'♪ Music';for(const [id,key] of [['subtitle','subtitle'],['speaker','speaker'],['hint','hint'],['tip','tip'],['cardTag','tag'],['restart','restart']])$(id).textContent=t[key];$('launch').textContent=state.mode==='flying'?t.recall:t.launch;$('launch').title=t.recallTip;question();extraLabels();updatePowerHUD();if(state.mode==='intro')showIntro();else if(state.mode==='paused')showPause();else if(state.mode==='won')showWin();else if(state.mode==='battleIntro')battleIntro();else if(state.mode==='battleLost')Battle.lose();}
+function translated(){const t=text();document.documentElement.lang=lang;$('language').value=lang;$('pauseLanguageLabel').textContent=languageLabels[lang]||'Language';updatePauseMusicLabel();for(const [id,key] of [['subtitle','subtitle'],['speaker','speaker'],['hint','hint'],['tip','tip'],['cardTag','tag'],['restart','restart']])$(id).textContent=t[key];$('launch').textContent=state.mode==='flying'?t.recall:t.launch;$('launch').title=t.recallTip;question();extraLabels();updatePowerHUD();if(state.mode==='intro')showIntro();else if(state.mode==='paused')showPause();else if(state.mode==='won')showWin();else if(state.mode==='battleIntro')battleIntro();else if(state.mode==='battleLost')Battle.lose();}
 function cover(title,description,help,label){const intro=state.mode==='battleIntro',paused=state.mode==='paused';document.body.classList.toggle('battle-intro',intro);document.body.classList.toggle('pause-active',paused);$('battlePreview').hidden=!intro;$('battleSupplies').hidden=!intro;$('orientationPrompt').hidden=!intro;$('pauseLanguage').hidden=!paused;$('pauseScore').hidden=!paused;if(paused)$('pauseScore').textContent=(text().score.charAt(0).toUpperCase()+text().score.slice(1))+' · '+state.score;$('play').disabled=!state.assetsReady;$('cover').classList.remove('hidden');$('cardTitle').textContent=title;$('cardText').textContent=description;$('cardHelp').textContent=help;$('play').textContent=label;$('restart').hidden=!paused;$('pauseMusic').hidden=!paused;$('continueLevel').hidden=state.mode!=='won'||trainingBattle;$('discoveries').hidden=!(paused||state.mode==='won')||trainingBattle;$('exitLevel').hidden=state.mode!=='won';$('installApp').hidden=!paused||!hostInstallAvailable;}
 function showIntro(){const t=text();cover(t.title,t.intro,t.help,state.assetsReady?t.play:t.loading)}
 function showPause(){const t=text();cover(t.pause,t.paused,state.previous==='battle'?extra().battleHelp:t.help,t.resume);syncBattleOrientation()}
@@ -221,7 +228,7 @@ function sendHost(type,data={}){if(window.parent!==window)window.parent.postMess
 const bridgeLabels={fr:['Niveau suivant','Mes découvertes','Accueil','Installer l’application'],en:['Next level','My discoveries','Home','Install app'],it:['Livello successivo','Le mie scoperte','Home','Installa app'],es:['Siguiente nivel','Mis descubrimientos','Inicio','Instalar aplicación']};
 function labelBridge(){['continueLevel','discoveries','exitLevel','installApp'].forEach((id,i)=>$(id).textContent=bridgeLabels[lang][i])}
 for(const [id,type] of [['continueLevel','continue'],['discoveries','discoveries'],['exitLevel','exit'],['installApp','install'],['pauseMusic','music-toggle']])$(id).onclick=()=>sendHost(type);
-addEventListener('message',e=>{if(e.source!==window.parent||e.origin!==location.origin||e.data?.source!=='hirundu-host')return;if(e.data.type==='install-state'){hostInstallAvailable=!!e.data.available;$('installApp').hidden=state.mode!=='paused'||!hostInstallAvailable}if(e.data.type==='pause')pause()});
+addEventListener('message',e=>{if(e.source!==window.parent||e.origin!==location.origin||e.data?.source!=='hirundu-host')return;if(e.data.type==='install-state'){hostInstallAvailable=!!e.data.available;$('installApp').hidden=state.mode!=='paused'||!hostInstallAvailable}if(e.data.type==='music-state'){hostMusicEnabled=!!e.data.enabled;updatePauseMusicLabel()}if(e.data.type==='pause')pause()});
 labelBridge();sendHost('ready');
 roundSetup();makeWalls();state.mode='intro';translated();resize();loadAssets();requestAnimationFrame(frame);
 if(typeof matchMedia==='function'){matchMedia('(orientation: landscape)').addEventListener?.('change',syncBattleOrientation);}
