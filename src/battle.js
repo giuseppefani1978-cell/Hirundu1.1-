@@ -7,11 +7,11 @@
 import { copy } from './ui/copy.js';
 import { LANG } from './i18n.js';
 const battleWords = {
- fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie'},
- it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita'},
- en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle'},
- es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida'},
-}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle'};
+ fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie',watch:'Attention !',counter:'Maintenant ! Riposte !',hurt:'Touché ! Reprends de l’altitude.',phase:'Le gardien accélère !',strike:'Bien joué !'},
+ it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita',watch:'Attenzione!',counter:'Ora! Contrattacca!',hurt:'Colpito! Riprendi quota.',phase:'Il guardiano accelera!',strike:'Ben fatto!'},
+ en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'},
+ es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida',watch:'¡Atención!',counter:'¡Ahora! ¡Contraataca!',hurt:'¡Golpe! Recupera altura.',phase:'¡El guardián acelera!',strike:'¡Buen golpe!'},
+}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'};
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
 import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
@@ -134,6 +134,8 @@ let state = {
   patternIndex: 0,
   feedbackText: '',
   feedbackUntil: 0,
+  phaseAnnounced: false,
+  foeMaxHp: BTL.FOE_HP,
   combo: 0,
   comboUntil: 0,
   chirpReadyAt: 0,
@@ -299,6 +301,7 @@ export function startBattle(foeType='jelly'){
   state.patternIndex = 0;
   state.feedbackText = '';
   state.feedbackUntil = 0;
+  state.phaseAnnounced = false;
   state.combo = 0;
   state.comboUntil = 0;
   state.chirpReadyAt = 0;
@@ -317,6 +320,7 @@ export function startBattle(foeType='jelly'){
     x: state.w + 160, y: 0, vx: 0, vy: 0,
     hp: REGIONAL_BOSSES[foeType]?.hp ?? (foeType === 'resino' ? 340 : foeType === 'scirocco' ? 300 : foeType === 'nacra' ? 260 : BTL.FOE_HP), fireAt: Infinity, onGround: false
   };
+  state.foeMaxHp = state.foe.hp;
   state.foeDir = -1;
   state.foeWanderUntil = performance.now() + 700;
 
@@ -508,12 +512,17 @@ export function tickBattle(dt){
         // Trois patterns lisibles : haut, bas, puis visée directe.
         if (state.telegraph && now >= state.telegraph.fireAt) {
           _executeFoePattern(state.telegraph.pattern);
+          state.feedbackText = battleWords.counter;
+          state.feedbackUntil = now + 650;
           state.telegraph = null;
         }
         if (!state.telegraph && now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
           const pattern = ['high','low','aim'][state.patternIndex % 3];
           state.patternIndex += 1;
           state.telegraph = { pattern, fireAt: now + BTL.TELEGRAPH_MS, until: now + BTL.TELEGRAPH_MS };
+          const attackLabel = pattern === 'high' ? battleWords.high : pattern === 'low' ? battleWords.low : battleWords.aim;
+          state.feedbackText = '⚠ ' + battleWords.watch + ' ' + attackLabel;
+          state.feedbackUntil = now + BTL.TELEGRAPH_MS;
           const profile=REGIONAL_BOSSES[state.foeType];
           const cooldown = profile ? _rnd(profile.fireMin,profile.fireMax) : state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
           state.foe.fireAt = state.telegraph.fireAt + cooldown;
@@ -533,6 +542,8 @@ export function tickBattle(dt){
           const dx = s.x - state.foe.x, dy = s.y - state.foe.y;
           if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
             state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
+            state.feedbackText = battleWords.strike;
+            state.feedbackUntil = now + 360;
             state.shots.splice(i,1);
             continue;
           }
@@ -548,6 +559,8 @@ export function tickBattle(dt){
             state.player.hp = Math.max(0, state.player.hp - s.dmg);
             state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
             state.slowUntil = now + (s.kind === 'spore' ? (BTL.SPORE_SLOW_MS || BTL.HIT_SLOW_MS) : BTL.HIT_SLOW_MS);
+            state.feedbackText = battleWords.hurt;
+            state.feedbackUntil = now + 780;
             state.combo = 0;
             state.shots.splice(i,1);
             continue;
@@ -558,6 +571,12 @@ export function tickBattle(dt){
       const out  = (s.x < -80 || s.x > state.w + 80);
       const dead = (s.life != null && s.life <= 0);
       if (out || dead) state.shots.splice(i,1);
+    }
+
+    if (!state.phaseAnnounced && state.foeMaxHp > 0 && state.foe.hp > 0 && state.foe.hp <= state.foeMaxHp * 0.5) {
+      state.phaseAnnounced = true;
+      state.feedbackText = battleWords.phase;
+      state.feedbackUntil = now + 1200;
     }
 
     // Fin de manche
