@@ -924,3 +924,31 @@ body:not(.pause-active) #exitLevel[hidden]{display:none!important}
     padding:7px 12px;
   }
 }
+
+
+/* 2026-09-18 — shared Arkanoid hunt feedback layout (L3/L5/L7).
+   Active shield/slow timers live in the top HUD, never over the playfield. */
+header #effect{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:30px;
+  max-width:min(46vw,260px);
+  margin-left:auto;
+  padding:4px 8px;
+  border:1px solid #0e2b4a20;
+  border-radius:10px;
+  background:#fffdf5ee;
+  color:#0e2b4a;
+  box-shadow:0 2px 8px #0e2b4a10;
+  font:700 11px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  pointer-events:none;
+}
+header #effect:empty{display:none}
+.battle-active header #effect{display:none}
+@media(max-width:390px){
+  header #effect{max-width:42vw;font-size:10px;padding:3px 6px}
+}
