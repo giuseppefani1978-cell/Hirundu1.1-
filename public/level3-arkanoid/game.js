@@ -29,7 +29,13 @@ function updatePauseMusicLabel(){const labels=pauseMusicLabels[lang]||pauseMusic
 const state={mode:'intro',previous:'ready',round:0,score:0,misses:0,wrong:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0,paddle:300,paddleTarget:300,paddleV:0,ball:{x:300,y:PY-R-12,vx:0,vy:0},targets:[],bricks:[],particles:[],trail:[],cooldown:0,transition:0,elapsed:0,message:0,speech:0,hinted:false,found:[],assetsReady:false};
 const keys=new Set(), images={};let last=0,accumulator=0,scale=1,ox=0,oy=0;
 function text(){return ui[lang]}function place(id){return POI_TEXT[lang][id]}function active(){return ids[state.round]}
-function notice(value,duration=2){$('message').textContent=value;state.message=duration;$('message').classList.add('visible')}
+function notice(value,duration=2){
+ if(state.mode==='battle'){
+  $('message').textContent=value;state.message=duration;$('message').classList.add('visible');
+  return;
+ }
+ tarantulaSay(value,duration);
+}
 function tarantulaSay(value,duration=2.2){
  state.speech=duration;state.message=0;$('message').classList.remove('visible');
  $('speaker').textContent=text().speaker;$('question').textContent=value;
