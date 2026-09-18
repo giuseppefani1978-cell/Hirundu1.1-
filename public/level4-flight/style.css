@@ -17,17 +17,49 @@ button:focus-visible,select:focus-visible{outline:3px solid #2546c1}
 
 #arena{position:relative;flex:1;min-height:100px;overflow:hidden;border-radius:14px 14px 0 0;background:#3faabd}
 canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
-#progress{position:absolute;left:6px;bottom:12px;display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:3}
+#progress{position:absolute;left:6px;bottom:18px;display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:3}
 #progress i{display:grid;place-items:center;width:17px;height:17px;font-size:11px;font-style:normal;border:1px solid #ffffffa0;background:#fffdf5ca;color:#68736f;border-radius:50%}
 #progress i.done{background:#ffdf82;color:#0e2b4a;border-color:#b08a3c}
 
-#microPad{position:absolute;right:9px;bottom:10px;width:88px;height:88px;z-index:5;opacity:.78;touch-action:none}
-#microPad button{position:absolute;width:32px;height:32px;min-height:32px;padding:0;border:1px solid #ffffff9a;border-radius:11px;background:#fffdf5c9;color:#153b5c;font-size:13px;box-shadow:0 3px 8px #0e2b4a26;backdrop-filter:blur(5px);touch-action:none;user-select:none}
-#microPad button:active,#microPad button.is-active{transform:scale(.94);background:#fff3c9}
-#microPad .pad-up{left:28px;top:0}
-#microPad .pad-left{left:0;top:28px}
-#microPad .pad-right{right:0;top:28px}
-#microPad .pad-down{left:28px;bottom:0}
+#microPad{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  width:188px;
+  height:188px;
+  z-index:5;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  pointer-events:auto;
+}
+#microPad button{
+  position:absolute;
+  width:56px;
+  height:56px;
+  min-height:56px;
+  padding:0;
+  border:2px solid #b08a3c;
+  border-radius:13px;
+  background:#fff7deeb;
+  color:#16334f;
+  font:800 20px/1 system-ui,-apple-system,'Segoe UI',sans-serif;
+  box-shadow:0 3px 0 #b08a3c,0 7px 16px #0e2b4a26;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  backdrop-filter:blur(4px);
+}
+#microPad button:active,#microPad button.is-active{
+  transform:translateY(2px);
+  box-shadow:0 1px 0 #b08a3c,0 4px 10px #0e2b4a22;
+  background:#ffedb7;
+}
+#microPad .pad-up{left:66px;top:0}
+#microPad .pad-left{left:0;top:66px}
+#microPad .pad-right{right:0;top:66px}
+#microPad .pad-down{left:66px;bottom:0}
 
 #cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0e2b4a42;padding:18px;overflow:auto;z-index:7}
 article{max-width:360px;padding:23px 20px;background:#fffdf5f5;border:1px solid #c8b37a;border-radius:22px;text-align:center;box-shadow:0 14px 35px #0e2b4a30}
@@ -51,5 +83,5 @@ footer span{white-space:nowrap}
   article{padding:10px}
   article p{margin:8px}
   h1{font-size:20px}
-  #microPad{transform:scale(.88);transform-origin:bottom right}
+  #microPad{transform:translateX(-50%) scale(.78);transform-origin:bottom center}
 }
