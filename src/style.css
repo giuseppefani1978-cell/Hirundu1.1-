@@ -1344,3 +1344,23 @@ body[data-game-phase="hunt"] #hud {
   color:#0f172a;
   font:750 14px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
 }
+
+
+/* 2026-09-18 — keep scoring out of the live playfield; Pause owns the total. */
+#__score_live{display:none!important}
+.game-pause__score{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:13px;
+  background:rgba(255,255,255,.07);
+  color:#cbd5e1;
+  font:700 13px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+.game-pause__score strong{
+  color:#fff;
+  font:900 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
