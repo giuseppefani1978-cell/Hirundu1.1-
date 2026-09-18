@@ -74,6 +74,13 @@ function getInstallAvailable(): boolean {
   return Boolean((window as HirunduInstallWindow).__HIRUNDU_PWA_INSTALL_AVAILABLE__);
 }
 
+function getCurrentScore(): string {
+  if (typeof document === "undefined") return "0";
+  const raw = document.getElementById("__score_live")?.textContent?.trim() || "0";
+  const normalized = raw.replace(/^0+(?=\d)/, "");
+  return normalized || "0";
+}
+
 export type LegacyGameShellProps = {
   level?: number;
   onStartClick?: () => void;
@@ -88,6 +95,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   canvasRef
 ) {
   const [paused, setPaused] = useState(false);
+  const [pauseScore, setPauseScore] = useState("0");
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [language, setLanguage] = useState(getGameLanguage);
   const [installAvailable, setInstallAvailable] = useState(getInstallAvailable);
@@ -99,7 +107,9 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
   useEffect(() => {
     const onPause = (event: Event) => {
       const detail = (event as CustomEvent<{ paused?: boolean }>).detail;
-      setPaused(Boolean(detail?.paused));
+      const nextPaused = Boolean(detail?.paused);
+      if (nextPaused) setPauseScore(getCurrentScore());
+      setPaused(nextPaused);
     };
     const onPerf = (event: Event) => {
       const detail = (event as CustomEvent<{ fps?: number; jank?: number; worstFrameMs?: number }>).detail;
@@ -293,6 +303,10 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 <div className="game-pause__icon">Ⅱ</div>
                 <h2>{copy.pause}</h2>
                 <p>{copy.pauseHint}</p>
+                <div className="game-pause__score">
+                  <span>{copy.points}</span>
+                  <strong>{pauseScore}</strong>
+                </div>
                 <button type="button" className="game-pause__primary" onClick={() => setGamePaused(false)}>
                   ▶ {copy.resume}
                 </button>
