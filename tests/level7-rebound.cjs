@@ -58,6 +58,12 @@ const run=s=>vm.runInContext(s,sandbox);
   }
   run('lang="fr";translated();launch()');
   const y=run('state.ball.y');run('step(.1)');assert.ok(run('state.ball.y')<y,'bird launches');
+  run('state.cooldown=0;hitTarget(state.targets.find(t=>t.id!==active()))');
+  const wrongBubble=element('question').textContent;
+  assert.ok(run('state.speech')>0,'wrong-target feedback is spoken by Tarantula');
+  run('step(2.3)');
+  assert.notEqual(element('question').textContent,wrongBubble,'the clue question returns after feedback');
+  assert.ok(fs.readFileSync('public/level3-arkanoid/style.css','utf8').includes('header #effect'),'shared effect timer lives in the top HUD');
   for(let round=0;round<10;round++){
     run('state.cooldown=0;hitTarget(state.targets.find(t=>t.id===active()))');
     run('step(1.6)');
