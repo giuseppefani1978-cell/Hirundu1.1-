@@ -1,4 +1,4 @@
-name: Pages • Main Test
+name: Pages • Main + Level 4 test
 
 on:
   push:
@@ -18,33 +18,56 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          path: stable
+
+      - name: Checkout level 4 flight candidate
+        uses: actions/checkout@v4
+        with:
+          ref: test/niveau4-vol-adriatique-2026-09-18
+          path: candidate
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: |
+            stable/package-lock.json
+            candidate/package-lock.json
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Install dependencies
-        run: npm ci || npm install
+      - name: Validate and build main
+        working-directory: stable
+        run: |
+          npm ci || npm install
+          npm test -- --runInBand || npm test
+          npm run build
+          cp dist/index.html dist/404.html
 
-      - name: Run tests
-        run: npm test -- --runInBand || npm test
+      - name: Validate and build level 4 candidate
+        working-directory: candidate
+        run: |
+          npm ci || npm install
+          node --check public/level4-flight/game.js
+          npm test
+          npm run typecheck
+          npm run build -- --base=/Hirundu1.1-/test-niveau4/
 
-      - name: Build
-        run: npm run build
-
-      - name: Add SPA fallback
-        run: cp dist/index.html dist/404.html
+      - name: Add direct level 4 test under /test-niveau4/
+        run: |
+          mkdir -p stable/dist/test-niveau4
+          cp -R candidate/dist/. stable/dist/test-niveau4/
+          cp candidate/dist/index.html stable/dist/test-niveau4/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: stable/dist
 
   deploy:
     needs: build
