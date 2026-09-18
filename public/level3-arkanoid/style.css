@@ -902,3 +902,25 @@ body:not(.pause-active) #exitLevel[hidden]{display:none!important}
     display:none!important;
   }
 }
+
+
+/* 2026-09-18 — keep transient battle dialogue clear of the bonus inventory.
+   Level 5 imports this stylesheet, so L3/L5 (and the future L7 variant) stay aligned. */
+.battle-active #message{
+  position:fixed;
+  left:50%;
+  top:clamp(120px,30dvh,190px);
+  transform:translateX(-50%);
+  z-index:9;
+  width:max-content;
+  max-width:min(62vw,560px);
+  text-align:center;
+}
+@media (orientation:landscape) and (max-height:460px){
+  .battle-active #message{
+    top:112px;
+    max-width:58vw;
+    font-size:13px;
+    padding:7px 12px;
+  }
+}
