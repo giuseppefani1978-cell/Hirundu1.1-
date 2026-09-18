@@ -852,16 +852,30 @@ export function renderBattle(ctx, _view, sprites){
   ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.name ?? (state.foeType==='resino'?'Resino':state.foeType==='scirocco'?'Scirocco':state.foeType==='nacra'?'Nacra':'')} ♥ ${state.foe.hp}`, Math.max(16,w-140),28);
   ctx.fillText(`${REGIONAL_BOSSES[state.foeType]?.token ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★')}: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
 
-  // Feedback court, sans encombrer le HUD.
+  // Short dialogue bubble, shared by every battle (same readable language as L3).
   if (renderNow < state.feedbackUntil && state.feedbackText) {
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = '900 20px system-ui';
-    ctx.fillStyle = '#fff3a6';
-    ctx.shadowColor = 'rgba(0,0,0,.65)';
-    ctx.shadowBlur = 8;
     const combo = state.combo > 1 ? '  ×' + state.combo : '';
-    ctx.fillText(state.feedbackText + combo, Math.min(w-110, Math.max(110, state.player.x + 44)), Math.max(74, pY - 14));
+    const label = state.feedbackText + combo;
+    ctx.font = '800 18px system-ui';
+    const padX = 16, bubbleH = 44;
+    const bubbleW = Math.min(w - 32, Math.max(150, ctx.measureText(label).width + padX * 2));
+    const centerX = Math.min(w - bubbleW / 2 - 16, Math.max(bubbleW / 2 + 16, state.player.x + 44));
+    const centerY = Math.max(78, pY - 20);
+    const bx = centerX - bubbleW / 2, by = centerY - bubbleH / 2;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bubbleW, bubbleH, 14);
+    ctx.fillStyle = 'rgba(255,253,245,.96)';
+    ctx.fill();
+    ctx.strokeStyle = '#c8b37a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#0e2b4a';
+    ctx.shadowColor = 'rgba(15,23,42,.14)';
+    ctx.shadowBlur = 5;
+    ctx.fillText(label, centerX, centerY + 1);
     ctx.restore();
   }
 
