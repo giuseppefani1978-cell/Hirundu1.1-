@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#bfe2f8">
+  <title>HIRUNDU · Vol sur l’Arneo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <strong>HIRUNDU <small>06 · ARNEO</small></strong>
+    <div>
+      <select id="lang" aria-label="Langue">
+        <option value="fr">FR</option>
+        <option value="it">IT</option>
+        <option value="en">EN</option>
+        <option value="es">ES</option>
+      </select>
+      <button id="pause" aria-label="Pause">Ⅱ</button>
+    </div>
+  </header>
+
+  <section class="speech">
+    <img src="../level4-flight/assets/tarantula.png" alt="">
+    <div>
+      <b id="speaker">Tarantula</b>
+      <p id="question" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="arena">
+    <canvas id="game" tabindex="0" aria-label="Zone de vol"></canvas>
+    <div id="progress"></div>
+
+    <div id="microPad" aria-label="Micro-pad de pilotage" hidden>
+      <button class="pad-up" data-dx="0" data-dy="-1" aria-label="Monter">▲</button>
+      <button class="pad-left" data-dx="-1" data-dy="0" aria-label="Gauche">◀</button>
+      <button class="pad-right" data-dx="1" data-dy="0" aria-label="Droite">▶</button>
+      <button class="pad-down" data-dx="0" data-dy="1" aria-label="Descendre">▼</button>
+    </div>
+
+    <div id="cover">
+      <article>
+        <span id="eyebrow"></span>
+        <h1 id="title"></h1>
+        <p id="help"></p>
+        <p id="detail"></p>
+        <button id="start"></button>
+        <button id="again" hidden></button>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <span>🐚 <b id="count">0/10</b></span>
+    <span id="energy"></span>
+    <span id="bonuses">☕ 0 · 🥐 0</span>
+  </footer>
+</main>
+
+<script src="places.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
