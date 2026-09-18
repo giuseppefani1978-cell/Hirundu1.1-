@@ -28,7 +28,7 @@ function cover(title,description,help,label){const intro=state.mode==='battleInt
 function showIntro(){const t=text();cover(t.title,t.intro,t.help,state.assetsReady?t.play:t.loading)}
 function showPause(){const t=text();cover(t.pause,t.paused,state.previous==='battle'?extra().battleHelp:t.help,t.resume);syncBattleOrientation()}
 function showWin(){const t=text();cover(t.win,t.won,state.score+' '+t.score+' · 🍃 10/10',t.again)}
-function mapViewport(){const fit=Math.min((W-10)/1024,(H-10)/1536);const f=fit*1.025;return {x:(W-1024*f)/2,y:(H-1536*f)/2,w:1024*f,h:1536*f};}
+function mapViewport(){const f=Math.min((W-2)/1024,(H-2)/1536);return {x:(W-1024*f)/2,y:(H-1536*f)/2,w:1024*f,h:1536*f};}
 function resize(){
  const b=canvas.getBoundingClientRect();if(!b.width||!b.height)return;syncBattleOrientation();
  const dpr=Math.min(devicePixelRatio||1,2),oldH=H;
