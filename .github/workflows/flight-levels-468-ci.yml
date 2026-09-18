@@ -23,6 +23,8 @@ jobs:
         run: |
           node --check public/level4-flight/game.js
           node --check public/level6-flight/game.js
+          node --check public/level8-flight/game.js
+          node --check public/level8-flight/places.js
       - name: Test
         run: npm test
       - name: Typecheck
