@@ -40,7 +40,7 @@ const Battle={
   const move=(keys.has('ArrowRight')?1:0)-(keys.has('ArrowLeft')?1:0);
   for(const k of ['flapCooldown','assist','dodge','dodgeCooldown'])p[k]=Math.max(0,p[k]-dt);
   if(move)p.facing=move;
-  const targetVx=p.dodge>0?820*p.dodgeDir:move*300,response=p.dodge>0?18:move?8.5:5.5;
+  const targetVx=p.dodge>0?820*p.dodgeDir:move*300,response=p.dodge>0?18:move?7.4:4.6;
   p.vx+=(targetVx-p.vx)*(1-Math.exp(-response*dt));if(!move&&p.dodge===0&&Math.abs(p.vx)<2)p.vx=0;
   if(p.assist>0)p.vy+=(p.targetVy-p.vy)*(1-Math.exp(-8*dt));
   p.vy+=760*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
@@ -66,7 +66,7 @@ const Battle={
  },
  lose(){state.mode='battleLost';keys.clear();cover(extra().lost,extra().lostText,extra().battleHelp,extra().retry);syncBattleOrientation()},
  draw(bounds){
-  const d=this.data;if(!d)return;ctx.clearRect(0,0,bounds.width,bounds.height);ctx.fillStyle='#a9d6f5';ctx.fillRect(0,0,bounds.width,bounds.height);const k=Math.min(bounds.width/960,bounds.height/540),x=(bounds.width-960*k)/2,y=(bounds.height-540*k)/2;
+  const d=this.data;if(!d)return;ctx.clearRect(0,0,bounds.width,bounds.height);ctx.fillStyle='#a9d6f5';ctx.fillRect(0,0,bounds.width,bounds.height);const k=Math.max(bounds.width/960,bounds.height/540),x=(bounds.width-960*k)/2,y=(bounds.height-540*k)/2;
   ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.beginPath();ctx.rect(0,0,960,540);ctx.clip();if(d.shake>0&&!matchReducedMotion()){ctx.translate(Math.sin(d.time*90)*3,Math.cos(d.time*80)*2)}
   const img=images.battle;if(img?.naturalWidth){const z=Math.max(960/img.naturalWidth,540/img.naturalHeight);ctx.drawImage(img,(960-img.naturalWidth*z)/2,(540-img.naturalHeight*z)/2,img.naturalWidth*z,img.naturalHeight*z)}
   const p=d.player,b=d.boss;
