@@ -1,7 +1,7 @@
 'use strict';
 // Level 7 rebound hunt based on the stabilized L3/L5 gameplay shell.
 const $=id=>document.getElementById(id), canvas=$('game'), ctx=canvas.getContext('2d');
-const effectHud=$('effect'),topTools=document.querySelector('header .tools');
+const effectHud=$('effect'),topTools=document.querySelector?.('header .tools');
 if(effectHud&&topTools)topTools.prepend(effectHud);
 const W=HUNT_MODEL.width,R=HUNT_MODEL.radius,PW=HUNT_MODEL.paddleWidth;
 // Level 7 keeps the same controls as L3/L5 with a faster flight pace.
