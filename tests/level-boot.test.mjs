@@ -54,24 +54,30 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    transitions.queueLevelTransition({targetLevel:n, subtitle:'ANCIEN TEXTE FRANÇAIS', startLabel:'ANCIEN BOUTON FRANÇAIS'});
    const dispose=await bootLegacyLevel(n);
-   if(n===3){
-    const iframe=w.document.getElementById('hirundu-level3-rebound');
-    assert.ok(iframe,'level 3 boots the replacement runtime');
+   if(n===3||n===5){
+    const isL3=n===3;
+    const frameId=isL3?'hirundu-level3-rebound':'hirundu-level5-rebound';
+    const source=isL3?'hirundu-level3':'hirundu-level5';
+    const bonusKey=isL3?'lecce':'capo';
+    const eventName=isL3?'lecce:unlocked':'capo:unlocked';
+    const wonKey=isL3?'level3_won':'level5_won';
+    const iframe=w.document.getElementById(frameId);
+    assert.ok(iframe,`level ${n} boots the rebound runtime`);
     assert.equal(new URL(iframe.src).searchParams.get('lang'),language);
-    const send=(data,source=iframe.contentWindow,origin=w.location.origin)=>w.dispatchEvent(new w.MessageEvent('message',{source,origin,data:{source:'hirundu-level3',...data}}));
+    const send=(data,msgSource=iframe.contentWindow,origin=w.location.origin)=>w.dispatchEvent(new w.MessageEvent('message',{source:msgSource,origin,data:{source,...data}}));
     send({type:'victory',score:1200,leaves:10,elapsed:30},w);
-    assert.equal(w.localStorage.getItem('level3_won'),null,'foreign frame cannot award victory');
+    assert.equal(w.localStorage.getItem(wonKey),null,'foreign frame cannot award victory');
     send({type:'victory',score:1200,leaves:10,elapsed:30},iframe.contentWindow,'https://untrusted.test');
-    assert.equal(w.localStorage.getItem('level3_won'),null,'foreign origin cannot award victory');
+    assert.equal(w.localStorage.getItem(wonKey),null,'foreign origin cannot award victory');
     send({type:'victory',score:1200,leaves:9,elapsed:30});
-    assert.equal(w.localStorage.getItem('level3_won'),null,'incomplete hunt cannot award victory');
+    assert.equal(w.localStorage.getItem(wonKey),null,'incomplete hunt cannot award victory');
     send({type:'victory',score:1200,leaves:10,elapsed:30});
-    assert.equal(w.localStorage.getItem('level3_won'),'true');
-    assert.equal(storage.isBonusUnlocked('lecce'),true);
-    let next=0;const onNext=()=>next++;w.document.addEventListener('lecce:unlocked',onNext);
+    assert.equal(w.localStorage.getItem(wonKey),'true');
+    assert.equal(storage.isBonusUnlocked(bonusKey),true);
+    let next=0;const onNext=()=>next++;w.document.addEventListener(eventName,onNext);
     send({type:'continue'});assert.equal(next,1,'continue uses the existing level route');
-    w.document.removeEventListener('lecce:unlocked',onNext);
-    dispose?.();assert.equal(w.document.getElementById('hirundu-level3-rebound'),null,'unmount removes isolated runtime');
+    w.document.removeEventListener(eventName,onNext);
+    dispose?.();assert.equal(w.document.getElementById(frameId),null,'unmount removes isolated runtime');
     frames.clear();continue;
    }
    assert.ok(!w.document.getElementById('subtitleP').textContent.includes('ANCIEN'), 'saved text cannot override current language');
@@ -94,12 +100,16 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
   for (const n of [1,2,3,4,5,6,7,8,9]) {
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
-   if(n===3){
-    const iframe=w.document.getElementById('hirundu-level3-rebound');
+   if(n===3||n===5){
+    const isL3=n===3;
+    const frameId=isL3?'hirundu-level3-rebound':'hirundu-level5-rebound';
+    const source=isL3?'hirundu-level3':'hirundu-level5';
+    const wonKey=isL3?'level3_won':'level5_won';
+    const iframe=w.document.getElementById(frameId);
     assert.equal(new URL(iframe.src).searchParams.get('test'),'battle');
-    w.localStorage.removeItem('level3_won');
-    w.dispatchEvent(new w.MessageEvent('message',{source:iframe.contentWindow,origin:w.location.origin,data:{source:'hirundu-level3',type:'victory',score:1000,leaves:10,elapsed:10}}));
-    assert.equal(w.localStorage.getItem('level3_won'),null,'direct battle practice does not unlock progression');
+    w.localStorage.removeItem(wonKey);
+    w.dispatchEvent(new w.MessageEvent('message',{source:iframe.contentWindow,origin:w.location.origin,data:{source,type:'victory',score:1000,leaves:10,elapsed:10}}));
+    assert.equal(w.localStorage.getItem(wonKey),null,'direct battle practice does not unlock progression');
     dispose?.();frames.clear();continue;
    }
    assert.ok(w.document.getElementById('__battle_intro__'), 'shortcut opens battle intro for level '+n);
