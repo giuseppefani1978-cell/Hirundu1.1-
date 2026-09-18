@@ -135,15 +135,10 @@ for(const t of S.targets){
   ctx.restore();
 
   ctx.textAlign='center';
-  ctx.textBaseline='alphabetic';
+  ctx.textBaseline='middle';
   ctx.fillStyle='#172f48';
-  ctx.font='27px system-ui';
-  ctx.fillText(p.icon||suit,t.x,t.y-8);
-  ctx.font='700 11px Georgia,serif';
-  wrap(p.name,t.x,t.y+23,t.w-24);
-  ctx.fillStyle='#66717d';
-  ctx.font='600 8.8px system-ui';
-  ctx.fillText(p.town,t.x,t.y+t.h*.37);
+  ctx.font='34px system-ui';
+  ctx.fillText(p.icon||suit,t.x,t.y+1);
 }
 ctx.save();ctx.translate(S.x,S.y+Math.sin(S.clock*3.8)*1.5);ctx.rotate(clamp(S.vx*.00215,-.27,.27));if(S.shield>0){ctx.beginPath();ctx.arc(0,0,32,0,Math.PI*2);ctx.fillStyle='#e8f7ff55';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff4b0';ctx.stroke();}if(S.immune>0)ctx.globalAlpha=.45+.35*Math.sin(S.clock*30);ctx.scale(1+Math.sin(S.clock*16)*.08,1-Math.sin(S.clock*16)*.06);sprite('bird',0,0,68);ctx.restore();}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();},{passive:false});
@@ -158,15 +153,29 @@ $('start').onclick=()=>{if(!loaded)return;if(S.mode==='paused')resume();else if(
 $('again').onclick=start;
 $('pause').onclick=()=>S.mode==='paused'?resume():pause();
 $('lang').onchange=e=>{lang=e.target.value;S.notice='';label();};
-let padDX=0,padDY=0;
+let padDX=0,padDY=0,activePadPointer=null;
+const resetPad=()=>{padDX=0;padDY=0;activePadPointer=null;for(const b of document.querySelectorAll('#microPad button'))b.classList.remove('is-active');};
 for(const btn of document.querySelectorAll('#microPad button')){
-  const activate=e=>{e.preventDefault();padDX=Number(btn.dataset.dx||0);padDY=Number(btn.dataset.dy||0);btn.classList.add('is-active');};
-  const release=e=>{if(e)e.preventDefault();padDX=0;padDY=0;btn.classList.remove('is-active');};
-  btn.addEventListener('pointerdown',activate);
-  btn.addEventListener('pointerup',release);
-  btn.addEventListener('pointercancel',release);
-  btn.addEventListener('lostpointercapture',release);
+  btn.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    if(activePadPointer!==null&&activePadPointer!==e.pointerId) return;
+    activePadPointer=e.pointerId;
+    try{btn.setPointerCapture(e.pointerId);}catch(_){}
+    padDX=Number(btn.dataset.dx||0);
+    padDY=Number(btn.dataset.dy||0);
+    for(const b of document.querySelectorAll('#microPad button'))b.classList.toggle('is-active',b===btn);
+  },{passive:false});
+  const release=e=>{
+    if(e)e.preventDefault();
+    if(activePadPointer===null||!e||activePadPointer===e.pointerId)resetPad();
+  };
+  btn.addEventListener('pointerup',release,{passive:false});
+  btn.addEventListener('pointercancel',release,{passive:false});
+  btn.addEventListener('lostpointercapture',release,{passive:false});
 }
+addEventListener('pointerup',e=>{if(activePadPointer===e.pointerId)resetPad();},{passive:true});
+addEventListener('pointercancel',e=>{if(activePadPointer===e.pointerId)resetPad();},{passive:true});
+addEventListener('blur',resetPad);
 addEventListener('resize',resize);
 Promise.all(['bird','tarantula','crow','jelly','coffee','rustico','coast'].map(name=>new Promise(resolve=>{const im=new Image();images[name]=im;im.onload=()=>resolve(true);im.onerror=()=>resolve(false);im.src=name==='coast'?'coast.webp':'assets/'+name+'.png';}))).then(result=>{loaded=result.every(Boolean);$('start').disabled=!loaded;if(!loaded)$('help').textContent='Chargement incomplet. Actualise la page pour réessayer.';});
 resize();label();$('start').disabled=true;const loading=setInterval(()=>{if(loaded){$('start').disabled=false;clearInterval(loading);}},150);
