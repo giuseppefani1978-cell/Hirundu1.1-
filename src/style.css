@@ -1315,3 +1315,32 @@ body[data-game-phase="hunt"] #hud {
   outline:3px solid rgba(37,99,235,.30);
   outline-offset:2px;
 }
+
+
+/* 2026-09-18 — language belongs to Pause, not to the live playfield. */
+.game-pause__language{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:13px;
+  background:rgba(255,255,255,.09);
+  color:#fff;
+  font:750 14px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+.game-pause__language span{
+  text-align:left;
+}
+.game-pause__language select{
+  min-width:88px;
+  min-height:40px;
+  padding:6px 9px;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:10px;
+  background:#fff;
+  color:#0f172a;
+  font:750 14px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
