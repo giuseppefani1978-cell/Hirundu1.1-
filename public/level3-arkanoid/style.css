@@ -952,3 +952,8 @@ header #effect:empty{display:none}
 @media(max-width:390px){
   header #effect{max-width:42vw;font-size:10px;padding:3px 6px}
 }
+
+
+/* Hunt feedback belongs to Tarantula's dialogue area, never over the map.
+   Battle feedback keeps its dedicated floating bubble. */
+body:not(.battle-active) #message{display:none!important}
