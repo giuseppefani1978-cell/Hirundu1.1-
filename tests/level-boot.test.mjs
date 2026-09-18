@@ -54,13 +54,13 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    transitions.queueLevelTransition({targetLevel:n, subtitle:'ANCIEN TEXTE FRANÇAIS', startLabel:'ANCIEN BOUTON FRANÇAIS'});
    const dispose=await bootLegacyLevel(n);
-   if(n===3||n===5){
-    const isL3=n===3;
-    const frameId=isL3?'hirundu-level3-rebound':'hirundu-level5-rebound';
-    const source=isL3?'hirundu-level3':'hirundu-level5';
-    const bonusKey=isL3?'lecce':'capo';
-    const eventName=isL3?'lecce:unlocked':'capo:unlocked';
-    const wonKey=isL3?'level3_won':'level5_won';
+   if(n===3||n===5||n===7){
+    const rebound={
+      3:{frameId:'hirundu-level3-rebound',source:'hirundu-level3',bonusKey:'lecce',eventName:'lecce:unlocked',wonKey:'level3_won'},
+      5:{frameId:'hirundu-level5-rebound',source:'hirundu-level5',bonusKey:'capo',eventName:'capo:unlocked',wonKey:'level5_won'},
+      7:{frameId:'hirundu-level7-rebound',source:'hirundu-level7',bonusKey:'nardo',eventName:'nardo:unlocked',wonKey:'level7_won'},
+    }[n];
+    const {frameId,source,bonusKey,eventName,wonKey}=rebound;
     const iframe=w.document.getElementById(frameId);
     assert.ok(iframe,`level ${n} boots the rebound runtime`);
     assert.equal(new URL(iframe.src).searchParams.get('lang'),language);
@@ -100,11 +100,13 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
   for (const n of [1,2,3,4,5,6,7,8,9]) {
    w.document.body.innerHTML=renderToStaticMarkup(React.createElement(Shell,{level:n}));
    const dispose = await bootLegacyLevel(n, undefined, {testBattle:true});
-   if(n===3||n===5){
-    const isL3=n===3;
-    const frameId=isL3?'hirundu-level3-rebound':'hirundu-level5-rebound';
-    const source=isL3?'hirundu-level3':'hirundu-level5';
-    const wonKey=isL3?'level3_won':'level5_won';
+   if(n===3||n===5||n===7){
+    const rebound={
+      3:{frameId:'hirundu-level3-rebound',source:'hirundu-level3',wonKey:'level3_won'},
+      5:{frameId:'hirundu-level5-rebound',source:'hirundu-level5',wonKey:'level5_won'},
+      7:{frameId:'hirundu-level7-rebound',source:'hirundu-level7',wonKey:'level7_won'},
+    }[n];
+    const {frameId,source,wonKey}=rebound;
     const iframe=w.document.getElementById(frameId);
     assert.equal(new URL(iframe.src).searchParams.get('test'),'battle');
     w.localStorage.removeItem(wonKey);
