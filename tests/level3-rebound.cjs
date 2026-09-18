@@ -13,6 +13,9 @@ run('pause()');const y=run('state.ball.y');run('step(1)');assert.equal(run('stat
 run('state.ball={x:300,y:PY-R-1,vx:0,vy:450};state.paddle=300;step(.01)');assert.ok(run('state.ball.vy')<0,'paddle bounce');
 run('state.ball={x:20,y:H+R+1,vx:0,vy:450};step(.01)');assert.equal(run('state.mode'),'ready','miss is recoverable');assert.equal(run('state.misses'),1);
 run('launch();hitTarget(state.targets.find(t=>t.id!==active()))');assert.equal(run('state.found.length'),0);assert.equal(run('state.hinted'),true);
+assert.ok(element('question').textContent.includes(element('question').textContent.split(' ')[0]),'wrong-target feedback is shown in Tarantula bubble');
+assert.ok(run('state.speech')>0,'Tarantula feedback has a short speech timer');
+const wrongBubble=element('question').textContent;run('step(2.3)');assert.notEqual(element('question').textContent,wrongBubble,'original question returns after Tarantula feedback');
 for(let round=0;round<10;round++){
  assert.equal(run('state.round'),round);assert.equal(run('new Set(state.targets.map(t=>t.id)).size'),3);
  assert.equal(run('state.targets.filter(t=>t.id===active()).length'),1);
@@ -78,6 +81,7 @@ run('collectBonus({kind:"pasticciotto",x:1,y:1});collectBonus({kind:"rustico",x:
 assert.equal(run('state.energy'),90);
 assert.ok(Math.abs(run('Math.hypot(state.ball.vx,state.ball.vy)')-238)<.001,'pasticciotto slows base flight 20 percent');
 assert.ok(element('effect').textContent.includes('◉')&&element('effect').textContent.includes('◷'),'both powers visible');
+assert.ok(fs.readFileSync('public/level3-arkanoid/style.css','utf8').includes('header #effect'),'power timers are styled in the top HUD, not over the playfield');
 const frozen=run('[state.focus,state.shield].join()');run('pause();step(10)');assert.equal(run('[state.focus,state.shield].join()'),frozen);run('resume()');
 run('state.enemies=[];state.bonuses=[];state.spawnIn=100;state.enemyIn=100;huntExtras(8.1);step(1/240)');
 assert.equal(run('state.shield'),0);assert.equal(run('state.focus'),0);
