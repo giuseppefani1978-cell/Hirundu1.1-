@@ -1,6 +1,8 @@
 'use strict';
 // Standalone alternative hunt for L3. Original assets, places and clues from HIRUNDU.
 const $=id=>document.getElementById(id), canvas=$('game'), ctx=canvas.getContext('2d');
+const effectHud=$('effect'),topTools=document.querySelector('header .tools');
+if(effectHud&&topTools)topTools.prepend(effectHud);
 const W=HUNT_MODEL.width,R=HUNT_MODEL.radius,PW=HUNT_MODEL.paddleWidth;
 // Level 5 uses the former Slow setting. Higher speeds belong to later levels.
 const BIRD_SPEED=HUNT_MODEL.birdSpeed;
@@ -24,12 +26,16 @@ const pauseMusicLabels={
 };
 let hostMusicEnabled=true;
 function updatePauseMusicLabel(){const labels=pauseMusicLabels[lang]||pauseMusicLabels.en;$('pauseMusic').textContent=hostMusicEnabled?labels.on:labels.off;}
-const state={mode:'intro',previous:'ready',round:0,score:0,misses:0,wrong:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0,paddle:300,paddleTarget:300,paddleV:0,ball:{x:300,y:PY-R-12,vx:0,vy:0},targets:[],bricks:[],particles:[],trail:[],cooldown:0,transition:0,elapsed:0,message:0,hinted:false,found:[],assetsReady:false};
+const state={mode:'intro',previous:'ready',round:0,score:0,misses:0,wrong:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0,paddle:300,paddleTarget:300,paddleV:0,ball:{x:300,y:PY-R-12,vx:0,vy:0},targets:[],bricks:[],particles:[],trail:[],cooldown:0,transition:0,elapsed:0,message:0,speech:0,hinted:false,found:[],assetsReady:false};
 const keys=new Set(), images={};let last=0,accumulator=0,scale=1,ox=0,oy=0;
 function text(){return ui[lang]}function place(id){return POI_TEXT[lang][id]}function active(){return ids[state.round]}
 function notice(value,duration=2){$('message').textContent=value;state.message=duration;$('message').classList.add('visible')}
+function tarantulaSay(value,duration=2.2){
+ state.speech=duration;state.message=0;$('message').classList.remove('visible');
+ $('speaker').textContent=text().speaker;$('question').textContent=value;
+}
 function rect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
-function question(){if(['battle','battleIntro','battleLost'].includes(state.mode)||(state.mode==='paused'&&state.previous==='battle'))return; $('question').textContent=text().ask+' '+place(ids[Math.min(9,state.round)]).info+' ?';$('round').textContent=Math.min(10,state.round+1)+'/10'; }
+function question(){if(['battle','battleIntro','battleLost'].includes(state.mode)||(state.mode==='paused'&&state.previous==='battle'))return;state.speech=0;$('speaker').textContent=text().speaker;$('question').textContent=text().ask+' '+place(ids[Math.min(9,state.round)]).info+' ?';$('round').textContent=Math.min(10,state.round+1)+'/10'; }
 function hud(){ $('leaves').textContent=state.found.length;$('score').textContent=state.score;$('energy').textContent=Math.round(state.energy);for(const kind of ['coffee','rustico','pasticciotto'])$(kind+'Count').textContent=state.food[kind]; }
 function translated(){const t=text();document.documentElement.lang=lang;$('language').value=lang;$('pauseLanguageLabel').textContent=languageLabels[lang]||'Language';updatePauseMusicLabel();for(const [id,key] of [['subtitle','subtitle'],['speaker','speaker'],['hint','hint'],['tip','tip'],['cardTag','tag'],['restart','restart']])$(id).textContent=t[key];$('launch').textContent=state.mode==='flying'?t.recall:t.launch;$('launch').title=t.recallTip;question();extraLabels();updatePowerHUD();if(state.mode==='intro')showIntro();else if(state.mode==='paused')showPause();else if(state.mode==='won')showWin();else if(state.mode==='battleIntro')battleIntro();else if(state.mode==='battleLost')Battle.lose();}
 function cover(title,description,help,label){const intro=state.mode==='battleIntro',paused=state.mode==='paused';document.body.classList.toggle('battle-intro',intro);document.body.classList.toggle('pause-active',paused);$('battlePreview').hidden=!intro;$('battleSupplies').hidden=!intro;$('orientationPrompt').hidden=!intro;$('pauseLanguage').hidden=!paused;$('pauseScore').hidden=!paused;if(paused)$('pauseScore').textContent=(text().score.charAt(0).toUpperCase()+text().score.slice(1))+' · '+state.score;$('play').disabled=!state.assetsReady;$('cover').classList.remove('hidden');$('cardTitle').textContent=title;$('cardText').textContent=description;$('cardHelp').textContent=help;$('play').textContent=label;$('restart').hidden=!paused;$('pauseMusic').hidden=!paused;$('continueLevel').hidden=state.mode!=='won'||trainingBattle;$('discoveries').hidden=!(paused||state.mode==='won')||trainingBattle;$('exitLevel').hidden=state.mode!=='won';$('installApp').hidden=!paused||!hostInstallAvailable;}
@@ -64,14 +70,14 @@ function roundSetup(){
 function wallY(row){return row===2?H*.50:H*.58+row*31}
 function makeWalls(){state.bricks=Array.from({length:24},(_,i)=>{const row=Math.floor(i/8);return{x:(i%8)*75,y:wallY(row),w:75,h:30,alive:true}});}
 function serve(){state.mode='ready';state.ball={x:state.paddle,y:PY-R-12,vx:0,vy:0};state.trail=[];$('launch').textContent=text().launch;}
-function start(){if(!state.assetsReady)return;touchPointer=null;last=0;accumulator=0;Battle.completed=false;document.body.classList.remove('battle-active','battle-intro','pause-active');$('battleHUD').hidden=true;keys.clear();Object.assign(state,{round:0,score:0,misses:0,wrong:0,paddle:300,paddleTarget:300,paddleV:0,found:[],particles:[],elapsed:0,transition:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0});makeWalls();$('cover').classList.add('hidden');roundSetup();translated();hud();updatePowerHUD();resize();notice(text().ready,3);canvas.focus({preventScroll:true});}
+function start(){if(!state.assetsReady)return;touchPointer=null;last=0;accumulator=0;Battle.completed=false;document.body.classList.remove('battle-active','battle-intro','pause-active');$('battleHUD').hidden=true;keys.clear();Object.assign(state,{round:0,score:0,misses:0,wrong:0,paddle:300,paddleTarget:300,paddleV:0,found:[],particles:[],elapsed:0,transition:0,energy:100,food:{coffee:0,rustico:0,pasticciotto:0},bonuses:[],enemies:[],spawnIn:HUNT_MODEL.bonus.initial,enemyIn:HUNT_MODEL.enemy.initial,focus:0,shield:0,recharge:0,invulnerable:0,speech:0});makeWalls();$('cover').classList.add('hidden');roundSetup();translated();hud();updatePowerHUD();resize();notice(text().ready,3);canvas.focus({preventScroll:true});}
 function launch(){if(state.mode!=='ready')return;state.mode='flying';const speed=BIRD_SPEED*(state.focus>0?.8:1);state.ball.vx=speed*.2;state.ball.vy=-Math.sqrt(speed*speed-state.ball.vx**2);$('launch').textContent=text().recall;state.message=0;$('message').classList.remove('visible');}
 function launchOrRecall(){canvas.focus({preventScroll:true});if(state.mode==='ready')launch();else if(state.mode==='flying'){serve();notice(text().ready,2)}}
 function pause(){touchPointer=null;if(!['ready','flying','transition','battle'].includes(state.mode))return;state.previous=state.mode;state.mode='paused';keys.clear();showPause();}
 function resume(){if(state.previous==='battle'&&!battleOrientationReady()){syncBattleOrientation();return}accumulator=0;state.mode=state.previous;document.body.classList.remove('pause-active');$('cover').classList.add('hidden');last=0;canvas.focus({preventScroll:true});}
 function burst(x,y,color){for(let i=0;i<18;i++){const angle=Math.random()*Math.PI*2,s=60+Math.random()*170;state.particles.push({x,y,vx:Math.cos(angle)*s,vy:Math.sin(angle)*s,life:.65,color})}}
 function hitTarget(target){if(state.cooldown>0)return;state.cooldown=.55;target.flash=.5;
- if(target.id!==active()){state.wrong++;state.hinted=true;notice(text().wrong+' '+text().hintText+' '+place(active()).name,2.4);burst(state.ball.x,state.ball.y,'#db7358');return}
+ if(target.id!==active()){state.wrong++;state.hinted=true;tarantulaSay(text().wrong+' '+text().hintText+' '+place(active()).name,2.2);burst(state.ball.x,state.ball.y,'#db7358');return}
  state.found.push(target.id);state.score+=100;burst(state.ball.x,state.ball.y,'#fff4a0');notice('💧 '+place(target.id).name+' · '+text().found,1.5);hud();state.mode='transition';state.transition=1.5;
 }
 function finish(){state.mode='won';sendHost('victory',{score:state.score,leaves:state.found.length,elapsed:state.elapsed,misses:state.misses,food:{...state.food}});state.message=0;$('message').classList.remove('visible');try{if(!trainingBattle)localStorage.setItem('hirundu_l5_seal','capo');if(!trainingBattle)localStorage.setItem('hirundu_arcade_l5_best',String(Math.max(state.score,Number(localStorage.getItem('hirundu_arcade_l5_best'))||0)))}catch{}showWin()}
@@ -82,6 +88,7 @@ function step(dt){
  if(['intro','paused','won','battleIntro','battleLost'].includes(state.mode))return;
  if(state.mode==='battle'){Battle.tick(dt);return;}
  state.elapsed+=dt;state.cooldown=Math.max(0,state.cooldown-dt);state.message=Math.max(0,state.message-dt);if(!state.message)$('message').classList.remove('visible');
+ const hadSpeech=state.speech>0;state.speech=Math.max(0,state.speech-dt);if(hadSpeech&&state.speech===0)question();
  state.targets.forEach(t=>t.flash=Math.max(0,t.flash-dt));state.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt});state.particles=state.particles.filter(p=>p.life>0);
  if(keys.has('ArrowLeft')||keys.has('a'))state.paddleTarget-=760*dt;if(keys.has('ArrowRight')||keys.has('d'))state.paddleTarget+=760*dt;state.paddleTarget=Math.max(PW/2+8,Math.min(W-PW/2-8,state.paddleTarget));const paddleDelta=state.paddleTarget-state.paddle;const movement=paddleDelta*(-Math.expm1(-HUNT_MODEL.paddleResponse*dt));state.paddleV=movement/dt;state.paddle+=movement;state.paddle=Math.max(PW/2+8,Math.min(W-PW/2-8,state.paddle));
  const b=state.ball;
