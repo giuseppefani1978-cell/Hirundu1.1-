@@ -9,7 +9,7 @@ import {
   resetBonusProgress,
 } from '../features/bonus/bonusStorage';
 import { readDurableProgress } from '../progressStorage.js';
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./StartPage.css";
 
@@ -31,13 +31,11 @@ export default function StartPage() {
     };
   }, []);
 
-  const progress = useMemo(() => getProgressList(), [revision]);
-  const resumeTarget = useMemo(() => getResumeTarget(), [revision]);
-  const durable = useMemo(() => readDurableProgress(), [revision]);
-  const unlockedLevels = useMemo(
-    () => progress.filter((entry) => entry.unlocked || entry.done),
-    [progress],
-  );
+  void revision;
+  const progress = getProgressList();
+  const resumeTarget = getResumeTarget();
+  const durable = readDurableProgress();
+  const unlockedLevels = progress.filter((entry) => entry.unlocked || entry.done);
   const allDone = progress.every((entry) => entry.done);
   const hasProgress =
     progress.some((entry) => entry.done) ||
