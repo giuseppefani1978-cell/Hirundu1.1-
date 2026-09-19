@@ -1,3 +1,6 @@
+import { bootReboundLevel3 } from './reboundLevel3.js';
+import { copy } from '../../ui/copy.js';
+import { createLevelSession, setupHuntControls, drawAnimatedBird } from '../../legacy/levelSession.js';
 // =====================================================
 // NIVEAU 3 — SALENTO NORD / LECCE (structure identique au N2)
 // Objectif : Collecter 10 FEUILLES D’OLIVIER -> Boss "Esprit de pierre" à Lecce
@@ -8,7 +11,7 @@ import { t, poiName, poiInfo } from '../../i18n.js';
 import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from '../../audio.js';
 import * as ui from '../../ui.js';
@@ -16,6 +19,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro } from '../../level_transition.js';
+import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
@@ -42,16 +46,22 @@ const ASSETS = {
   BONUS_CAFFE:        asset('assets/caffeleccese .PNG'),     // PATCH
 };
 
-// UI carte
-const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
+// UI carte — cadrage commun aux chasses : presque plein écran, jamais rogné à droite/gauche.
+const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.04, MAP_SIDE_MARGIN: 12 };
+
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
-  const availW = canvasW;
-  const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
+  const side = Math.min(UI_CONST.MAP_SIDE_MARGIN, canvasW * 0.035);
+  const availW = Math.max(1, canvasW - side * 2);
+  const top = Math.min(UI_CONST.TOP, canvasH * 0.2);
+  const bottom = Math.min(UI_CONST.BOTTOM, canvasH * 0.25);
+  const availH = Math.max(1, canvasH - bottom - top);
   const baseScale = Math.min(availW / mapW, availH / mapH);
-  const scale = baseScale * UI_CONST.MAP_ZOOM;
+  // Un très léger zoom garde l'effet immersif, mais le cap horizontal empêche
+  // la côte est / le bord droit du Salento de sortir de l'écran.
+  const scale = Math.min(baseScale * UI_CONST.MAP_ZOOM, availW / mapW);
   const dw = mapW * scale, dh = mapH * scale;
   const ox = (canvasW - dw) / 2;
-  const oy = UI_CONST.TOP + (availH - dh) / 2;
+  const oy = top + (availH - dh) / 2;
   return { ox, oy, dw, dh, scale };
 }
 
@@ -116,10 +126,32 @@ function getCountry(){
 // =====================================================
 // BOOT (structure identique L2)
 // =====================================================
-export function boot(){
+export function boot(options = {}){
+  if (!options.region) return bootReboundLevel3(options);
+  // Optional regional content reuses the established hunt and battle shell.
+  const regional = options.region;
+  const levelId = regional?.id || (regional ? 4 : 3);
+  const collectibleIcon = regional?.token || '🐚';
+  const places = regional?.pois || POIS;
+  const inventoryLabel = regional?.inventoryLabel || INVENTORY_LABEL;
+  const placeName = key => regional ? places.find(p => p.key === key)?.name || key : poiName(key);
+  const question = key => regional ? places.find(p => p.key === key)?.clue || '' : t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`;
+  const renderInventory = (n,total) => {
+    ui.renderStars(n,total);
+    if(regional) document.querySelectorAll('#stars .star').forEach((node,i)=>{
+      const shell=document.createElement('span');shell.textContent=collectibleIcon;shell.style.cssText=`display:block;font-size:20px;opacity:${i<n?1:.25}`;
+      node.replaceWith(shell);
+    });
+  };
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: levelId });
+  let cleanupIntro = null;
+  let cleanupBattle = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
 
   // UI init
   ui.initUI();
@@ -128,13 +160,14 @@ export function boot(){
 
   // Titres L3 + HUD "Feuilles"
   const hudLabel = document.getElementById('hudLabel');
-  if (hudLabel) hudLabel.textContent = INVENTORY_LABEL;
+  if (hudLabel) hudLabel.textContent = inventoryLabel;
 
   ui.updateScore(0, LEAVES_TARGET);
-  ui.renderStars(0, LEAVES_TARGET);
+  renderInventory(0, LEAVES_TARGET);
   ui.updateEnergy(100);
-  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live (comme L2)
@@ -182,21 +215,25 @@ export function boot(){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 3,
-    theme: 'lecce',
-    badge: 'Niveau 3',
-    title: t.level3?.title || 'Salento Nord — Lecce',
-    subtitle: t.level3?.subtitle || 'Collecte les 10 feuilles et découvre le nord du Salento.',
-    description:
-      'Récolte les feuilles salentines pour compléter ton passeport et accéder au BONUS.',
-    footnote: 'Victoire = BONUS débloqué',
-    startLabel: '▶︎ Lancer le niveau 3',
-    highlight: {
-      title: 'Briefing',
-      body: 'Le défi final commence ici : surveille ton énergie et ton score.',
-    },
+    level: levelId, theme: 'lecce', badge: `${copy.level} ${levelId}`,
+    title: regional?.title || t.level3.title, subtitle: regional?.subtitle || t.level3.subtitle, description: regional?.mission || copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: regional?.mission || copy.mission },
     accentColor: '#38bdf8',
   });
+
+  // V9.1: warm the battle chunk + heavy regional background while the player hunts.
+  // The promise is deliberately fire-and-forget; gameplay must never wait for preloading.
+  if (regional) {
+    setTimeout(() => {
+      void import('../../game_battle.js')
+        .then((mod) => mod.preloadBattleAssets?.({
+          bossSprite: regional.bossSprite,
+          backdrop: regional.backdrop,
+        }))
+        .catch(() => undefined);
+    }, 0);
+  }
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -223,11 +260,11 @@ export function boot(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
-  window.addEventListener('resize', resize, { passive:true });
+  session.listen(window, 'resize', resize, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
+  session.listen(window, 'orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
@@ -238,7 +275,7 @@ export function boot(){
   let running = false;
   let lastTS = 0;
   let collected = new Set();
-  let QUEST = shuffle(POIS);
+  let QUEST = shuffle(places);
   let currentIdx = 0;
 
   // timers/questions
@@ -246,7 +283,7 @@ export function boot(){
   function askQuestionAt(idx){
     if (idx >= 0 && idx < QUEST.length) {
       const key = QUEST[idx].key;
-      ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
+      ui.showAsk(question(key));
     }
   }
   function queueNextAsk(delayMs = 1200){
@@ -295,14 +332,13 @@ export function boot(){
   const winFx = { t:0, fw:[], fwTimer:0 };
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(player, () => getSpeed(), () => mode === 'play');
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play' && !isGamePaused(), session);
 
   // Start button
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (startBtn) session.listen(startBtn, 'click', startGame);
 
-  // Première question
-  askQuestionAt(0);
+  // First clue is shown by resetGame() only after the player starts the hunt.
 
   // helpers
   function setEnergy(p){
@@ -355,7 +391,8 @@ export function boot(){
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
 
     const entry = {
-      name: playerName || 'Joueur',
+      name: playerName || copy.player,
+      playerId: ui.getOrCreatePlayerId?.() || undefined,
       country,
       score: total,
       stars: leavesPicked,            // on conserve 'stars' pour le tableau mais c'est des feuilles
@@ -367,9 +404,9 @@ export function boot(){
       bonusScore,
       bonusBreakdown: { ...pickedCounts }
     };
-    addHallOfFameEntry(entry, HOF_KEY);
+    addHallOfFameEntry(entry, regional ? `salento_hof_v${levelId}` : HOF_KEY);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Feuilles: +${leavesPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -378,6 +415,7 @@ export function boot(){
       ``,
       `👉 Consulte le Hall of Fame depuis la page Bonus.`
     ];
+    if(regional) baseLines.splice(0,baseLines.length,title,`${copy.points}: ${total}`,`${inventoryLabel}: ${leavesPicked}/10`,`${copy.hits}: ${hits}`,`${copy.time}: ${fmtTime(entry.time)}`);
     ui.showSuccess(baseLines.join('\n'));
     ui.showReplay(true);
 
@@ -390,7 +428,8 @@ export function boot(){
 
   // ---------- Game loop ----------
   function draw(ts){
-    if(!running) return;
+    if(!running || !session.active) return;
+    if (document.hidden || isGamePaused()) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
@@ -398,6 +437,7 @@ export function boot(){
       lastTS = ts;
 
       if (mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
@@ -408,7 +448,7 @@ export function boot(){
 
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
-    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh);
+    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh, Boolean(regional));
 
     const ctx2 = canvas.getContext('2d');
     ctx2.clearRect(0,0,W,H);
@@ -424,10 +464,22 @@ export function boot(){
     }
 
     // POIs
-    for (const p of POIS){
+    for (const p of places){
       const x = ox + p.x*dw, y = oy + p.y*dh;
+      ctx2.save();
       if (collected.has(p.key)){
-        drawLeaf(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
+        if(regional){
+          ctx2.font='24px system-ui';ctx2.textAlign='center';ctx2.fillText(collectibleIcon,x,y);
+          ctx2.font='bold 11px system-ui';ctx2.lineWidth=3;ctx2.strokeStyle='#fff6d9';ctx2.fillStyle='#142d45';
+          const lines=[];let line='';
+          for(const word of p.name.split(' ')){
+            const next=line ? `${line} ${word}` : word;
+            if(line && ctx2.measureText(next).width>105){lines.push(line);line=word;}else line=next;
+          }
+          if(line)lines.push(line);
+          lines.forEach((label,i)=>{ctx2.strokeText(label,x,y+15+i*12);ctx2.fillText(label,x,y+15+i*12);});
+        }
+        else drawLeaf(ctx2, x, y-20, Math.max(14, Math.min(22, Math.min(W, H)*0.028)));
       } else {
         ctx2.save();
         ctx2.strokeStyle = '#0a7a3c'; ctx2.lineWidth = 2;
@@ -437,6 +489,7 @@ export function boot(){
         ctx2.stroke();
         ctx2.restore();
       }
+      ctx2.restore();
     }
 
     // joueur + collisions + ennemis/bonus (mode play)
@@ -463,12 +516,7 @@ export function boot(){
     }
 
     if (mode === 'play') {
-      if (birdImg.complete && birdImg.naturalWidth){
-        ctx2.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      } else {
-        ctx2.fillStyle = '#333';
-        ctx2.beginPath(); ctx2.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx2.fill();
-      }
+      drawAnimatedBird(ctx2, birdImg, bx, by, bw, player, performance.now(), sx, sy);
     }
 
     // progression
@@ -477,18 +525,18 @@ export function boot(){
       if (now >= collectLockUntil){
         const p = QUEST[currentIdx];
         const px = ox + p.x*dw, py = oy + p.y*dh;
-        const onTarget = Math.hypot(bx - px, by - py) < 44;
+        const onTarget = Math.hypot(bx - px, by - py) < (regional ? 22 : 44);
         if (onTarget){
           collectLockUntil = now + 900;
           collected.add(p.key);
           ui.updateScore(collected.size, LEAVES_TARGET);
-          ui.renderStars(collected.size, LEAVES_TARGET);
+          renderInventory(collected.size, LEAVES_TARGET);
           starEmphasis();
-          ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
+          ui.showEphemeralLabel(px, py - 28, placeName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
 
           score += SCORE.STAR; leavesPicked++; updateScoreLive();
 
-          const nameShort = poiName(p.key);
+          const nameShort = placeName(p.key);
           ui.showSuccess(t.success?.(nameShort) || `Bravo : ${nameShort} !`);
 
           currentIdx++;
@@ -510,6 +558,7 @@ export function boot(){
 
   // ---------- Battle flow ----------
   function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'battle_intro';
     ui.showTouch(false);
 
@@ -520,17 +569,23 @@ export function boot(){
       const bdTitle = document.getElementById('bdTitle');
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
-        bdTitle.textContent = 'Lecce — Esprit de pierre';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdTitle.textContent = `${copy.battle} · ${regional?.bossName || 'Lecce'}`;
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
     } catch {}
 
-    startBattleIntro({
-      title: '⚔️ Bataille de Lecce',
-      subtitle: "Aracne vs. Esprit baroque (golem)\n(les commandes apparaîtront en mode paysage)",
-      startLabel: 'Commencer',
+    cleanupIntro = startBattleIntro({
+      level: levelId,
+      boss: regional?.bossName || 'Lecce',
+      bossSprite: regional?.bossSprite || withBase('assets/sputacchina_boss.png'),
+      backdrop: regional?.backdrop || withBase('assets/battle_bg_lecce.webp'),
+      title: `⚔️ ${copy.battle} · ${regional?.bossName || 'Lecce'}`,
+      collectibleLabel: regional ? inventoryLabel : undefined,
+      collectibleIcon: regional ? collectibleIcon : undefined,
+      subtitle: copy.battleHint,
+      startLabel: copy.fight,
       ammo: {
         pasticciotto: pickedCounts.pasticciotto|0,
         rustico:      pickedCounts.rustico|0,
@@ -538,6 +593,7 @@ export function boot(){
         stars:        leavesPicked|0
       },
       onProceed: async () => {
+    if (!session.active) return;
   try {
     running = false;
     mode = 'battle';
@@ -547,7 +603,9 @@ export function boot(){
     const mods = import.meta.glob('./game_battle_lecce.js');
 
     let mod;
-    if (mods['./game_battle_lecce.js']) {
+    if (regional) {
+      mod = await import('../../game_battle.js');
+    } else if (mods['./game_battle_lecce.js']) {
       mod = await mods['./game_battle_lecce.js'](); // ← Vite réécrit l’URL vers le chunk émis
     } else {
       // ✅ 2) Fallback robuste vers le moteur commun
@@ -556,7 +614,9 @@ export function boot(){
     }
 
     const { startBattleL3, startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
 
+    if (!session.active) return;
     if (typeof startBattleL3 === 'function') {
       await startBattleL3('golem', {
         ammo: {
@@ -566,6 +626,7 @@ export function boot(){
           stars:        leavesPicked|0
         },
         onWin: () => {
+          if (!session.active) return;
           document.body.classList.remove('mode-battle');
           mode = 'win';
           running = true;
@@ -573,12 +634,14 @@ export function boot(){
           triggerWin();
         },
         onLose: () => {
+          if (!session.active) return;
           document.body.classList.remove('mode-battle');
           triggerGameOver();
         }
       });
     } else if (typeof startBattleFlow === 'function') {
-      await startBattleFlow(
+      if (!session.active) return;
+    await startBattleFlow(
         {
           pasticciotto: pickedCounts.pasticciotto | 0,
           rustico:      pickedCounts.rustico | 0,
@@ -589,7 +652,11 @@ export function boot(){
         },
         {
           bottomExtra: 0,
+          bossSprite: regional?.bossSprite,
+          backdrop: regional?.backdrop,
+          foeType: regional ? regional.foeType || 'nacra' : 'jelly',
           onWin: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'win';
             running = true;
@@ -597,6 +664,7 @@ export function boot(){
             triggerWin();
           },
           onLose: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             triggerGameOver();
           },
@@ -722,6 +790,7 @@ export function boot(){
 
   // ---------- modes ----------
   function triggerWin() {
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'win';
     finalizeRun({ won: true });
     stopMusic();
@@ -729,14 +798,16 @@ export function boot(){
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
 
     try {
-      unlockLecceBonus();
-      ui.showCTA((t.level3?.open_bonus || 'Scanner le QR bonus à Lecce'), () => {
-        openBonusMap('lecce');
-      });
+      if(regional){
+        try { localStorage.setItem(`region${levelId}_hunt`,'10'); } catch {}
+        document.dispatchEvent(new Event(`${regional.key || 'adriatico'}:unlocked`));
+      } else unlockLecceBonus();
+
     } catch {}
   }
 
   function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'dead';
     running = false;
     finalizeRun({won:false});
@@ -745,10 +816,12 @@ export function boot(){
   // ---------- controls ----------
   function startGame() {
     try {
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: levelId });
       document.body.classList.remove('mode-battle');
+      playerName = ui.readPlayerName() || copy.player;
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
       gameStartAt = performance.now();
@@ -762,7 +835,7 @@ export function boot(){
   }
   function resetGame(){
     collected = new Set();
-    QUEST = shuffle(POIS);
+    QUEST = shuffle(places);
     currentIdx = 0;
 
     scoreReset();
@@ -776,7 +849,7 @@ export function boot(){
     playerSlowTimer = 0; hitShake = 0;
 
     ui.updateScore(0, LEAVES_TARGET);
-    ui.renderStars(0, LEAVES_TARGET);
+    renderInventory(0, LEAVES_TARGET);
     resetAudioForNewGame();
 
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
@@ -799,7 +872,7 @@ export function boot(){
       } catch {}
     }
   };
-  window.addEventListener('hashchange', handleHash);
+  session.listen(window, 'hashchange', handleHash);
   handleHash();
 
   // helpers UI
@@ -860,25 +933,21 @@ export function boot(){
     return false;
   }
 
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!hasLecceBonusUnlocked()) return;
-    let link = document.getElementById('__lecce_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__lecce_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      link.addEventListener('click', () => openBonusMap('lecce'));
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
+  return () => {
+    running = false;
+    session.dispose();
+    document.getElementById("__score_live")?.remove();
+    cleanupIntro?.();
+    cleanupBattle?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+    clearGameFlow();
+  };
 }
 
 // ------------------------
@@ -1037,25 +1106,3 @@ function shuffle(arr){
 /**
  * D-pad tactile/souris. Ne bouge que si canMove() === true
  */
-function setupDpad(player, getSpeed, canMove){
-  document.querySelectorAll('.btn').forEach((el) => {
-    const dx = parseFloat(el.dataset.dx);
-    const dy = parseFloat(el.dataset.dy);
-    if (isNaN(dx) || isNaN(dy)) return;
-    let press = false, rafId = null;
-
-    const step = () => {
-      if (!press) return;
-      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
-      const s = getSpeed();
-      player.x = Math.max(0, Math.min(1, player.x + dx * s));
-      player.y = Math.max(0, Math.min(1, player.y + dy * s));
-      rafId = requestAnimationFrame(step);
-    };
-
-    el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
-    el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
-  });
-}

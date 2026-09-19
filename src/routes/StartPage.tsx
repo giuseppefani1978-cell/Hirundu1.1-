@@ -1,19 +1,25 @@
+import TestShortcuts from '../ui/TestShortcuts';
+import LanguageSelect from '../ui/LanguageSelect';
+import { copy } from '../ui/copy.js';
+import { t } from '../i18n.js';
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./StartPage.css";
 
 export default function StartPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const debug = new URLSearchParams(location.search).has("debug");
 
   return (
     <div className="start-page">
       <div className="start-page__hero">
         <div className="start-page__content">
-          <p className="start-page__eyebrow">Le Vol d’Aracne</p>
-          <h1 className="start-page__title">Prêt·e pour la chasse&nbsp;?</h1>
+          <p>HIRUNDU · v9 · TEST</p>
+          <LanguageSelect /><p className="start-page__eyebrow">{t.title}</p>
+          <h1 className="start-page__title">{copy.ready}</h1>
           <p className="start-page__lead">
-            Traverse Otranto, Gallipoli et Lecce, collecte les artefacts et triomphe des batailles
-            pour débloquer les cartes bonus. Le scanner QR reste disponible à chaque étape.
+            {copy.lead}
           </p>
           <div className="start-page__actions">
             <button
@@ -21,16 +27,17 @@ export default function StartPage() {
               className="app-button app-button--dark start-page__cta"
               onClick={() => navigate("/level/1")}
             >
-              ▶︎ Lancer la chasse N°1
+              ▶︎ {copy.start} · 1
             </button>
             <button
               type="button"
               className="app-button app-button--ghost"
               onClick={() => navigate("/bonus/otranto", { state: { fromIntro: true } })}
             >
-              🎁 Voir les bonus
+              🎁 {copy.bonus}
             </button>
           </div>
+          {debug ? <TestShortcuts /> : null}
         </div>
       </div>
       {/* PATCH : suppression du Hall of Fame sur la page d’accueil.

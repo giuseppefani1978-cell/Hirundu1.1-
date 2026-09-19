@@ -15,18 +15,6 @@ async function handleServiceWorker() {
     return;
   }
 
-  const isProd = Boolean(import.meta?.env?.PROD);
-  if (isProd) {
-    try {
-      const base = import.meta?.env?.BASE_URL ?? new URL(".", document.baseURI).pathname;
-      const swUrl = `${base.replace(/\/?$/, "/")}sw.js`;
-      await navigator.serviceWorker.register(swUrl);
-    } catch (error) {
-      console.warn("Service worker registration failed", error);
-    }
-    return;
-  }
-
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map((registration) => registration.unregister()));
@@ -77,15 +65,18 @@ function ensureBattleTheme() {
   }
 }
 
-export function initLegacyChrome(): ChromeCleanup {
-  setHostBadge();
+export function initLegacyChrome({ debug = false }: { debug?: boolean } = {}): ChromeCleanup {
   ensureBattleTheme();
-  // eslint-disable-next-line no-console
-  console.info("[legacy] chrome initialized", import.meta.env.MODE);
-  handleServiceWorker();
 
   const cleanupFns: ChromeCleanup[] = [];
-  cleanupFns.push(setupForceRefresh());
+  if (debug) {
+    setHostBadge();
+    // Dev-only: cache/service-worker reset is intentionally disabled during normal play.
+    void handleServiceWorker();
+    cleanupFns.push(setupForceRefresh());
+    // eslint-disable-next-line no-console
+    console.info("[legacy] debug chrome initialized", import.meta.env.MODE);
+  }
 
   return () => {
     cleanupFns.forEach((fn) => {

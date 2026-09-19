@@ -3,7 +3,7 @@
   "short_name": "Aracne",
   "start_url": "./index.html",
   "display": "standalone",
-  "scope": "/Hirundu1.1-/",
+  "scope": "./",
   "background_color": "#a9d6f5",
   "theme_color": "#a9d6f5",
   "orientation": "portrait",

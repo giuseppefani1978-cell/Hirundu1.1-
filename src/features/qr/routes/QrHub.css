@@ -181,3 +181,8 @@
     width: 100%;
   }
 }
+
+@media(max-width:640px) {
+ .qr-hub__header-copy, .qr-hub__actions .app-button { flex-basis:auto; }
+}
+.qr-hub__scenario-code { max-width:100%; overflow-wrap:anywhere; }

@@ -1,0 +1,13 @@
+name: Level 4 Pages disabled on 4-6-8 test branch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  locked:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Public deployment is locked to refs/heads/main."

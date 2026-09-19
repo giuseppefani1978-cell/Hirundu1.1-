@@ -1,7 +1,12 @@
 .start-page {
-  /* PATCH: éviter 100vh cassant et autoriser le scroll naturel */
-  min-height: 100dvh;
-  height: auto;
+  /* Le shell du jeu bloque le document : l'accueil possède son défilement. */
+  min-height: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #0b1d33 0%, #02070f 50%, #02050a 100%);
@@ -10,11 +15,12 @@
 
 /* Le hero ne doit pas bloquer le scroll de la page */
 .start-page__hero {
-  flex: 1;
+  flex: 1 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: clamp(1.6rem, 4.2vw, 4rem) clamp(1.25rem, 3.6vw, 3.5rem);
+  padding-bottom: max(120px, env(safe-area-inset-bottom));
   position: relative;
   overflow: visible; /* PATCH: évite le blocage de scroll */
 }
@@ -87,4 +93,11 @@
   }
 
   .start-page__actions {
-    f
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .start-page__cta {
+    min-width: 0;
+  }
+}

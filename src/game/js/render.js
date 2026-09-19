@@ -1,14 +1,16 @@
 import { UI_CONST, ENEMY, SHAKE } from './config.js';
 
 export function computeMapViewport(canvasW, canvasH, mapW, mapH) {
-  const availableWidth = canvasW;
-  const availableHeight = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
+  const availableWidth = Math.max(1, canvasW - 24);
+  const top = Math.min(UI_CONST.TOP, canvasH * 0.2);
+  const bottom = Math.min(UI_CONST.BOTTOM, canvasH * 0.25);
+  const availableHeight = Math.max(1, canvasH - bottom - top);
   const baseScale = Math.min(availableWidth / mapW, availableHeight / mapH);
   const scale = baseScale * UI_CONST.MAP_ZOOM;
   const drawWidth = mapW * scale;
   const drawHeight = mapH * scale;
   const offsetX = (canvasW - drawWidth) / 2;
-  const offsetY = UI_CONST.TOP + (availableHeight - drawHeight) / 2;
+  const offsetY = top + (availableHeight - drawHeight) / 2;
   return {
     ox: offsetX,
     oy: offsetY,

@@ -1,3 +1,5 @@
+import { copy } from './ui/copy.js';
+import { createLevelSession, setupHuntControls, drawAnimatedBird } from './legacy/levelSession.js';
 // src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
@@ -6,13 +8,14 @@
 import { t, poiName, poiInfo } from './i18n.js';
 import { withBase } from './paths';
 import {
-  startMusic, stopMusic, toggleMusic, isMusicOn,
+  startMusic, stopMusic, toggleMusic, isMusicOn, AUDIO_STATE_EVENT, stopFinaleLoop,
   ping, starEmphasis, failSfx, resetAudioForNewGame, playFinaleLong
 } from './audio.js';
 import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from './hof/storage.js';
 import { prepareLevelIntro, queueLevelTransition } from './level_transition.js';
+import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -43,17 +46,22 @@ const ASSETS = {
   BONUS_CAFFE:   asset('assets/caffeleccese .PNG'),
 };
 
-// UI carte
-const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
+// UI carte — cadrage commun aux chasses : presque plein écran, jamais rogné à droite/gauche.
+const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.04, MAP_SIDE_MARGIN: 12 };
 
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
-  const availW = canvasW;
-  const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
+  const side = Math.min(UI_CONST.MAP_SIDE_MARGIN, canvasW * 0.035);
+  const availW = Math.max(1, canvasW - side * 2);
+  const top = Math.min(UI_CONST.TOP, canvasH * 0.2);
+  const bottom = Math.min(UI_CONST.BOTTOM, canvasH * 0.25);
+  const availH = Math.max(1, canvasH - bottom - top);
   const baseScale = Math.min(availW / mapW, availH / mapH);
-  const scale = baseScale * UI_CONST.MAP_ZOOM;
+  // Un très léger zoom garde l'effet immersif, mais le cap horizontal empêche
+  // la côte est / le bord droit du Salento de sortir de l'écran.
+  const scale = Math.min(baseScale * UI_CONST.MAP_ZOOM, availW / mapW);
   const dw = mapW * scale, dh = mapH * scale;
   const ox = (canvasW - dw) / 2;
-  const oy = UI_CONST.TOP + (availH - dh) / 2;
+  const oy = top + (availH - dh) / 2;
   return { ox, oy, dw, dh, scale };
 }
 
@@ -138,18 +146,25 @@ function getCountry(){
 // ------------------------
 // BOOT (chasse uniquement)
 // ------------------------
-export function boot(){
+export function boot(options = {}){
   const canvas = document.getElementById('c');
   if (!canvas){ alert("Chargement du jeu impossible : canvas introuvable (#c)."); return; }
   const ctx = canvas.getContext('2d', { alpha:true });
+  const session = createLevelSession();
+  setGameFlowPhase(FLOW_PHASES.LEVEL_INTRO, { level: 1 });
+  let cleanupIntro = null;
+  let cleanupBattle = null;
+  const requestAnimationFrame = session.frame;
+  const setTimeout = session.timeout;
 
   // UI init
   ui.initUI();
   ui.updateScore(0, STARS_TARGET);
   ui.renderStars(0, STARS_TARGET);
   ui.updateEnergy(100);
-  ui.onClickMusic(() => { toggleMusic(); ui.setMusicLabel(isMusicOn()); });
+  ui.onClickMusic(async () => { await toggleMusic(); ui.setMusicLabel(isMusicOn()); });
   ui.setMusicLabel(false);
+  session.listen(window, AUDIO_STATE_EVENT, () => ui.setMusicLabel(isMusicOn()));
   ui.onClickReplay(() => startGame());
 
   // Déplacer le bouton Rejouer sous le score live
@@ -199,19 +214,10 @@ export function boot(){
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
   prepareLevelIntro({
-    level: 1,
-    theme: 'otranto',
-    badge: 'Niveau 1',
-    title: 'Le Vol d\'Aracne',
-    subtitle: 'Chasse aux 10 étoiles de la côte d\'Otranto',
-    description:
-      'Fais planer Aracne au-dessus des villages d\'Otranto pour récupérer les étoiles et ouvrir la suite de l\'aventure.',
-    footnote: 'Victoire = BONUS débloqué',
-    startLabel: '▶︎ Lancer la chasse',
-    highlight: {
-      title: 'Briefing',
-      body: 'Capture chaque étoile pour préparer la prochaine étape de la mission.',
-    },
+    level: 1, theme: 'otranto', badge: `${copy.level} 1`,
+    title: t.title, subtitle: t.subtitle, description: copy.mission,
+    footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
+    highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#f97316',
   });
 
@@ -247,11 +253,11 @@ export function boot(){
   // 1er resize
   resize();
 
-  window.addEventListener('resize', resize, { passive:true });
+  session.listen(window, 'resize', resize, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
+    session.listen(window.visualViewport, 'resize', () => { resize(); resizeCanvasHard(); }, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
+  session.listen(window, 'orientationchange', () => {
     setTimeout(resize, 60);
     setTimeout(() => { resize(); resizeCanvasHard(); }, 220);
   }, { passive:true });
@@ -330,14 +336,13 @@ export function boot(){
   }
 
   // D-pad (actif seulement en mode 'play')
-  setupDpad(player, () => getSpeed(), () => mode === 'play');
+  const movePlayer = setupHuntControls(player, getSpeed, () => mode === 'play' && !isGamePaused(), session);
   
   // Start button
   const startBtn = document.getElementById('startBtn');
-  if (startBtn) startBtn.addEventListener('click', startGame);
+  if (startBtn) session.listen(startBtn, 'click', startGame);
 
-  // Première question
-  askQuestionAt(0);
+  // First clue is shown by resetGame() only after the player starts the hunt.
 
   // helpers
   function setEnergy(p){
@@ -389,7 +394,8 @@ export function boot(){
     const total = score + (won ? SCORE.WIN : SCORE.GAMEOVER);
 
     const entry = {
-      name: playerName || 'Joueur',
+      name: playerName || copy.player,
+      playerId: ui.getOrCreatePlayerId?.() || undefined,
       country,
       score: total,
       stars: starsPicked,
@@ -403,7 +409,7 @@ export function boot(){
     };
     addHallOfFameEntry(entry);
 
-    const title = won ? (t.win?.() || "Bravo ! Victoire 🌟") : (t.gameover?.() || "Game Over");
+    const title = won ? copy.won : copy.defeat;
     const baseLines = [
       `${title}`,
       `Score: ${total} (Étoiles: +${starsPicked*SCORE.STAR}, Bonus: +${bonusScore}, Coups: ${hits*SCORE.HIT}${won?`, Win: +${SCORE.WIN}`:''})`,
@@ -456,7 +462,8 @@ export function boot(){
 
   // ---------- Game loop (chasse) ----------
   function draw(ts){
-    if(!running) return;
+    if(!running || !session.active) return;
+    if (document.hidden || isGamePaused()) { lastTS = 0; requestAnimationFrame(draw); return; }
 
     if(ts){
       if(!lastTS) lastTS = ts;
@@ -464,6 +471,7 @@ export function boot(){
       lastTS = ts;
 
       if (mode === 'play') {
+        movePlayer(dt);
         tickEnemies(dt);
         if (hitShake > 0)       hitShake = Math.max(0, hitShake - dt * SHAKE.DECAY_PER_S);
         if (playerSlowTimer > 0) playerSlowTimer = Math.max(0, playerSlowTimer - dt);
@@ -530,12 +538,7 @@ export function boot(){
     }
 
     if (mode === 'play') {
-      if (birdImg.complete && birdImg.naturalWidth){
-        ctx2.drawImage(birdImg, bx - bw/2 + sx, by - bw/2 + sy, bw, bw);
-      } else {
-        ctx2.fillStyle = '#333';
-        ctx2.beginPath(); ctx2.arc(bx + sx, by + sy, bw*0.35, 0, Math.PI*2); ctx2.fill();
-      }
+      drawAnimatedBird(ctx2, birdImg, bx, by, bw, player, performance.now(), sx, sy);
     }
 
     // progression vers prochaine étoile
@@ -577,6 +580,7 @@ export function boot(){
 
   // ---------- Battle flow (handoff only) ----------
   function enterBattleFlow(){
+    setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level: 1, boss: 'Otranto' });
     mode = 'battle_intro';
     ui.showTouch(false);
     updatePadAVisibilityForMode(); // cache pendant intro/battle
@@ -590,13 +594,20 @@ export function boot(){
       const tar     = document.getElementById('tarTop');
       if (bdText && bdTitle && tar) {
         bdTitle.textContent = 'Tarantula';
-        bdText.textContent  = 'Conseil: en bataille, ←/→ pour bouger, ↑ pour sauter, A attaquer, B spécial. Tourne en paysage.';
+        bdText.textContent  = copy.battleHint;
         tar.classList.add('show');
         setTimeout(()=> tar.classList.remove('show'), 2200);
       }
     } catch {}
 
-startBattleIntro({
+cleanupIntro = startBattleIntro({
+  level: 1,
+  boss: 'Otranto',
+  bossSprite: withBase('assets/jellyfish_boss.PNG'),
+  backdrop: withBase('assets/battle_bg_salento.webp'),
+  title: `⚔️ ${copy.battle} · Otranto`,
+  subtitle: copy.battleHint,
+  startLabel: copy.fight,
   ammo: {
     pasticciotto: pickedCounts.pasticciotto | 0,
     rustico:      pickedCounts.rustico      | 0,
@@ -604,6 +615,7 @@ startBattleIntro({
     stars:        starsPicked               | 0,
   },
   onProceed: async () => {
+    if (!session.active) return;
     // anti double-clic
     if (window.__battleBooting) return;
     window.__battleBooting = true;
@@ -619,11 +631,13 @@ startBattleIntro({
       // import unique
       const mod = await import('./game_battle.js');
       const { startBattleFlow } = mod;
+    cleanupBattle = mod.stopBattleFlow;
       if (typeof startBattleFlow !== 'function') {
         throw new Error('startBattleFlow non exporté par ./game_battle.js');
       }
 
-      await startBattleFlow(
+      if (!session.active) return;
+    await startBattleFlow(
         {
           pasticciotto: pickedCounts.pasticciotto | 0,
           rustico:      pickedCounts.rustico      | 0,
@@ -635,6 +649,7 @@ startBattleIntro({
         {
           bottomExtra: 0,
           onWin: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'win';
             updatePadAVisibilityForMode();
@@ -643,6 +658,7 @@ startBattleIntro({
             try { triggerWin(); } catch {}
           },
           onLose: () => {
+          if (!session.active) return;
             document.body.classList.remove('mode-battle');
             mode = 'dead';
             updatePadAVisibilityForMode();
@@ -772,30 +788,17 @@ startBattleIntro({
 
   // ---------- modes ----------
   function triggerWin(){
+    setGameFlowPhase(FLOW_PHASES.VICTORY, { level: 1, boss: 'Otranto' });
     mode = 'win';
     updatePadAVisibilityForMode();
     finalizeRun({won:true});
     stopMusic();
     playFinaleLong();
     winFx.t = 0; winFx.fw.length = 0; winFx.fwTimer = 0;
-   // 🟢 Nouvelle logique : handoff vers la page Bonus (ou transition)
-  setTimeout(() => {
-    try {
-      // Si le bonus Otranto est débloqué, on ouvre la page bonus
-      if (localStorage.getItem('otranto_bonus_unlocked') === 'true') {
-        console.log('[GAME] triggerWin → ouverture bonus Otranto');
-        location.hash = '#bonus-otranto';
-      } else {
-        // sinon, simple transition vers la page d’intro du niveau suivant
-        console.log('[GAME] triggerWin → transition vers niveau 2');
-        location.hash = '#/transition';
-      }
-    } catch (e) {
-      console.warn('[GAME] triggerWin navigation error', e);
-    }
-  }, 800); // délai d’une seconde pour laisser l’écran Win s’afficher
-}
+    // Navigation is handled once by LegacyLevelPage after the unlock event.
+  }
   function triggerGameOver(){
+    setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: 1, boss: 'Otranto' });
     mode = 'dead';
     running = false;
     updatePadAVisibilityForMode();
@@ -805,26 +808,15 @@ startBattleIntro({
   // ---------- controls ----------
   function startGame(){
     try{
+      setGameFlowPhase(FLOW_PHASES.HUNT, { level: 1 });
       document.body.classList.remove('mode-battle'); // sécurité si on relance après une battle
-      const storedName = playerName && playerName.trim() ? playerName : getStoredPlayerName();
-      if (storedName) {
-        playerName = storedName.trim();
-        if (playerName !== storedName) {
-          try { localStorage.setItem('player_name', playerName); } catch {}
-          try { lsSet && lsSet('player_name', playerName); } catch {}
-        }
-      } else {
-        const response = prompt("Ton nom/pseudo ?") || "Joueur";
-        playerName = (response||'').trim() || "Joueur";
-        try { localStorage.setItem('player_name', playerName); } catch {}
-        try { lsSet && lsSet('player_name', playerName); } catch {}
-      }
+      playerName = ui.readPlayerName() || getStoredPlayerName() || copy.player;
       country = getCountry();
 
 
       ui.hideOverlay();
       ui.showTouch(true);
-      if (!isMusicOn()) startMusic();
+      if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
       gameStartAt = performance.now();
@@ -884,7 +876,7 @@ startBattleIntro({
       openBonusMap();
     }
   };
-  window.addEventListener('hashchange', handleHash);
+  session.listen(window, 'hashchange', handleHash);
   handleHash();
 
   // helpers UI
@@ -909,50 +901,9 @@ startBattleIntro({
     const el = document.getElementById('__score_live');
     if (el) el.textContent = String(Math.max(0, score)).padStart(6,'0');
   }
-  function ensureBonusQuickLinkInHud(){
-    const hud = document.getElementById('hud');
-    if (!hud) return;
-    if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)) return;
-    let link = document.getElementById('__otranto_bonus_link');
-    if (!link){
-      link = document.createElement('button');
-      link.id='__otranto_bonus_link';
-      link.type='button';
-      link.textContent = '🗺️ BONUS';
-      link.style.cssText = `
-        margin-top:8px; width:100%;
-        background:#0ea5e9; color:#fff; border:0; border-radius:10px; padding:8px 10px;
-        font:700 12px system-ui; cursor:pointer;
-      `;
-      hud.appendChild(link);
-      link.addEventListener('click', openBonusMap);
-    }
-  }
+  function ensureBonusQuickLinkInHud() { /* Bonus navigation belongs to the discoveries page. */ }
 
-  function showBonusCta(){
-    // évite de spam si déjà affichée
-    if (document.getElementById('__bonus_cta')) return;
-
-    const btn = document.createElement('button');
-    btn.id = '__bonus_cta';
-    btn.type = 'button';
-    btn.textContent = '🌟 BONUS — ouvrir';
-    btn.style.cssText = `
-      position:fixed; left:50%; transform:translateX(-50%);
-      bottom:86px; z-index:10003;
-      background:linear-gradient(180deg, #34d399, #10b981);
-      color:white; border:0; border-radius:999px;
-      padding:12px 18px; font:700 14px system-ui; box-shadow:0 8px 18px rgba(0,0,0,.2);
-    `;
-    document.body.appendChild(btn);
-    btn.addEventListener('click', () => {
-      lsSet(LS.OTRANTO_BONUS_SEEN, true);
-      openBonusMap();
-    });
-
-    // Ajoute en HUD pour les sessions suivantes
-    ensureBonusQuickLinkInHud();
-  }
+  function showBonusCta() { /* Bonus navigation belongs to the discoveries page. */ }
 
   function unlockOtrantoBonus(){
     if (!lsGet(LS.OTRANTO_BONUS_UNLOCKED, false)){
@@ -976,6 +927,20 @@ startBattleIntro({
     const R = 0.035;
     return Math.hypot(player.x - p.x, player.y - p.y) < R;
   }
+  if (options.testBattle) { startGame(); enterBattleFlow(); }
+
+  return () => {
+    running = false;
+    session.dispose();
+    document.getElementById("__score_live")?.remove();
+    cleanupIntro?.();
+    cleanupBattle?.();
+    stopMusic();
+    stopFinaleLoop();
+    ui.onClickMusic(null);
+    ui.onClickReplay(null);
+    clearGameFlow();
+  };
 }
 
 // ------------------------
@@ -1133,28 +1098,7 @@ function shuffle(arr){
 /**
  * D-pad tactile/souris. Ne bouge que si canMove() === true
  */
-function setupDpad(player, getSpeed, canMove){
-  document.querySelectorAll('.btn').forEach((el) => {
-    const dx = parseFloat(el.dataset.dx);
-    const dy = parseFloat(el.dataset.dy);
-    if (isNaN(dx) || isNaN(dy)) return;
-    let press = false, rafId = null;
 
-    const step = () => {
-      if (!press) return;
-      if (!canMove || !canMove()) { press = false; cancelAnimationFrame(rafId); return; }
-      const s = getSpeed();
-      player.x = Math.max(0, Math.min(1, player.x + dx * s));
-      player.y = Math.max(0, Math.min(1, player.y + dy * s));
-      rafId = requestAnimationFrame(step);
-    };
-
-    el.addEventListener('touchstart', (e) => { press = true; step(); e.preventDefault(); }, { passive:false });
-    el.addEventListener('touchend',   () => { press = false; cancelAnimationFrame(rafId); });
-    el.addEventListener('mousedown',  (e) => { press = true; step(); e.preventDefault(); });
-    window.addEventListener('mouseup',() => { if (press){ press = false; cancelAnimationFrame(rafId); }});
-  });
-}
 
 // =====================================================
 // DEBUG HELPERS (optionnel pendant le dev)

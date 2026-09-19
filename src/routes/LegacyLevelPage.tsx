@@ -1,24 +1,35 @@
+import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/bonus/bonusStorage';
 import React from "react";
+import { disposeBattle } from "../battle.js";
 import { useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useLocation } from "react-router-dom";
 import LegacyGameShell from "../legacy/LegacyGameShell";
 import {
   bootLegacyLevel,
   getNextLevelId,
+  preloadNextLevel,
   type LegacyLevelId,
 } from "../legacy/bootLevel";
 import { initLegacyChrome } from "../legacy/initLegacyChrome";
 import { removeVictoryCTA } from "../bonus_transition.js";
+import { startPerformanceMonitor, stopPerformanceMonitor } from "../game_flow.js";
+import { withBase } from "../paths";
 import "./LegacyLevelPage.css";
 
 const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> = {
   1: { bonusKey: "otranto", event: "otranto:unlocked" },
   2: { bonusKey: "gallipoli", event: "gallipoli:unlocked" },
   3: { bonusKey: "lecce", event: "lecce:unlocked" },
+  4: { bonusKey: "adriatico", event: "adriatico:unlocked" },
+  5: { bonusKey: "capo", event: "capo:unlocked" },
+  6: { bonusKey: "arneo", event: "arneo:unlocked" },
+  7: { bonusKey: "nardo", event: "nardo:unlocked" },
+  8: { bonusKey: "messapia", event: "messapia:unlocked" },
+  9: { bonusKey: "itria", event: "itria:unlocked" },
 };
 
 const TOAST_KEY = "__toast_next__";
-const DEFAULT_VERSION = "v1.0.0-flow";
+const DEFAULT_VERSION = "v9 · TEST";
 
 function storeToast(target: string) {
   try {
@@ -32,6 +43,12 @@ function parseLevelId(raw: string | undefined): LegacyLevelId {
   const numeric = Number(raw);
   if (numeric === 2) return 2;
   if (numeric === 3) return 3;
+  if (numeric === 4) return 4;
+  if (numeric === 5) return 5;
+  if (numeric === 6) return 6;
+  if (numeric === 7) return 7;
+  if (numeric === 8) return 8;
+  if (numeric === 9) return 9;
   return 1;
 }
 
@@ -40,8 +57,31 @@ function useLegacyLevelParam(): LegacyLevelId {
   return useMemo(() => parseLevelId(params.levelId), [params.levelId]);
 }
 
-export default function LegacyLevelPage() {
+function FlightLevelRedirect({ level }: { level: 4 | 6 | 8 }) {
+  useEffect(() => {
+    window.location.replace(withBase(`level${level}-flight/`));
+  }, [level]);
+  return <div className="legacy-level-page" aria-live="polite">HIRUNDU · Niveau {level}</div>;
+}
+
+export default function LevelPage() {
+  const { levelId } = useParams();
+  const location = useLocation();
+  const numeric = Number(levelId);
+  const testBattle = new URLSearchParams(location.search).get("test") === "battle";
+
+  if (!testBattle && (numeric === 4 || numeric === 6 || numeric === 8)) {
+    return <FlightLevelRedirect level={numeric as 4 | 6 | 8} />;
+  }
+  return <LegacyLevelPage/>;
+}
+function LegacyLevelPage() {
   const level = useLegacyLevelParam();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const testBattle = params.get("test") === "battle";
+  const debug = params.has("debug");
+  const showPerf = params.has("perf") || debug;
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const versionLabel =
@@ -53,12 +93,22 @@ export default function LegacyLevelPage() {
     } catch {
       // ignore inability to assign version label
     }
-    const cleanupChrome = initLegacyChrome();
+    const cleanBonus = () => document.querySelectorAll('#__bonus_cta, #__otranto_bonus_link, #__gallipoli_bonus_link, #__lecce_bonus_link').forEach(node => node.remove());
+    cleanBonus();
+    const cleanupChrome = initLegacyChrome({ debug });
 
     let cancelled = false;
+    const controller = new AbortController();
+    let cleanupLevel: (() => void) | undefined;
     const boot = async () => {
       try {
-        await bootLegacyLevel(level);
+        cleanupLevel = await bootLegacyLevel(level, controller.signal, { testBattle });
+        if (cancelled) {
+          cleanupLevel?.();
+        } else {
+          startPerformanceMonitor();
+          window.setTimeout(() => { void preloadNextLevel(level); }, 650);
+        }
       } catch (error) {
         console.error("Unable to boot legacy level", error);
       }
@@ -73,34 +123,62 @@ export default function LegacyLevelPage() {
 
     const { bonusKey, event } = LEVEL_EVENTS[level];
 
+    let handledWin = false;
     const handleWin = () => {
+      if (handledWin || cancelled) return;
+      handledWin = true;
+      markLevelWin(level);
+      unlockBonus(bonusKey as BonusProgressEntry["key"]);
       storeToast(bonusKey);
       const next = getNextLevelId(level);
-      navigate(`/bonus/${bonusKey}`, {
-        state: { fromLevel: level, nextLevel: next, unlockedKey: bonusKey },
-      });
+      document.body.classList.add("game-level-exit");
+      window.setTimeout(() => {
+        document.body.classList.remove("game-level-exit");
+        if (next) {
+          navigate(`/level/${next}`, {
+            state: { fromLevel: level, unlockedKey: bonusKey },
+          });
+        } else {
+          navigate(`/bonus/${bonusKey}`, {
+            state: { fromLevel: level, nextLevel: null, unlockedKey: bonusKey },
+          });
+        }
+      }, 180);
     };
 
     document.addEventListener(event, handleWin);
 
     return () => {
       cancelled = true;
+      controller.abort();
+      cleanupLevel?.();
+      stopPerformanceMonitor();
+      disposeBattle();
       window.cancelAnimationFrame(raf);
       document.removeEventListener(event, handleWin);
       cleanupChrome?.();
+      cleanBonus();
       removeVictoryCTA();
       try {
-        document.body.classList.remove("mode-battle-intro");
+        document.body.classList.remove("mode-battle-intro", "mode-battle", "game-level-exit");
         document.body.removeAttribute("data-level-theme");
       } catch {
         // ignore cleanup issues
       }
     };
-  }, [level, navigate]);
+  }, [level, navigate, testBattle, debug]);
 
   return (
     <div className="legacy-level-page">
-      <LegacyGameShell ref={canvasRef} versionLabel={versionLabel} />
+      <LegacyGameShell
+        key={`${level}:${testBattle}:${debug}`}
+        level={level}
+        ref={canvasRef}
+        versionLabel={versionLabel}
+        debug={debug}
+        showPerf={showPerf}
+        onDiscoveriesClick={() => navigate("/bonus")}
+      />
     </div>
   );
 }

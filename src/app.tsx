@@ -1,4 +1,5 @@
 // src/app.tsx
+import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
@@ -10,11 +11,14 @@ const AppLayout = lazy(() => import("./ui/AppLayout"));
 const StartPage = lazy(() => import("./routes/StartPage"));
 const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
+const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
+const RegionDiscoveries = lazy(() => import("./levels/RegionDiscoveries"));
 
 // ---- Small helper: scroll to top on route change
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
+    if (!pathname.startsWith("/level/")) document.getElementById("__score_live")?.remove();
     // If there is an anchor, let the browser handle it
     if (hash) return;
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
@@ -31,7 +35,7 @@ function Loading() {
       height: "100vh",
       fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
     }}>
-      <div style={{ opacity: 0.8 }}>Chargement…</div>
+      <div style={{ opacity: 0.8 }}>{copy.loading}</div>
     </div>
   );
 }
@@ -47,10 +51,15 @@ export default function App() {
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />
+          <Route path="/region/:levelId" element={<RegionLevelPage />} />
+          <Route path="/region/:levelId/discoveries" element={<RegionDiscoveries />} />
 
           {/* Hub bonus + variante avec :bonusId */}
           <Route path="/bonus" element={<BonusHubPage />} />
           <Route path="/bonus/:bonusId" element={<BonusHubPage />} />
+
+          <Route path="/passport" element={<RealMap passportOnly />} />
+          <Route path="/passport/:id" element={<RealMap passportOnly />} />
 
           {/* Zone QR/POI sous layout commun */}
           <Route element={<AppLayout />}>

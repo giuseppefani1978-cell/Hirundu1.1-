@@ -1,4 +1,7 @@
 [
+  {"id":"poi_nardo_salandra","label":"Piazza Salandra","lat":40.1798,"lng":18.0316,"radius":80,"category":"monument"},
+  {"id":"poi_ostuni_cattedrale","label":"Cattedrale di Ostuni","lat":40.7346,"lng":17.5784,"radius":80,"category":"monument"},
+  {"id":"poi_manduria_mura","label":"Mura messapiche","lat":40.4074,"lng":17.6422,"radius":80,"category":"monument"},
   {
     "id": "poi_castle",
     "label": "Castello Aragonese",
@@ -43,5 +46,29 @@
     "radius": 120,
     "partnerId": "beach_grotte",
     "category": "beach"
+  },
+  {
+    "id": "poi_giurdignano_san_salvatore",
+    "label": "Cripta di San Salvatore",
+    "lat": 40.12202,
+    "lng": 18.43113,
+    "radius": 80,
+    "category": "monument"
+  },
+  {
+    "id": "poi_leuca_faro",
+    "label": "Faro di Santa Maria di Leuca",
+    "lat": 39.7959,
+    "lng": 18.36846,
+    "radius": 80,
+    "category": "monument"
+  },
+  {
+    "id": "poi_copertino_castello",
+    "label": "Castello di Copertino",
+    "lat": 40.273,
+    "lng": 18.043,
+    "radius": 80,
+    "category": "monument"
   }
 ]

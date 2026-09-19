@@ -11,7 +11,7 @@ import {
   isBattleActive as isActiveRaw
 } from './battle.js';
 
-const BTL_BG_SRC = withBase('assets/battle_bg_salento.PNG');
+const BTL_BG_SRC = withBase('assets/battle_bg_salento.webp');
 
 // ---------------------------
 // Config assets (sprites)
@@ -34,9 +34,11 @@ const BTL_VIRTUAL = { W: 800, H: 450 };
 let _canvas = null;
 let _ctx = null;
 let _raf = 0;
+let _generation = 0;
 let _lastTS = 0;
 let _bottomExtra = 16;
 let _sprites = null;
+const _spriteCache = new Map();
 let _onWin = null;
 let _onLose = null;
 
@@ -97,8 +99,14 @@ function _onResize() {
   } catch {}
 }
 
-function _loadSprites() {
-  return new Promise((resolve) => {
+function _loadSprites({ bossSprite, backdrop } = {}) {
+  const bossSrc = bossSprite || SPRITES_SRC.jelly;
+  const backdropSrc = backdrop || BTL_BG_SRC;
+  const webpBackdrop = /\.png$/i.test(backdropSrc) ? backdropSrc.replace(/\.png$/i, '.webp') : backdropSrc;
+  const cacheKey = `${bossSrc}|${webpBackdrop}`;
+  if (_spriteCache.has(cacheKey)) return _spriteCache.get(cacheKey);
+
+  const pending = new Promise((resolve) => {
     const birdImg   = new Image();
     const spiderImg = new Image();
     const crowImg   = new Image();
@@ -111,9 +119,22 @@ function _loadSprites() {
     birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
     crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
-    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
-    bgImg.onload = done;     bgImg.onerror = done;     bgImg.src   = BTL_BG_SRC;  // ✅ ajouté
+    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSrc;
+    bgImg.onload = done;
+    bgImg.onerror = () => {
+      if (bgImg.src !== backdropSrc) {
+        bgImg.onerror = done;
+        bgImg.src = backdropSrc;
+      } else done();
+    };
+    bgImg.src = webpBackdrop;
   });
+  _spriteCache.set(cacheKey, pending);
+  return pending;
+}
+
+export function preloadBattleAssets(options = {}) {
+  return _loadSprites(options);
 }
 
 // ---------------------------
@@ -136,9 +157,8 @@ function _loop(ts) {
   const H = Math.max(1, Math.round(rect.height));
   // viewport plein écran sans bandes
 const vp = { ox:0, oy:0, dw:W, dh:H };
-renderBattle(_ctx, vp, _sprites);
 
-  // rendu battle
+  // One render per animation frame. Rendering twice created needless GPU/CPU work.
   renderBattle(_ctx, vp, _sprites);
 }
 
@@ -174,9 +194,10 @@ function _exitCanvasFullscreen() {
 // ---------------------------
 export async function startBattleFlow(
   ammo,
-  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0 } = {}
+  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0, bossSprite, backdrop, foeType = 'jelly' } = {}
 ){
   // Canvas / contexte
+  const generation = ++_generation;
   _canvas = document.getElementById('c');
   if (!_canvas) { alert("Canvas #c introuvable pour la battle."); return; }
   _ctx = _canvas.getContext('2d', { alpha:true });
@@ -239,7 +260,8 @@ export async function startBattleFlow(
   setAmmoRaw(ammo || {});
 
   // sprites
-  _sprites = await _loadSprites();
+  _sprites = await preloadBattleAssets({ bossSprite, backdrop });
+  if (generation !== _generation) return;
 
   // sizing + listeners
   _onResize();
@@ -247,18 +269,17 @@ export async function startBattleFlow(
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', _onResize, { passive:true });
   }
-  window.addEventListener('orientationchange', () => {
-    setTimeout(_onResize, 60);
-    setTimeout(_onResize, 220);
-  }, { passive:true });
+  window.addEventListener('orientationchange', _onResize, { passive:true });
 
   // go!
-  startBattleRaw('jelly');   // si tu as plusieurs niveaux, passe la clé en param
+  startBattleRaw(foeType);
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(_loop);
 }
 
 export function stopBattleFlow() {
+  ++_generation;
+  window.removeEventListener('orientationchange', _onResize);
   cancelAnimationFrame(_raf); _raf = 0;
   _lastTS = 0;
   if (window.visualViewport) {

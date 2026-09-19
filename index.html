@@ -3,16 +3,16 @@
   <head>
     <script>
   (function () {
-    var base = "/Hirundu1.1-/";
+    var base = "%BASE_URL%";
     var p = location.pathname;
     // 1) Si quelqu’un arrive sur .../index.html → redirige vers .../
     if (p.endsWith("/index.html") || p === "/index.html") {
-      location.replace(base + (location.hash || ""));
+      location.replace(base + location.search + (location.hash || ""));
       return;
     }
     // 2) Si on est sur le dépôt mais sans le slash final, normalise
-    if (p === "/Hirundu1.1-" ) {
-      location.replace(base + (location.hash || ""));
+    if (p === base.replace(/\/$/, "") ) {
+      location.replace(base + location.search + (location.hash || ""));
     }
   })();
 </script>
@@ -62,24 +62,62 @@
       }
     </script>
 
-    <!-- Bouton d’installation Android (PWA) -->
+    <!-- Installation Android (PWA) : disponible uniquement depuis le menu Pause -->
     <script>
-      let deferredPrompt;
-      window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        const btn = document.createElement("button");
-        btn.textContent = "📲 Installer l’app";
-        btn.style.cssText =
-          "position:fixed;right:12px;bottom:72px;z-index:10000;padding:10px 14px;border-radius:12px;border:0;background:#ffd166;font:700 14px system-ui;box-shadow:0 4px 10px rgba(0,0,0,.25);";
-        document.body.appendChild(btn);
-        btn.addEventListener("click", async () => {
-          btn.remove();
-          deferredPrompt.prompt();
-          try { await deferredPrompt.userChoice; } catch {}
+      (() => {
+        let deferredPrompt = null;
+
+        const isStandalone = () =>
+          window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          window.navigator.standalone === true;
+
+        const publishInstallState = () => {
+          const available = Boolean(deferredPrompt) && !isStandalone();
+          window.__HIRUNDU_PWA_INSTALL_AVAILABLE__ = available;
+          window.dispatchEvent(new CustomEvent("hirundu:pwa-install-state", {
+            detail: { available }
+          }));
+        };
+
+        window.__HIRUNDU_INSTALL_APP__ = async () => {
+          if (!deferredPrompt || isStandalone()) {
+            publishInstallState();
+            return { outcome: "unavailable" };
+          }
+
+          const promptEvent = deferredPrompt;
           deferredPrompt = null;
+          // Dès que l'utilisateur choisit « Installer », le CTA disparaît du menu pause.
+          publishInstallState();
+
+          try {
+            await promptEvent.prompt();
+            return await promptEvent.userChoice;
+          } catch (error) {
+            console.warn("PWA install prompt failed", error);
+            return { outcome: "error" };
+          }
+        };
+
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          if (isStandalone()) return;
+          deferredPrompt = e;
+          publishInstallState();
         });
-      });
+
+        window.addEventListener("appinstalled", () => {
+          deferredPrompt = null;
+          try { localStorage.setItem("hirundu_pwa_installed", "true"); } catch {}
+          publishInstallState();
+        });
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", publishInstallState, { once: true });
+        } else {
+          publishInstallState();
+        }
+      })();
     </script>
 
     <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
@@ -119,75 +157,6 @@
       });
     </script>
 
-    <!-- Boot multi-niveaux SANS top-level await : seulement sur #/level/X ou ?level= -->
-    <script type="module">
-      (async () => {
-        const url = new URL(location.href);
-        const hash = location.hash || "";
-        const paramLevel = url.searchParams.get("level");
-        const levelFromHash = (() => {
-          const m = hash.match(/^#\/level\/(\d+)/);
-          return m ? m[1] : null;
-        })();
-        const level = paramLevel || levelFromHash;
 
-        // Si on n'est pas sur une route de level, NE RIEN FAIRE (laisser React afficher la StartPage)
-        if (!level) {
-          console.info("[boot] Pas de route level détectée → on laisse la SPA gérer.");
-          return;
-        }
-
-        // Déclarer explicitement les modules pour Vite (analyse statique)
-        const boots = import.meta.glob([
-          "./src/game.js",
-          "./src/levels/level2/level2_game.js",
-          "./src/levels/level3/level3_game.js"
-        ]);
-
-        const BOOTS = {
-          "1": boots["./src/game.js"],
-          "2": boots["./src/levels/level2/level2_game.js"],
-          "3": boots["./src/levels/level3/level3_game.js"]
-        };
-
-        const START = {
-          "1": (m) => m?.boot?.() || m?.startLevel1?.() || m?.start?.(),
-          "2": (m) => m?.startLevel2?.() || m?.boot?.() || m?.start?.(),
-          "3": (m) => m?.startLevel3?.() || m?.boot?.() || m?.start?.()
-        };
-
-        const fallbackLoader = boots["./src/game.js"];
-
-        try { localStorage.setItem("otranto_bonus_unlocked", "true"); } catch {}
-
-        try {
-          const loader = BOOTS[level] || fallbackLoader;
-          const mod = await loader?.();
-          const start = START[level] || START["1"];
-          start?.(mod);
-        } catch (e) {
-          console.error("Level boot error:", e);
-          try {
-            const mod = await fallbackLoader?.();
-            START["1"]?.(mod);
-          } catch (e2) {
-            console.error("Fallback L1 failed:", e2);
-            if (__DEV__) alert("Erreur de chargement du niveau");
-          }
-        }
-
-        // Mini splash L2 (debug court)
-        if (level === "2") {
-          const splash = document.createElement("div");
-          splash.style.cssText = `
-            position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-            background:radial-gradient(ellipse at center, rgba(255,233,150,.85), rgba(255,200,80,.65));
-            font:900 28px/1.1 system-ui;color:#5b3700;text-align:center`;
-          splash.textContent = "✨ Transition — Niveau 2";
-          document.body.appendChild(splash);
-          setTimeout(() => splash.remove(), 900);
-        }
-      })();
-    </script>
   </body>
 </html>

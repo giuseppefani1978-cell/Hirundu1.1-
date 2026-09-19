@@ -3,6 +3,7 @@
 // UI/HUD : score, étoiles, barre d'énergie, boutons, bulle
 // ---------------------------------------------------------
 import { t } from './i18n.js';
+import { copy } from './ui/copy.js';
 
 const qs = (sel) => document.querySelector(sel);
 
@@ -54,46 +55,24 @@ const ENERGY_SEGMENTS = 8; // 8 “plots” façon batterie
 
 function buildEnergyBar() {
   if (!el.hud) return;
+  document.getElementById('energyBar')?.remove();
 
   const wrap = document.createElement('div');
-  wrap.setAttribute('id', 'energyBar');
-  wrap.style.cssText = `
-    width: 42px; margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  `;
-
-  const label = document.createElement('div');
-  label.textContent = 'NRJ';
-  label.style.cssText = 'font: 700 11px system-ui; color:#0e2b4a;';
+  wrap.id = 'energyBar';
+  wrap.className = 'hud-energy';
+  wrap.setAttribute('aria-label', t.energy);
 
   const battery = document.createElement('div');
-  battery.style.cssText = `
-    position: relative;
-    width: 28px; height: 54px;
-    border: 2px solid #7a6a2b; border-radius: 5px; background: #fff8dc;
-    display: grid; grid-template-rows: repeat(${ENERGY_SEGMENTS}, 1fr); gap: 3px; padding: 4px 4px;
-  `;
+  battery.className = 'hud-energy__battery';
 
-  // Cosse de batterie
-  const nub = document.createElement('div');
-  nub.style.cssText = `
-    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-    width:12px; height:6px; border:2px solid #7a6a2b; border-bottom:none; background:#fff8dc; border-radius:3px 3px 0 0;
-  `;
-  battery.appendChild(nub);
-
-  // Segments
   el.energySegs = [];
   for (let i = 0; i < ENERGY_SEGMENTS; i++) {
-    const seg = document.createElement('div');
-    seg.style.cssText = `
-      width: 100%; border-radius: 2px; background: #e5d9a6; height: 100%;
-      box-shadow: inset 0 -1px 0 rgba(0,0,0,.08);
-    `;
+    const seg = document.createElement('span');
+    seg.className = 'hud-energy__segment';
     el.energySegs.push(seg);
     battery.appendChild(seg);
   }
 
-  wrap.appendChild(label);
   wrap.appendChild(battery);
   el.hud.appendChild(wrap);
   el.energyWrap = wrap;
@@ -112,7 +91,7 @@ export function updateEnergy(percent) {
   });
 
   // Border/couleur d’alerte si faible
-  const battery = el.energyWrap?.querySelector('div:nth-child(2)');
+  const battery = el.energyWrap?.querySelector('.hud-energy__battery');
   if (!battery) return;
   if (p <= 20) {
     battery.style.borderColor = '#c34a3a';
@@ -189,7 +168,7 @@ export function showReplay(show = true) {
 
 export function setMusicLabel(isOn) {
   if (!el.musicBtn) return;
-  const txt = isOn ? t.musicOn || 'Musique ON' : t.musicOff || 'Musique OFF';
+  const txt = isOn ? copy.musicStop : copy.musicStart;
   const icon = isOn ? '🔊' : '🔈';
   el.musicBtn.innerHTML = `<span aria-hidden="true">${icon}</span> ${txt}`;
   el.musicBtn.setAttribute('aria-pressed', String(!!isOn));
@@ -197,11 +176,11 @@ export function setMusicLabel(isOn) {
 }
 
 export function onClickMusic(handler) {
-  el.musicBtn?.addEventListener('click', handler);
+  if (el.musicBtn) el.musicBtn.onclick = handler;
 }
 
 export function onClickReplay(handler) {
-  el.replayBtn?.addEventListener('click', handler);
+  if (el.replayBtn) el.replayBtn.onclick = handler;
 }
 
 // —————————————————————————————
@@ -434,4 +413,83 @@ export function hideCTA() {
   setTimeout(() => {
     if (ctaNode) ctaNode.style.display = 'none';
   }, 200);
+}
+
+// Player profile is local-first: one nickname per browser/device.
+// The anonymous id prepares future opt-in leaderboard synchronization.
+const PLAYER_NAME_KEY = 'player_name';
+const PLAYER_ID_KEY = 'hirundu_player_id_v1';
+const GENERIC_PLAYER_NAMES = new Set(['joueur', 'giocatore', 'player', 'jugador']);
+
+function normalizePlayerName(value) {
+  if (value == null) return '';
+  let candidate = value;
+
+  if (typeof candidate === 'string') {
+    const raw = candidate.trim();
+    if (!raw) return '';
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'string') candidate = parsed;
+      else if (parsed && typeof parsed === 'object' && 'name' in parsed) candidate = parsed.name;
+      else candidate = raw;
+    } catch {
+      candidate = raw;
+    }
+  } else if (typeof candidate === 'object' && 'name' in candidate) {
+    candidate = candidate.name;
+  }
+
+  const name = String(candidate ?? '').trim().replace(/\s+/g, ' ').slice(0, 40);
+  if (!name) return '';
+
+  const normalizeToken = (text) => String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  const token = normalizeToken(name);
+  const fallbackToken = normalizeToken(copy.player);
+  if (GENERIC_PLAYER_NAMES.has(token) || (fallbackToken && token === fallbackToken)) return '';
+  return name;
+}
+
+export function getStoredPlayerName() {
+  try { return normalizePlayerName(localStorage.getItem(PLAYER_NAME_KEY)); }
+  catch { return ''; }
+}
+
+export function hasStoredPlayerName() {
+  return !!getStoredPlayerName();
+}
+
+export function getOrCreatePlayerId() {
+  try {
+    const stored = (localStorage.getItem(PLAYER_ID_KEY) || '').trim();
+    if (stored) return stored;
+    const generated = globalThis.crypto?.randomUUID?.()
+      || `hirundu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(PLAYER_ID_KEY, generated);
+    return generated;
+  } catch {
+    return '';
+  }
+}
+
+// Read the inline nickname during the start gesture; never open a blocking dialog.
+// Generic fallbacks are not persisted, so the nickname field can reappear later.
+export function readPlayerName() {
+  const input = normalizePlayerName(document.getElementById('playerName')?.value || '');
+  const stored = getStoredPlayerName();
+  const name = input || stored || copy.player;
+
+  if (input) {
+    try { localStorage.setItem(PLAYER_NAME_KEY, input); } catch {}
+  }
+  if (input || stored) getOrCreatePlayerId();
+
+  const field = document.getElementById('playerNameField');
+  if (field) { field.hidden = true; field.style.display = 'none'; }
+  return name;
 }

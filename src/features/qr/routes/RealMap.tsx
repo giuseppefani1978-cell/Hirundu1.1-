@@ -1,3 +1,6 @@
+import { bt, LANG } from "../i18n/bonusLocale";
+import { copy } from '../../../ui/copy.js';
+import { passportCopy as pc } from '../passport/passportCopy';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon, type LatLngExpression, type LatLngTuple } from "leaflet";
@@ -11,7 +14,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
+import { BONUS_MAPS, type BonusKey, type BonusMapConfig } from "../../bonus/bonusData";
 import { getEnrichedPois, type EnrichedPoi } from "../services/pois";
 import { findPartnerById, type Partner } from "../services/partners";
 import {
@@ -89,11 +92,11 @@ function FitAndRestrict({ lat, lng, radiusKm }: { lat: number; lng: number; radi
   return null;
 }
 
-export default function RealMap() {
+export default function RealMap({ passportOnly = false }: { passportOnly?: boolean }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const key = (id?.toLowerCase() as BonusKey) || "otranto";
-  const cfg = BONUS_MAPS[key] ?? BONUS_MAPS.otranto;
+  const cfg: BonusMapConfig = BONUS_MAPS[key] ?? BONUS_MAPS.otranto;
 
   const pois = useMemo(() => getEnrichedPois(), []);
   const relevantPois = useMemo(() => filterPoisForMap(cfg.poiIds, pois), [cfg.poiIds, pois]);
@@ -108,7 +111,8 @@ export default function RealMap() {
   }, [partners, relevantPois]);
 
   const center: LatLngTuple = [cfg.lat, cfg.lng];
-  const inner = circleToPolygon(center[0], center[1], RADIUS_KM);
+  const radiusKm = cfg.radiusKm ?? RADIUS_KM;
+  const inner = circleToPolygon(center[0], center[1], radiusKm);
   const innerHole = [...inner].reverse();
   const polygonWithHole: LatLngExpression[][] = [WORLD_RECT, innerHole];
 
@@ -146,23 +150,60 @@ export default function RealMap() {
     navigate("/bonus");
   };
 
+  if (passportOnly) return (
+    <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
+      <nav className="real-map__actions passport-page__navigation">
+        <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
+        {(['otranto','gallipoli','lecce','adriatico','capo','arneo','nardo','messapia','itria'] as const).map((city) => {
+          const step = itinerary.find((item) => item.key === city);
+          const completed = Boolean(step?.completed);
+          const available = Boolean(step?.available || completed);
+          const active = key === city;
+          const className = [
+            "app-button",
+            "passport-page__city-tab",
+            active ? "passport-page__city-tab--active" : "",
+            completed ? "passport-page__city-tab--completed" : "",
+            !available ? "passport-page__city-tab--locked" : "",
+          ].filter(Boolean).join(" ");
+
+          return (
+            <button
+              key={city}
+              className={className}
+              aria-pressed={active}
+              data-status={completed ? "completed" : available ? "available" : "locked"}
+              onClick={() => navigate(`/passport/${city}`)}
+            >
+              <span className="passport-page__city-label">{BONUS_MAPS[city].title}</span>
+              <span className="passport-page__city-status" aria-hidden>
+                {completed ? "✓" : active ? "•" : ""}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+      <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
+      <nav className="real-map__actions">
+        <button className="app-button" onClick={() => navigate('/qr')}>{pc.scan}</button>
+        <button className="app-button" onClick={() => navigate(`/poi/${key}/realmap`)}>{copy.maps}</button>
+      </nav>
+    </main>
+  );
+
   return (
     <div className="real-map">
-      <nav className="real-map__actions" aria-label="Navigation bonus">
+      <nav className="real-map__actions" aria-label={bt("Navigation bonus")}>
         <button
           type="button"
           className="real-map__action-button real-map__action-button--bonus"
           onClick={goToBonusHub}
-        >
-          🎁 Voir les bonus
-        </button>
+        >🎁 {bt("Voir les bonus")}</button>
         <button
           type="button"
           className="real-map__action-button real-map__action-button--market"
           onClick={goToMarket}
-        >
-          🛒 Marché &amp; Souvenirs
-        </button>
+        >🛒 {bt("Marché & Souvenirs")}</button>
       </nav>
       <MapContainer
         key={key}
@@ -181,7 +222,7 @@ export default function RealMap() {
           <Popup>
             <strong>{cfg.title}</strong>
             <br />
-            {cfg.markerText || "Carte bonus"}
+            {bt("Carte bonus")}
           </Popup>
         </Marker>
 
@@ -220,26 +261,18 @@ export default function RealMap() {
           }}
         />
 
-        <FitAndRestrict lat={center[0]} lng={center[1]} radiusKm={RADIUS_KM} />
+        <FitAndRestrict lat={center[0]} lng={center[1]} radiusKm={radiusKm} />
       </MapContainer>
 
-      <PassportSalentino
-        mapTitle={cfg.title}
-        itinerary={itinerary}
-        pois={relevantPois}
-        visitedPoiIds={passport.visited}
-        progress={passportProgress}
-      />
-
-      <button type="button" className="real-map__back" onClick={handleBack}>
-        ↩️ Retour à la page bonus
+      <button type="button" className="real-map__back" onClick={() => navigate(`/passport/${key}`)}>
+        📔 {copy.passportOpen}
       </button>
     </div>
   );
 }
 
 function filterPoisForMap(ids: string[] | undefined, pois: EnrichedPoi[]): EnrichedPoi[] {
-  if (!ids?.length) return pois;
+  if (!ids?.length) return pois.filter(poi => !/^poi_(giurdignano|leuca|copertino|nardo|ostuni|manduria)_/.test(poi.id));
   const set = new Set(ids);
   return pois.filter((poi) => set.has(poi.id));
 }
@@ -276,13 +309,13 @@ type PassportLevel = {
 };
 
 const PASSPORT_LEVELS: PassportLevel[] = [
-  { name: "Forestier", threshold: 0 },
-  { name: "Connaisseur", threshold: 0.15 },
-  { name: "Touriste", threshold: 0.3 },
-  { name: "Touriste Responsable", threshold: 0.5 },
-  { name: "Passioné", threshold: 0.7 },
-  { name: "Local", threshold: 0.9 },
-  { name: "Salentino 100%", threshold: 1 },
+  { name: pc.tiers[0], threshold: 0 },
+  { name: pc.tiers[1], threshold: 0.15 },
+  { name: pc.tiers[2], threshold: 0.3 },
+  { name: pc.tiers[3], threshold: 0.5 },
+  { name: pc.tiers[4], threshold: 0.7 },
+  { name: pc.tiers[5], threshold: 0.9 },
+  { name: pc.tiers[6], threshold: 1 },
 ];
 
 const TARANTULA_POI_ICON = new Icon({
@@ -391,28 +424,23 @@ function PassportSalentino({
   progress,
 }: PassportSalentinoProps) {
   const completionPercent = Math.round(progress.ratio * 100);
-  const hasAnyObjective = progress.totalPoints > 0;
-  const canAdvance = !!progress.nextLevel && progress.pointsToNext > 0;
-  const awaitingStart = !!progress.nextLevel && !hasAnyObjective;
 
   return (
     <aside className="real-map__passport" aria-live="polite">
       <header className="real-map__passport-header">
         <h2 className="real-map__passport-title">📔 Passport Salentino</h2>
         <p className="real-map__passport-level">
-          Niveau actuel : <strong>{progress.level.name}</strong>
+          {pc.level} : <strong>{progress.level.name}</strong>
         </p>
         <p className="real-map__passport-subtitle">
-          Parcours {mapTitle} – {progress.earnedPoints} point
-          {progress.earnedPoints > 1 ? "s" : ""} validé
-          {progress.earnedPoints > 1 ? "s" : ""} sur {progress.totalPoints}
+          {mapTitle} · {pc.points} : {progress.earnedPoints} / {progress.totalPoints}
         </p>
         <div className="real-map__passport-progress">
           <div className="real-map__passport-progress-bar" aria-hidden>
             <span className="real-map__passport-progress-fill" style={{ width: `${completionPercent}%` }} />
           </div>
           <div className="real-map__passport-progress-meta">
-            {completionPercent}% complété
+            {completionPercent}% {pc.done}
           </div>
           <div className="real-map__passport-tiers" aria-hidden>
             {PASSPORT_LEVELS.map((tier) => {
@@ -433,33 +461,18 @@ function PassportSalentino({
             })}
           </div>
         </div>
-        {progress.nextLevel && canAdvance ? (
-          <p className="real-map__passport-next">
-            Encore {progress.pointsToNext} validation
-            {progress.pointsToNext > 1 ? "s" : ""} pour atteindre {progress.nextLevel.name}.
-          </p>
-        ) : progress.nextLevel && awaitingStart ? (
-          <p className="real-map__passport-next">
-            Commence une exploration pour viser {progress.nextLevel.name}.
-          </p>
-        ) : progress.nextLevel ? (
-          <p className="real-map__passport-next">
-            Tu es aux portes de {progress.nextLevel.name} !
-          </p>
-        ) : (
-          <p className="real-map__passport-next">Bravo ! Tu es Salentino 100 % 🌟</p>
-        )}
+        {progress.nextLevel && <p className="real-map__passport-next">{pc.next} : {progress.nextLevel.name} ({progress.pointsToNext})</p>}
       </header>
 
       <section className="real-map__passport-section">
-        <h3>Parcours débloqués</h3>
+        <h3>{pc.steps}</h3>
         <ul className="real-map__passport-itinerary">
           {itinerary.map((step) => {
             const status = step.completed
-              ? { icon: "✅", label: "Terminé" }
+              ? { icon: "✅", label: pc.completed }
               : step.available
-                ? { icon: "🧭", label: "Disponible" }
-                : { icon: "🔒", label: "À débloquer" };
+                ? { icon: "🧭", label: pc.available }
+                : { icon: "🔒", label: pc.locked };
             return (
               <li key={step.id} className="real-map__passport-itinerary-item">
                 <span aria-hidden className="real-map__passport-itinerary-icon">
@@ -476,12 +489,9 @@ function PassportSalentino({
       </section>
 
       <section className="real-map__passport-section">
-        <h3>Points finaux à valider</h3>
+        <h3>{pc.visits}</h3>
         <p className="real-map__passport-hint">
-          Les validations s’activent automatiquement via les QR codes partenaires ({
-            progress.visitedPoiCount
-          }
-          /{progress.totalPoiCount}).
+          {pc.hint} ({progress.visitedPoiCount}/{progress.totalPoiCount})
         </p>
         <ul className="real-map__passport-pois">
           {pois.map((poi) => {
@@ -496,7 +506,7 @@ function PassportSalentino({
                       : " real-map__passport-poi-status--pending")
                   }
                   role="img"
-                  aria-label={checked ? "Validé via QR" : "En attente"}
+                  aria-label={checked ? pc.validated : pc.pending}
                 >
                   {checked ? "✅" : "⌛"}
                 </span>
@@ -506,7 +516,7 @@ function PassportSalentino({
                     <span className="real-map__passport-poi-partner"> – {poi.partner.name}</span>
                   ) : null}
                   <div className="real-map__passport-poi-state">
-                    {checked ? "Validé via QR" : "En attente de validation"}
+                    {checked ? pc.validated : pc.pending}
                   </div>
                 </div>
               </li>

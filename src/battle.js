@@ -4,14 +4,43 @@
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
-import { markLevelWin } from './bonus_maps.js';
+import { copy } from './ui/copy.js';
+import { LANG } from './i18n.js';
+const battleWords = {
+ fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie',watch:'Attention !',counter:'Maintenant ! Riposte !',hurt:'Touché ! Reprends de l’altitude.',phase:'Le gardien accélère !',strike:'Bien joué !'},
+ it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita',watch:'Attenzione!',counter:'Ora! Contrattacca!',hurt:'Colpito! Riprendi quota.',phase:'Il guardiano accelera!',strike:'Ben fatto!'},
+ en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'},
+ es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida',watch:'¡Atención!',counter:'¡Ahora! ¡Contraataca!',hurt:'¡Golpe! Recupera altura.',phase:'¡El guardián acelera!',strike:'¡Buen golpe!'},
+}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'};
 import { withBase } from './utils/basePath.js';
+import { markLevelWin } from './bonus_maps.js';
+import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const BTL = {
   FLOOR_H: 0,
   GRAV: 1200,
   SPEED: 300,
   JUMP_VY: -620,
+  PLAYER_GRAV: 760,
+  FLAP_VY: -560,
+  DIVE_VY: 620,
+  FLAP_COOLDOWN_MS: 180,
+  H_RESPONSE: 8.5,
+  H_RELEASE: 5.5,
+  V_RESPONSE: 8,
+  FLIGHT_ASSIST_MS: 210,
+  DODGE_RESPONSE: 18,
+  BOSS_SAFE_X: 150,
+  BOSS_HARD_X: 88,
+  BOSS_SAFE_ALT: -150,
+  BOSS_REPEL_SPEED: 250,
+  DIVE_NEAR_BOSS_MAX: 360,
+  DODGE_SPEED: 820,
+  DODGE_MS: 220,
+  DODGE_COOLDOWN_MS: 900,
+  DODGE_INVULN_MS: 270,
+  PERFECT_DODGE_R: 76,
+  TELEGRAPH_MS: 620,
   PLAYER_HP: 120,
   FOE_HP: 200,
   SHOT: 760,
@@ -73,10 +102,11 @@ let state = {
   player: { x: 160, y: 0, vx: 0, vy: 0, hp: BTL.PLAYER_HP, onGround: false, facing: 1 },
   foe:    { x: 760, y: 0, vx: 0, vy: 0, hp: BTL.FOE_HP, fireAt: Infinity, onGround:false },
 
+  initialAmmo: {},
   shots: [],
   ammo: { pasticciotto:0, rustico:0, caffe:0, stars:0 },
 
-  input: { left:false, right:false, up:false, atk:false, spc:false },
+  input: { left:false, right:false, up:false, down:false, dodge:false, atk:false, spc:false },
 
   onWin: ()=>{}, onLose: ()=>{},
 
@@ -95,6 +125,24 @@ let state = {
   // feedback
   shakeT: 0,
   slowUntil: 0,
+  flapReadyAt: 0,
+  dodgeUntil: 0,
+  dodgeCooldownUntil: 0,
+  invulnerableUntil: 0,
+  dodgeDir: 1,
+  telegraph: null,
+  patternIndex: 0,
+  feedbackText: '',
+  feedbackUntil: 0,
+  phaseAnnounced: false,
+  foeMaxHp: BTL.FOE_HP,
+  combo: 0,
+  comboUntil: 0,
+  chirpReadyAt: 0,
+  verticalAssistUntil: 0,
+  verticalTargetVy: 0,
+  renderTilt: 0,
+  lastRenderAt: 0,
 
   // FX fin de partie
   fx: { fireworks: [] },
@@ -123,12 +171,35 @@ function __writeUnifiedUnlock(key){
   } catch {}
 }
 
+const REGIONAL_BOSSES = {
+  macina: {level:7,key:'nardo',name:'Macina',token:'🫒',hp:380,damage:22,fireMin:850,fireMax:1400},
+  argillo: {level:8,key:'messapia',name:'Argillo',token:'🏺',hp:420,damage:24,fireMin:800,fireMax:1350},
+  calcara: {level:9,key:'itria',name:'Calcara',token:'💎',hp:460,damage:26,fireMin:750,fireMax:1300},
+};
+
 function __persistUnlocksForFoe(foeType){
   try {
     // legacy umbrella bit (kept if some code still checks it)
     localStorage.setItem('bonus_unlocked', '1');
 
-    if (foeType === 'jelly') {
+    if (REGIONAL_BOSSES[foeType]) {
+      const boss=REGIONAL_BOSSES[foeType];
+      __writeUnifiedUnlock(boss.key);
+      markLevelWin(boss.level);
+      localStorage.setItem('__toast_next__',boss.key);
+    } else if (foeType === 'resino') {
+      __writeUnifiedUnlock('arneo');
+      markLevelWin(6);
+      localStorage.setItem('__toast_next__', 'arneo');
+    } else if (foeType === 'scirocco') {
+      __writeUnifiedUnlock('capo');
+      try { markLevelWin?.(5); } catch {}
+      localStorage.setItem('__toast_next__', 'capo');
+    } else if (foeType === 'nacra') {
+      __writeUnifiedUnlock('adriatico');
+      try { markLevelWin?.(4); } catch {}
+      localStorage.setItem('__toast_next__', 'adriatico');
+    } else if (foeType === 'jelly') {
       // Otranto (L1)
       localStorage.setItem('bonus_otranto_unlocked', '1');
       __writeUnifiedUnlock('otranto');
@@ -160,22 +231,25 @@ function __persistUnlocksForFoe(foeType){
   } catch(e){ console.error(e); }
 }
 
-function __redirectAfterWin(foeType){
-  // Always bounce back into the React HashRouter
-  const hub = withBase('index.html?embed=1#');
+function _onBattlePause(event){
+  const paused = !!event?.detail?.paused;
+  try {
+    if (paused) state.musicBattle?.pause();
+    else if (state.active) state.musicBattle?.play().catch(()=>{});
+  } catch {}
+}
 
-  if (foeType === 'sputacchina') {
-    // Level 3 → Lecce
-    location.href = `${hub}/poi/lecce/realmap`;
-  } else if (foeType === 'crow') {
-    // Level 2 → Gallipoli
-    location.href = `${hub}/poi/gallipoli/realmap`;
-  } else {
-    // Level 1 (jelly / default) → Otranto
-    location.href = `${hub}/poi/otranto/realmap`;
-  }
-  // optional telemetry/event
-  window.dispatchEvent(new CustomEvent('app:navigate', { detail:{ to: 'bonus' }}));
+export function disposeBattle() {
+  state.active = false;
+  _stopBattleTheme();
+  _stopVictoryMusic();
+  window.removeEventListener('keydown', _onKeyDown, true);
+  window.removeEventListener('keyup', _onKeyUp, true);
+  window.removeEventListener('orientationchange', _updateRotateOverlay);
+  window.removeEventListener('resize', _updateRotateOverlay);
+  window.removeEventListener(PAUSE_EVENT, _onBattlePause);
+  state.input = { left:false, right:false, up:false, down:false, dodge:false, atk:false, spc:false };
+  if (state.ui.root) state.ui.root.style.display = 'none';
 }
 
 // ---------------------------------------------------------
@@ -188,6 +262,8 @@ export function setupBattleInputs(){
   window.addEventListener('keyup', _onKeyUp, true);
   _ensureBattleUI(false); // créer mais caché
   _installOrientationWatch();
+  window.removeEventListener(PAUSE_EVENT, _onBattlePause);
+  window.addEventListener(PAUSE_EVENT, _onBattlePause);
 }
 
 export function setBattleCallbacks({ onWin, onLose } = {}){
@@ -200,10 +276,15 @@ export function setBattleAmmo(ammo){
   state.ammo.rustico      = ammo?.rustico|0;
   state.ammo.caffe        = ammo?.caffe|0;
   state.ammo.stars        = ammo?.stars|0;
+  state.initialAmmo = { ...state.ammo };
 }
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  setGameFlowPhase(FLOW_PHASES.BATTLE, { boss: foeType });
+  state.shots.length = 0;
+  for (const key of Object.keys(state.input)) state.input[key] = false;
+  state.ammo = { ...state.initialAmmo };
   state.phase = 'play';
   state.victory = null;
   state.fx.fireworks.length = 0;
@@ -211,6 +292,23 @@ export function startBattle(foeType='jelly'){
   state.active = true;
   state.foeType = foeType;
   state.victoryDance = false;
+  state.flapReadyAt = 0;
+  state.dodgeUntil = 0;
+  state.dodgeCooldownUntil = 0;
+  state.invulnerableUntil = 0;
+  state.dodgeDir = 1;
+  state.telegraph = null;
+  state.patternIndex = 0;
+  state.feedbackText = '';
+  state.feedbackUntil = 0;
+  state.phaseAnnounced = false;
+  state.combo = 0;
+  state.comboUntil = 0;
+  state.chirpReadyAt = 0;
+  state.verticalAssistUntil = 0;
+  state.verticalTargetVy = 0;
+  state.renderTilt = 0;
+  state.lastRenderAt = 0;
   // configure tir selon le boss
   state.foeShotKind = (foeType === 'sputacchina') ? 'spore' : 'zap';
 
@@ -220,8 +318,9 @@ export function startBattle(foeType='jelly'){
   // ennemi : hors-écran à droite
   state.foe = {
     x: state.w + 160, y: 0, vx: 0, vy: 0,
-    hp: BTL.FOE_HP, fireAt: Infinity, onGround: false
+    hp: REGIONAL_BOSSES[foeType]?.hp ?? (foeType === 'resino' ? 340 : foeType === 'scirocco' ? 300 : foeType === 'nacra' ? 260 : BTL.FOE_HP), fireAt: Infinity, onGround: false
   };
+  state.foeMaxHp = state.foe.hp;
   state.foeDir = -1;
   state.foeWanderUntil = performance.now() + 700;
 
@@ -263,6 +362,7 @@ export function isBattleActive(){ return state.active; }
 // Ticks
 // ---------------------------------------------------------
 export function tickBattle(dt){
+  if((REGIONAL_BOSSES[state.foeType] || ['nacra','scirocco','resino'].includes(state.foeType)) && (document.hidden || !_isLandscape())) return;
   // même si la battle est finie, on continue certains FX
   if (!state.active){
     if (state.ending?.mode === 'win') _tickFireworks(dt);
@@ -285,9 +385,9 @@ export function tickBattle(dt){
     state.shakeT = Math.max(0, state.shakeT - dt * BTL.HIT_SHAKE_DECAY_PER_S);
   }
 
-  // Physique de base
-  _applyPhysics(state.player, dt);
-  _applyPhysics(state.foe, dt);
+  // Hirundu reste en vol; le boss conserve sa physique existante.
+  _applyPhysics(state.player, dt, true);
+  _applyPhysics(state.foe, dt, false);
 
   // ----------------------------------------------------------------
   // GAMEPLAY — uniquement pendant 'play'
@@ -295,23 +395,74 @@ export function tickBattle(dt){
   if (state.phase === 'play') {
     // Contrôles joueur (bloqués pendant READY…)
     const slowMul = (now < state.slowUntil) ? BTL.HIT_SLOW_FACTOR : 1;
-    state.player.vx = 0;
 
     if (!readyPhase){
-      if (state.input.left)  { state.player.vx = -BTL.SPEED * slowMul; state.player.facing = -1; }
-      if (state.input.right) { state.player.vx =  BTL.SPEED * slowMul; state.player.facing =  1; }
-      if (state.input.up && state.player.onGround){
-        state.player.vy = BTL.JUMP_VY;
+      if (_consume('dodge') && now >= state.dodgeCooldownUntil) _startDodge(now);
+      if (now < state.dodgeUntil) {
+        const dodgeTargetVx = BTL.DODGE_SPEED * state.dodgeDir * slowMul;
+        const dodgeBlend = 1 - Math.exp(-BTL.DODGE_RESPONSE * dt);
+        state.player.vx += (dodgeTargetVx - state.player.vx) * dodgeBlend;
+      } else {
+        const horizontalInput = (state.input.right ? 1 : 0) - (state.input.left ? 1 : 0);
+        if (horizontalInput) state.player.facing = horizontalInput;
+        const targetVx = horizontalInput * BTL.SPEED * slowMul;
+        const response = horizontalInput ? BTL.H_RESPONSE : BTL.H_RELEASE;
+        const blend = 1 - Math.exp(-response * dt);
+        state.player.vx += (targetVx - state.player.vx) * blend;
+        if (!horizontalInput && Math.abs(state.player.vx) < 2) state.player.vx = 0;
+      }
+      if (_consume('up') && now >= state.flapReadyAt){
+        state.verticalTargetVy = Math.max(-620, Math.min(-430, state.player.vy - 220));
+        state.verticalAssistUntil = now + BTL.FLIGHT_ASSIST_MS;
         state.player.onGround = false;
+        state.flapReadyAt = now + BTL.FLAP_COOLDOWN_MS;
+        if (now >= state.chirpReadyAt) {
+          try { window.__HIRUNDU_CHIRP?.('soft'); } catch {}
+          state.chirpReadyAt = now + 950;
+        }
+      }
+      if (_consume('down')){
+        const nearBoss = Math.abs(state.player.x - state.foe.x) < BTL.BOSS_SAFE_X && state.player.y > BTL.BOSS_SAFE_ALT;
+        const diveMax = nearBoss ? BTL.DIVE_NEAR_BOSS_MAX : BTL.DIVE_VY;
+        state.verticalTargetVy = diveMax;
+        state.verticalAssistUntil = now + BTL.FLIGHT_ASSIST_MS;
+        state.feedbackText = '↓ ' + battleWords.dive;
+        state.feedbackUntil = now + 420;
+      }
+      if (now < state.verticalAssistUntil) {
+        const vBlend = 1 - Math.exp(-BTL.V_RESPONSE * dt);
+        state.player.vy += (state.verticalTargetVy - state.player.vy) * vBlend;
       }
     } else {
-      // purge pour éviter un buffer d’attaques pendant READY
+      state.input.up = false;
+      state.input.down = false;
+      state.input.dodge = false;
       state.input.atk = false;
       state.input.spc = false;
     }
+    if (state.combo > 0 && now >= state.comboUntil) state.combo = 0;
 
-    // Clamp horizontal
-    state.player.x = Math.max(60, Math.min(state.w - 60, state.player.x + state.player.vx * dt));
+    // Déplacement horizontal + zone de respiration autour du boss à basse altitude.
+    state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x + state.player.vx * dt));
+    if (state.player.y > BTL.BOSS_SAFE_ALT) {
+      const bossDx = state.player.x - state.foe.x;
+      const absDx = Math.abs(bossDx);
+      if (absDx < BTL.BOSS_SAFE_X) {
+        const away = bossDx === 0 ? -1 : Math.sign(bossDx);
+        const proximity = 1 - absDx / BTL.BOSS_SAFE_X;
+        state.player.x += away * BTL.BOSS_REPEL_SPEED * proximity * proximity * dt;
+        if (state.player.vy > BTL.DIVE_NEAR_BOSS_MAX) {
+          const soften = 1 - Math.exp(-7 * dt);
+          state.player.vy += (BTL.DIVE_NEAR_BOSS_MAX - state.player.vy) * soften;
+        }
+        if (absDx < BTL.BOSS_HARD_X && state.player.y > -110) {
+          const safeX = state.foe.x + away * BTL.BOSS_HARD_X;
+          const safetyBlend = 1 - Math.exp(-9 * dt);
+          state.player.x += (safeX - state.player.x) * safetyBlend;
+        }
+        state.player.x = Math.max(60, Math.min(state.w - 110, state.player.x));
+      }
+    }
 
     // Attaques joueur
     if (!readyPhase){
@@ -358,14 +509,23 @@ export function tickBattle(dt){
           }
         }
 
-        // tirs (selon boss)
-        if (now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
-          if (state.foeShotKind === 'spore') {
-            _fireFoeSporeBurst();
-          } else {
-            _fireFoeZap();
-          }
-          state.foe.fireAt = now + _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
+        // Trois patterns lisibles : haut, bas, puis visée directe.
+        if (state.telegraph && now >= state.telegraph.fireAt) {
+          _executeFoePattern(state.telegraph.pattern);
+          state.feedbackText = battleWords.counter;
+          state.feedbackUntil = now + 650;
+          state.telegraph = null;
+        }
+        if (!state.telegraph && now >= state.foe.fireAt && now >= state.foeFireBlockUntil) {
+          const pattern = ['high','low','aim'][state.patternIndex % 3];
+          state.patternIndex += 1;
+          state.telegraph = { pattern, fireAt: now + BTL.TELEGRAPH_MS, until: now + BTL.TELEGRAPH_MS };
+          const attackLabel = pattern === 'high' ? battleWords.high : pattern === 'low' ? battleWords.low : battleWords.aim;
+          state.feedbackText = '⚠ ' + battleWords.watch + ' ' + attackLabel;
+          state.feedbackUntil = now + BTL.TELEGRAPH_MS;
+          const profile=REGIONAL_BOSSES[state.foeType];
+          const cooldown = profile ? _rnd(profile.fireMin,profile.fireMax) : state.foeType==='resino' ? _rnd(900,1450) : state.foeType==='scirocco' ? _rnd(950,1550) : state.foeType==='nacra' ? _rnd(1050,1750) : _rnd(BTL.FOE_FIRE_MS_MIN, BTL.FOE_FIRE_MS_MAX);
+          state.foe.fireAt = state.telegraph.fireAt + cooldown;
         }
       }
     }
@@ -379,18 +539,29 @@ export function tickBattle(dt){
 
       if (!inGrace){
         if (s.from === 'player'){
-          const dx = s.x - state.foe.x, dy = s.y - 0;
+          const dx = s.x - state.foe.x, dy = s.y - state.foe.y;
           if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
             state.foe.hp = Math.max(0, state.foe.hp - s.dmg);
+            state.feedbackText = battleWords.strike;
+            state.feedbackUntil = now + 360;
             state.shots.splice(i,1);
             continue;
           }
         } else {
-          const dx = s.x - state.player.x, dy = s.y - 0;
-          if (dx*dx + dy*dy <= BTL.HIT_R*BTL.HIT_R){
+          const dx = s.x - state.player.x, dy = s.y - state.player.y;
+          const d2 = dx*dx + dy*dy;
+          if (now < state.invulnerableUntil && d2 <= BTL.PERFECT_DODGE_R*BTL.PERFECT_DODGE_R){
+            _awardPerfectDodge(now);
+            state.shots.splice(i,1);
+            continue;
+          }
+          if (d2 <= BTL.HIT_R*BTL.HIT_R){
             state.player.hp = Math.max(0, state.player.hp - s.dmg);
             state.shakeT   = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.35);
             state.slowUntil = now + (s.kind === 'spore' ? (BTL.SPORE_SLOW_MS || BTL.HIT_SLOW_MS) : BTL.HIT_SLOW_MS);
+            state.feedbackText = battleWords.hurt;
+            state.feedbackUntil = now + 780;
+            state.combo = 0;
             state.shots.splice(i,1);
             continue;
           }
@@ -400,6 +571,12 @@ export function tickBattle(dt){
       const out  = (s.x < -80 || s.x > state.w + 80);
       const dead = (s.life != null && s.life <= 0);
       if (out || dead) state.shots.splice(i,1);
+    }
+
+    if (!state.phaseAnnounced && state.foeMaxHp > 0 && state.foe.hp > 0 && state.foe.hp <= state.foeMaxHp * 0.5) {
+      state.phaseAnnounced = true;
+      state.feedbackText = battleWords.phase;
+      state.feedbackUntil = now + 1200;
     }
 
     // Fin de manche
@@ -449,6 +626,9 @@ export function renderBattle(ctx, _view, sprites){
 
   const w = dw, h = dh;
   state.w = w; state.h = h;
+  const renderNow = performance.now();
+  const renderDt = state.lastRenderAt ? Math.min(0.05, Math.max(0.001, (renderNow - state.lastRenderAt) / 1000)) : 1/60;
+  state.lastRenderAt = renderNow;
 
   // Shake hit
   if (state.shakeT > 0) {
@@ -487,29 +667,65 @@ export function renderBattle(ctx, _view, sprites){
   }
 
   // Personnages
-  const P_W = 96, P_H = 108;
+  // V9.7: Hirundu is ~20% larger; boss dimensions remain unchanged.
+  const P_W = 116, P_H = 130;
   const playerBaseline = h - BTL.FLOOR_H + state.player.y;
   const foeBaseline = h - BTL.FLOOR_H + state.foe.y;
   const pY = playerBaseline - P_H;
 
-  // Joueur
-  ctx.save();
-  ctx.translate(state.player.x, pY);
-  if (state.player.facing < 0){ ctx.scale(-1,1); ctx.translate(-P_W,0); }
-  if (sprites?.birdImg?.naturalWidth) {
-    ctx.drawImage(sprites.birdImg, 0, 0, P_W, P_H);
-  } else {
-    ctx.fillStyle='#e63946';
-    ctx.fillRect(0,0,P_W,P_H);
+  // Joueur : inclinaison lissée + respiration/battement d’ailes simulé.
+  const dodgeActive = renderNow < state.dodgeUntil;
+  const targetTilt = dodgeActive ? 0.08 * state.dodgeDir : Math.max(-0.34, Math.min(0.46, state.player.vy / 1250));
+  state.renderTilt += (targetTilt - state.renderTilt) * (1 - Math.exp(-7 * renderDt));
+  const tilt = state.renderTilt;
+  if (dodgeActive || state.player.vy > 500) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.38)';
+    ctx.lineWidth = 2;
+    const trailY = pY + P_H * 0.55;
+    for (let i=0;i<4;i++){
+      const len = 22 + i*11;
+      ctx.beginPath();
+      ctx.moveTo(state.player.x - 8 - i*5, trailY + (i-1.5)*7);
+      ctx.lineTo(state.player.x - len, trailY + (i-1.5)*7);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
+  const flightEnergy = Math.min(1, Math.abs(state.player.vx) / BTL.SPEED + Math.abs(state.player.vy) / 900);
+  // More readable wingbeat: ~4 Hz in active flight, calmer while gliding.
+  const flapPeriod = dodgeActive ? 34 : flightEnergy > 0.65 ? 40 : 62;
+  const flap = Math.sin(renderNow / flapPeriod);
+  const wingScaleY = 0.965 + flap * (0.065 + flightEnergy * 0.035);
+  const wingScaleX = 1.018 - flap * (0.022 + flightEnergy * 0.008);
+  const bob = Math.sin(renderNow / 105) * (0.9 + flightEnergy * 1.0);
+
+  ctx.save();
+  ctx.translate(state.player.x + P_W/2, pY + P_H/2 + bob);
+  ctx.rotate(tilt);
+
+  // A faint secondary pose during strong beats gives a wing-motion impression
+  // without adding a heavy sprite sheet.
+  if (sprites?.birdImg?.naturalWidth && flightEnergy > 0.18 && Math.abs(flap) > 0.45) {
+    ctx.save();
+    ctx.globalAlpha = 0.10 + 0.07 * flightEnergy;
+    const ghostScaleY = flap > 0 ? 1.07 : 0.90;
+    ctx.scale((state.player.facing < 0 ? -1 : 1) * 1.01, ghostScaleY);
+    ctx.drawImage(sprites.birdImg, -P_W/2 - 2, -P_H/2, P_W, P_H);
+    ctx.restore();
+  }
+
+  ctx.scale((state.player.facing < 0 ? -1 : 1) * wingScaleX, wingScaleY);
+  if (sprites?.birdImg?.naturalWidth) ctx.drawImage(sprites.birdImg, -P_W/2, -P_H/2, P_W, P_H);
+  else { ctx.fillStyle='#e63946'; ctx.fillRect(-P_W/2,-P_H/2,P_W,P_H); }
   ctx.restore();
 
-  // --- Ennemi (agrandi + fade si mort)
-  const F_W_BASE = Math.round(P_W * 1.8);
-  const F_H_BASE = Math.round(P_H * 1.8);
+  // --- Ennemi (size kept independent from the enlarged bird)
+  const F_W_BASE = 173;
+  const F_H_BASE = 194;
 
   let foeImg = null;
-  if (state.foeType === 'jelly')        foeImg = sprites?.jellyImg;
+  if (REGIONAL_BOSSES[state.foeType] || ['jelly','nacra','scirocco','resino'].includes(state.foeType)) foeImg = sprites?.jellyImg;
   else if (state.foeType === 'crow')    foeImg = sprites?.crowImg;
   else if (state.foeType === 'sputacchina') foeImg = sprites?.sputImg;
 
@@ -538,6 +754,25 @@ export function renderBattle(ctx, _view, sprites){
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+
+  // Télégraphie de l’attaque : lisible avant le tir.
+  if (state.telegraph && renderNow < state.telegraph.until) {
+    const pulse = 0.55 + 0.35 * Math.sin(renderNow / 55);
+    ctx.save();
+    ctx.globalAlpha = Math.max(.35, pulse);
+    ctx.strokeStyle = '#ffe066';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(state.foe.x - 4, Math.max(72, foeBaseline - drawH * .45), 44, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff7bf';
+    ctx.font = '900 17px system-ui';
+    ctx.textAlign = 'center';
+    const label = state.telegraph.pattern === 'high' ? '↓ ' + battleWords.high : state.telegraph.pattern === 'low' ? '↑ ' + battleWords.low : '◎ ' + battleWords.aim;
+    ctx.fillText(label, Math.max(120, state.foe.x - 92), 58);
+    ctx.restore();
+  }
 
   // Explosion ennemi
   if (state.foeDeath && !state.foeDeath.done){
@@ -611,27 +846,116 @@ export function renderBattle(ctx, _view, sprites){
     _renderFireworks(ctx, w, h);
   }
 
-  // HUD
-  ctx.fillStyle='#fff'; ctx.font='700 16px system-ui';
-  ctx.fillText(`HP: ${state.player.hp}`, 16, 28);
-  ctx.fillText(`Foe: ${state.foe.hp}`,  Math.max(16, w-120), 28);
-  ctx.fillText(`★: ${state.ammo.stars}`, Math.floor(w/2)-12, 28);
+  // Energy bars — same readable visual language as the Level 3 battle.
+  const bossName = REGIONAL_BOSSES[state.foeType]?.name
+    ?? (state.foeType==='resino' ? 'Resino'
+      : state.foeType==='scirocco' ? 'Scirocco'
+      : state.foeType==='nacra' ? 'Nacra'
+      : state.foeType==='crow' ? 'Corvo'
+      : state.foeType==='sputacchina' ? 'Sputacchina'
+      : 'Guardiano');
+  const drawEnergyBar = (x, y, width, label, value, maxValue) => {
+    const height = 48;
+    const clamped = Math.max(0, Math.min(1, maxValue > 0 ? value / maxValue : 0));
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, 16);
+    ctx.fillStyle = 'rgba(255,253,245,.90)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(15,43,74,.18)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.font = '700 14px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.fillStyle = '#32475a';
+    ctx.fillText(label, x + 12, y + 18);
+
+    ctx.textAlign = 'right';
+    ctx.font = '900 15px ui-monospace,SFMono-Regular,Menlo,monospace';
+    ctx.fillStyle = '#102a43';
+    ctx.fillText(String(Math.max(0, Math.ceil(value))), x + width - 12, y + 18);
+
+    const trackX = x + 12, trackY = y + 27, trackW = width - 24, trackH = 11;
+    ctx.beginPath();
+    ctx.roundRect(trackX, trackY, trackW, trackH, 6);
+    ctx.fillStyle = 'rgba(15,43,74,.12)';
+    ctx.fill();
+    if (clamped > 0) {
+      ctx.beginPath();
+      ctx.roundRect(trackX, trackY, Math.max(trackH, trackW * clamped), trackH, 6);
+      ctx.fillStyle = '#2fbd62';
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  const energyBarW = Math.min(300, Math.max(190, w * 0.34));
+  const energyTop = 12;
+  drawEnergyBar(14, energyTop, energyBarW, 'Aracne', state.player.hp, BTL.PLAYER_HP);
+  drawEnergyBar(w - energyBarW - 14, energyTop, energyBarW, bossName, state.foe.hp, state.foeMaxHp || BTL.FOE_HP);
+
+  // Keep only the useful collectible count as a discreet center chip.
+  const token = REGIONAL_BOSSES[state.foeType]?.token
+    ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★');
+  ctx.save();
+  ctx.font = '800 13px system-ui';
+  const tokenText = `${token} ${state.ammo.stars}`;
+  const tokenW = Math.max(54, ctx.measureText(tokenText).width + 22);
+  const tokenX = (w - tokenW) / 2;
+  ctx.beginPath();
+  ctx.roundRect(tokenX, 17, tokenW, 30, 15);
+  ctx.fillStyle = 'rgba(255,253,245,.86)';
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#0e2b4a';
+  ctx.fillText(tokenText, w / 2, 32);
+  ctx.restore();
+
+  // Short dialogue bubble, shared by every battle (same readable language as L3).
+  if (renderNow < state.feedbackUntil && state.feedbackText) {
+    ctx.save();
+    const combo = state.combo > 1 ? '  ×' + state.combo : '';
+    const label = state.feedbackText + combo;
+    ctx.font = '800 18px system-ui';
+    const padX = 16, bubbleH = 44;
+    const bubbleW = Math.min(w - 32, Math.max(150, ctx.measureText(label).width + padX * 2));
+    const centerX = Math.min(w - bubbleW / 2 - 16, Math.max(bubbleW / 2 + 16, state.player.x + 44));
+    const centerY = Math.max(78, pY - 20);
+    const bx = centerX - bubbleW / 2, by = centerY - bubbleH / 2;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bubbleW, bubbleH, 14);
+    ctx.fillStyle = 'rgba(255,253,245,.96)';
+    ctx.fill();
+    ctx.strokeStyle = '#c8b37a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#0e2b4a';
+    ctx.shadowColor = 'rgba(15,23,42,.14)';
+    ctx.shadowBlur = 5;
+    ctx.fillText(label, centerX, centerY + 1);
+    ctx.restore();
+  }
 
   // READY / GO
-  const now = performance.now();
+  const now = renderNow;
   if (now < state.goAt){
     ctx.font='700 42px system-ui';
     ctx.fillStyle='rgba(255,255,255,.9)';
-    ctx.fillText('READY…', Math.floor(w/2 - 92), Math.floor(h/2 - 40));
+    ctx.fillText(battleWords.ready, Math.floor(w/2 - 92), Math.floor(h/2 - 40));
   } else if (now < state.goAt + BTL.GO_FLASH_MS){
     ctx.font='900 56px system-ui';
     ctx.fillStyle='rgba(255,235,0,.95)';
-    ctx.fillText('GO!', Math.floor(w/2 - 40), Math.floor(h/2 - 40));
+    ctx.fillText(battleWords.go, Math.floor(w/2 - 40), Math.floor(h/2 - 40));
   }
 
   // Aide
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
-  ctx.fillText('← → bouger • ↑ sauter • A=Attaque • B=Spécial', 16, Math.max(12, h-12));
+  ctx.fillText(copy.battleHint, 16, Math.max(12, h-12));
 
   ctx.restore();
 }
@@ -640,6 +964,8 @@ export function renderBattle(ctx, _view, sprites){
 // Internes
 // ---------------------------------------------------------
 function _endBattle(victory){
+  setGameFlowPhase(victory ? FLOW_PHASES.VICTORY : FLOW_PHASES.DEFEAT, { boss: state.foeType });
+
   // 1) Phase fin
   state.phase   = 'end';
   state.victory = !!victory;
@@ -653,11 +979,12 @@ function _endBattle(victory){
   // 3) Overlay de fin + bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
-    if (t) t.textContent = victory ? 'Victoire !' : 'Défaite…';
+    if (t) t.textContent = victory ? copy.won : copy.defeat;
 
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
-      btn.textContent = victory ? 'Continuer' : 'Réessayer';
+      btn.disabled = false;
+      btn.textContent = victory ? copy.continue : copy.replay;
       btn.style.padding = '12px 16px';
       btn.style.fontSize = '16px';
       btn.style.transform = 'none';
@@ -665,8 +992,13 @@ function _endBattle(victory){
       btn.onclick = () => {
         try {
           if (victory) {
-            __persistUnlocksForFoe(state.foeType);
-            __redirectAfterWin(state.foeType);
+            btn.disabled = true;
+            const foe = state.foeType;
+            __persistUnlocksForFoe(foe);
+            try { state.onWin(); } finally {
+              // Route ownership belongs to the level/React flow, never to the battle engine.
+              disposeBattle();
+            }
           } else {
             state.ui.endOverlay.style.display = 'none';
             startBattle(state.foeType);
@@ -691,20 +1023,40 @@ function _endBattle(victory){
     state.fx.fireworks.length = 0;
   }
 
-  // 6) Callbacks (défaite immédiate, victoire gérée via bouton)
-  try {
-    if (!victory && typeof state.onLose === 'function') {
-      setTimeout(() => state.onLose(), 0);
-    }
-  } catch (e) {
-    console.error('Battle callback error', e);
-  }
+  // Keep the wrapper and its render loop alive until retrying this battle.
+  if (!victory) _stopBattleTheme();
 }
 
-function _applyPhysics(ent, dt){
-  ent.vy += BTL.GRAV * dt;
+function _applyPhysics(ent, dt, isPlayer=false){
+  ent.vy += (isPlayer ? BTL.PLAYER_GRAV : BTL.GRAV) * dt;
   ent.y  += ent.vy * dt;
+  if (isPlayer) {
+    const ceiling = -Math.max(150, state.h * 0.58);
+    if (ent.y < ceiling) { ent.y = ceiling; if (ent.vy < 0) ent.vy *= 0.25; }
+  }
   if (ent.y >= 0){ ent.y = 0; ent.vy = 0; ent.onGround = true; }
+  else ent.onGround = false;
+}
+
+function _startDodge(now){
+  const dir = state.input.left ? -1 : state.input.right ? 1 : (state.player.facing || 1);
+  state.dodgeDir = dir;
+  state.player.facing = dir;
+  state.dodgeUntil = now + BTL.DODGE_MS;
+  state.invulnerableUntil = now + BTL.DODGE_INVULN_MS;
+  state.dodgeCooldownUntil = now + BTL.DODGE_COOLDOWN_MS;
+  state.feedbackText = '↯ ' + battleWords.dodge;
+  state.feedbackUntil = now + 360;
+}
+
+function _awardPerfectDodge(now){
+  state.combo += 1;
+  state.comboUntil = now + 2400;
+  state.feedbackText = battleWords.perfect;
+  state.feedbackUntil = now + 720;
+  state.shakeT = Math.min(BTL.HIT_SHAKE_MAX_S, state.shakeT + 0.08);
+  try { navigator.vibrate?.(18); } catch {}
+  try { window.__HIRUNDU_CHIRP?.('bright'); } catch {}
 }
 
 function _fireNormal(){
@@ -743,38 +1095,31 @@ function _fireSpecial(){
 }
 
 // ---- Tir ennemi — ZAP (générique jelly/crow)
-function _fireFoeZapOnce() {
+function _fireFoeZapOnce(targetY = state.player.y, speedMul = 1) {
   const dx = (state.player.x - state.foe.x);
-  const dy = (state.player.y - state.foe.y);
+  const dy = (targetY - state.foe.y);
   const L  = Math.max(1, Math.hypot(dx, dy));
-  const vx = (dx / L) * BTL.FOE_ZAP_SPEED;
-  const vy = (dy / L) * BTL.FOE_ZAP_SPEED;
+  const vx = (dx / L) * BTL.FOE_ZAP_SPEED * speedMul;
+  const vy = (dy / L) * BTL.FOE_ZAP_SPEED * speedMul;
 
   state.shots.push({
     x: state.foe.x - 36,
     y: state.foe.y,
     vx, vy,
     from: 'foe',
-    dmg: BTL.FOE_ZAP_DMG,
+    dmg: REGIONAL_BOSSES[state.foeType]?.damage ?? (state.foeType==='resino' ? 20 : state.foeType==='scirocco' ? 18 : state.foeType==='nacra' ? 16 : BTL.FOE_ZAP_DMG),
     kind: 'zap',
     life: 1.2,
   });
 }
 
-function _fireFoeZap(){
-  _fireFoeZapOnce();
-  for (let i = 1; i < BTL.FOE_BURST_COUNT; i++){
-    setTimeout(_fireFoeZapOnce, i * BTL.FOE_BURST_GAP_MS);
-  }
-}
-
 // ---- Tir ennemi — SPORES (Sputacchina)
-function _fireFoeSporeOnce() {
+function _fireFoeSporeOnce(targetY = state.player.y, speedMul = 1) {
   const dx = (state.player.x - state.foe.x);
-  const dy = (state.player.y - state.foe.y);
+  const dy = (targetY - state.foe.y);
   const L  = Math.max(1, Math.hypot(dx, dy));
-  const vx = (dx / L) * BTL.SPORE_SPEED;
-  const vy = (dy / L) * BTL.SPORE_SPEED;
+  const vx = (dx / L) * BTL.SPORE_SPEED * speedMul;
+  const vy = (dy / L) * BTL.SPORE_SPEED * speedMul;
 
   state.shots.push({
     x: state.foe.x - 36,
@@ -787,11 +1132,17 @@ function _fireFoeSporeOnce() {
   });
 }
 
-function _fireFoeSporeBurst(){
-  _fireFoeSporeOnce();
-  for (let i = 1; i < BTL.SPORE_BURST; i++){
-    setTimeout(_fireFoeSporeOnce, i * BTL.SPORE_BURST_GAP_MS);
-  }
+function _executeFoePattern(pattern){
+  const highY = -Math.max(145, state.h * 0.38);
+  const lowY = -18;
+  const fireOne = (targetY, speedMul=1) => {
+    if (state.foeShotKind === 'spore') _fireFoeSporeOnce(targetY, speedMul);
+    else _fireFoeZapOnce(targetY, speedMul);
+  };
+  if (pattern === 'high') { fireOne(highY, 1.02); return; }
+  if (pattern === 'low') { fireOne(lowY, 1.04); return; }
+  fireOne(state.player.y, 1.0);
+  setTimeout(() => { if (state.active) fireOne(state.player.y, 1.06); }, state.foeShotKind === 'spore' ? 150 : 120);
 }
 
 function _rnd(a,b){ return a + Math.random()*(b-a); }
@@ -801,14 +1152,18 @@ function _consume(name){ if (state.input[name]){ state.input[name]=false; return
 // Entrées clavier
 // ---------------------------------------------------------
 function _onKeyDown(e){
-  if (!state.active) return;
+  if (!state.active || isGamePaused()) return;
   if (e.repeat) return;
   const k = e.key;
+  const lower = k?.toLowerCase?.();
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Shift',' '].includes(k)) e.preventDefault();
   if (k === 'ArrowLeft')  state.input.left  = true;
   if (k === 'ArrowRight') state.input.right = true;
   if (k === 'ArrowUp')    state.input.up    = true;
-  if (k && k.toLowerCase() === 'a') state.input.atk = true;
-  if (k && k.toLowerCase() === 'b') state.input.spc = true;
+  if (k === 'ArrowDown')  state.input.down  = true;
+  if (k === 'Shift' || k === ' ') state.input.dodge = true;
+  if (lower === 'a') state.input.atk = true;
+  if (lower === 'b') state.input.spc = true;
 }
 function _onKeyUp(e){
   if (!state.active) return;
@@ -816,13 +1171,14 @@ function _onKeyUp(e){
   if (k === 'ArrowLeft')  state.input.left  = false;
   if (k === 'ArrowRight') state.input.right = false;
   if (k === 'ArrowUp')    state.input.up    = false;
+  if (k === 'ArrowDown')  state.input.down  = false;
 }
 
 // ---------------------------------------------------------
 // UI Battle (pads + overlay rotation)
 // ---------------------------------------------------------
 function _ensureBattleUI(show){
-  if (!state.ui.root){
+  if (!state.ui.root?.isConnected){
     const root = document.createElement('div');
     root.id = '__battle_ui__';
     root.style.cssText = `
@@ -836,14 +1192,16 @@ function _ensureBattleUI(show){
       left:12px;
       bottom: max(8px, env(safe-area-inset-bottom, 0px));
       display:flex;
-      gap:8px;
+      gap:6px;
       align-items:center;
       pointer-events:auto;
     `;
     move.innerHTML = `
-      <button data-act="left"  class="__padbtn">←</button>
-      <button data-act="up"    class="__padbtn">↑</button>
-      <button data-act="right" class="__padbtn">→</button>
+      <button data-act="left" class="__padbtn __movebtn" aria-label="${battleWords.left}">←</button>
+      <button data-act="up" class="__padbtn __movebtn" aria-label="${battleWords.flap}">↑</button>
+      <button data-act="down" class="__padbtn __movebtn" aria-label="${battleWords.dive}">↓</button>
+      <button data-act="right" class="__padbtn __movebtn" aria-label="${battleWords.right}">→</button>
+      <button data-act="dodge" class="__padbtn __dodgebtn" aria-label="${battleWords.dodge}">↯ ${battleWords.dodge}</button>
     `;
 
     // pad A/B (droite)
@@ -858,8 +1216,8 @@ function _ensureBattleUI(show){
       pointer-events:auto;
     `;
     ab.innerHTML = `
-      <button data-act="atk" class="__padbtn" style="background:#ffd166">A • Attaque</button>
-      <button data-act="spc" class="__padbtn" style="background:#06d6a0">B • Spécial</button>
+      <button data-act="atk" class="__padbtn" aria-label="${battleWords.attack}" style="background:#ffd166">A • ${battleWords.attack}</button>
+      <button data-act="spc" class="__padbtn" aria-label="${battleWords.special}" style="background:#06d6a0">B • ${battleWords.special}</button>
     `;
 
     // style boutons
@@ -868,6 +1226,13 @@ function _ensureBattleUI(show){
       .__padbtn{
         min-width:84px; padding:12px 14px; border-radius:12px; border:0;
         font:700 14px system-ui; background:#eee; box-shadow:0 4px 10px rgba(0,0,0,.25);
+        touch-action:none; user-select:none;
+      }
+      .__movebtn{ min-width:48px; width:48px; padding:11px 6px; font-size:20px; }
+      .__dodgebtn{ min-width:82px; padding:11px 9px; background:#dbeafe; }
+      @media (max-width:740px){
+        .__movebtn{ min-width:43px; width:43px; padding:9px 5px; }
+        .__dodgebtn{ min-width:68px; font-size:11px; }
       }
     `;
 
@@ -878,7 +1243,7 @@ function _ensureBattleUI(show){
       position:absolute; inset:0; display:none; align-items:center; justify-content:center;
       background:rgba(0,0,0,.75); color:#fff; font:700 18px system-ui; text-align:center; padding:20px; pointer-events:auto;
     `;
-    rot.innerHTML = `<div>📱 Tourne ton téléphone en mode paysage pour la bataille.</div>`;
+    rot.textContent = `📱 ${copy.battleOrientation}`;
 
     // overlay fin de partie
     const end = document.createElement('div');
@@ -890,10 +1255,10 @@ function _ensureBattleUI(show){
     end.innerHTML = `
       <div style="background:#fff; padding:16px 18px; border-radius:14px;
                   box-shadow:0 8px 30px rgba(0,0,0,.35); text-align:center">
-        <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">Fin de la partie</div>
+        <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">${battleWords.end}</div>
         <button id="__battle_replay_btn"
                 style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
-                       background:#06d6a0; color:#083d2b">↻ Rejouer</button>
+                       background:#06d6a0; color:#083d2b">↻ ${copy.replay}</button>
       </div>
     `;
 
@@ -909,9 +1274,11 @@ function _ensureBattleUI(show){
     const press = (act, on)=> {
       if (act === 'left')  state.input.left  = on;
       if (act === 'right') state.input.right = on;
-      if (act === 'up')    state.input.up    = on;
-      if (on === true && act === 'atk') state.input.atk = true; // trigger once
-      if (on === true && act === 'spc') state.input.spc = true; // trigger once
+      if (on === true && act === 'up') state.input.up = true;
+      if (on === true && act === 'down') state.input.down = true;
+      if (on === true && act === 'dodge') state.input.dodge = true;
+      if (on === true && act === 'atk') state.input.atk = true;
+      if (on === true && act === 'spc') state.input.spc = true;
     };
 
     root.querySelectorAll('.__padbtn').forEach(b=>{
@@ -1065,19 +1432,43 @@ function _renderFireworks(ctx, w, h){
 }
 
 // ---------- Audio ----------
+function _fadeHtmlAudio(audio, from, to, duration = 420, done){
+  if (!audio) { done?.(); return; }
+  const steps = 10;
+  let step = 0;
+  try { audio.volume = Math.max(0, Math.min(1, from)); } catch {}
+  const timer = window.setInterval(() => {
+    step += 1;
+    const p = Math.min(1, step / steps);
+    try { audio.volume = Math.max(0, Math.min(1, from + (to - from) * p)); } catch {}
+    if (p >= 1) {
+      window.clearInterval(timer);
+      done?.();
+    }
+  }, Math.max(20, Math.round(duration / steps)));
+}
 function _playBattleTheme(){
   try{
     const url = window.__BATTLE_THEME_URL__ || withBase('assets/battle_loop.mp3');
     if (!url) return;
     if (state.musicBattle){ try{state.musicBattle.pause();}catch{} }
-    state.musicBattle = new Audio(url);
-    state.musicBattle.loop = true;
-    state.musicBattle.volume = 0.60;
-    state.musicBattle.play().catch(()=>{});
+    const track = new Audio(url);
+    state.musicBattle = track;
+    track.loop = true;
+    track.volume = 0;
+    track.play().then(() => _fadeHtmlAudio(track, 0, 0.60, 480)).catch(()=>{});
   }catch{}
 }
 function _stopBattleTheme(){
-  try{ if (state.musicBattle){ state.musicBattle.pause(); state.musicBattle = null; } }catch{}
+  try{
+    const track = state.musicBattle;
+    state.musicBattle = null;
+    if (!track) return;
+    const from = Number.isFinite(track.volume) ? track.volume : 0.60;
+    _fadeHtmlAudio(track, from, 0, 360, () => {
+      try { track.pause(); } catch {}
+    });
+  }catch{}
 }
 function _playVictoryMusic(){
   try{
@@ -1092,4 +1483,12 @@ function _playVictoryMusic(){
 }
 function _stopVictoryMusic(){
   try{ if (state.musicVictory){ state.musicVictory.pause(); state.musicVictory = null; } }catch{}
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('hirundu:pause', (event) => {
+    const track = state.musicBattle;
+    if (!track || track.paused) return;
+    const from = Number.isFinite(track.volume) ? track.volume : 0.60;
+    _fadeHtmlAudio(track, from, event.detail?.paused ? 0.12 : 0.60, 220);
+  });
 }

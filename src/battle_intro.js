@@ -1,253 +1,173 @@
-// src/battle_intro.js
-// Écran d’intro pour le mini-jeu "Bataille"
-// API: startBattleIntro({ ammo, onProceed, title?, subtitle?, startLabel? })
-//
-// ammo = { pasticciotto?, rustico?, caffe?, stars? } — tous optionnels
-// onProceed = () => {} — appelé quand on quitte l’intro
-// title/subtitle/startLabel — optionnels, pour surcharger l’affichage (ex. "Bataille de Gallipoli")
+import { copy } from './ui/copy.js';
+import {
+  FLOW_PHASES,
+  setGameFlowPhase,
+  watchRequiredOrientation,
+} from './game_flow.js';
 
-// Helpers environnement (UA + orientation) + immersion non bloquante
-const isMobileUA = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const isPortrait = () => window.matchMedia?.('(orientation: portrait)')?.matches;
-
-async function tryEnterImmersive(targetEl = document.documentElement) {
-  // Essais non bloquants (si refusés par le navigateur, on ignore)
-  try {
-    const reqFs = targetEl.requestFullscreen
-      || targetEl.webkitRequestFullscreen
-      || targetEl.msRequestFullscreen;
-    if (reqFs && !document.fullscreenElement) await reqFs.call(targetEl);
-  } catch {}
-  try { await screen.orientation?.lock?.('landscape'); } catch {}
-}
-
-// Injecte du CSS une seule fois (évite doublons si on revient)
-function injectOnceCss(css){
-  const id = '__battle_intro_css__';
-  if (document.getElementById(id)) return;
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = css;
-  document.head.appendChild(style);
-}
-
-// utilitaire pour gérer les \n -> <br> proprement
-function setTextWithNewlines(el, text){
-  const safe = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  el.innerHTML = safe.replace(/\n/g, '<br>');
-}
-
+// Battle intro is an intentional orientation gate:
+// hunt = portrait, battle = landscape on mobile.
+// It stays visually connected to the hunt by keeping the game canvas visible.
 export function startBattleIntro({
   ammo = {},
   onProceed,
-  title = '⚔️ Bataille de Otranto',
-  subtitle = "Prépare-toi : Aracne vs. Monstres méduses\n(les commandes apparaîtront en mode paysage)",
-  startLabel = 'Commencer'
+  title = `⚔️ ${copy.battle} · Otranto`,
+  subtitle = copy.battleHint,
+  startLabel = copy.fight,
+  collectibleLabel = copy.battleStars,
+  collectibleIcon = '⭐',
+  level = null,
+  boss = null,
+  bossSprite = null,
+  backdrop = null,
 } = {}) {
-  const {
-    pasticciotto = 0,
-    rustico = 0,
-    caffe = 0,
-    stars = 0,
-  } = ammo;
+  setGameFlowPhase(FLOW_PHASES.BATTLE_INTRO, { level, boss });
 
-  // === Overlay racine ===
   const overlay = document.createElement('div');
   overlay.id = '__battle_intro__';
+  overlay.className = 'battle-transition';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.style.cssText = `
-    position:fixed; inset:0; z-index:10005;
-    display:flex; align-items:center; justify-content:center;
-    background: radial-gradient(1200px 800px at 50% 30%, #1b1b1b 0%, #0d0d0f 60%, #000 100%);
-    color:#fff; text-align:center;
-    overflow:hidden;
-    animation: __bi_fadeIn 300ms ease-out forwards;
-  `;
+  overlay.setAttribute('aria-labelledby', '__battle_intro_title__');
 
-  // Carte
-  const card = document.createElement('div');
-  card.style.cssText = `
-    width:min(720px, 92vw);
-    border-radius:20px;
-    padding:20px 18px 16px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-    border:1px solid rgba(255,255,255,0.12);
-    backdrop-filter: saturate(140%) blur(6px);
-    box-shadow: 0 30px 60px rgba(0,0,0,.45);
-  `;
+  const scrim = document.createElement('div');
+  scrim.className = 'battle-transition__scrim';
 
-  // Titre (compat: id "bdTitle")
-  const h = document.createElement('h2');
-  h.id = 'bdTitle';
-  h.style.cssText = `
-    margin:0 0 10px 0; font:700 28px/1.2 system-ui;
-    letter-spacing:.2px;
-  `;
-  h.textContent = title;
+  const card = document.createElement('section');
+  card.className = 'battle-transition__card';
 
-  // Hint orientation
-  const hint = document.createElement('div');
-  hint.innerHTML = `
-    <div style="opacity:.9;font:600 14px system-ui;margin-bottom:12px">
-      Astuce&nbsp;: <b>passe ton téléphone en mode paysage</b> pour jouer plus confort.
-    </div>
-  `;
+  const phase = document.createElement('div');
+  phase.className = 'battle-transition__phase';
+  phase.textContent = copy.huntComplete;
 
-  // Munitions
-  const ammoBox = document.createElement('div');
-  ammoBox.style.cssText = `
-    display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
-    margin:10px 0 6px 0; font:600 13px system-ui;
-  `;
-  const chip = (label, n) => {
-    const d = document.createElement('div');
-    d.textContent = `${label}: ${n|0}`;
-    d.style.cssText = `
-      padding:8px 12px; border-radius:999px;
-      background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
-    `;
-    return d;
-  };
-  ammoBox.appendChild(chip('⭐ Étoiles', stars));
-  ammoBox.appendChild(chip('🍩 Pasticciotto', pasticciotto));
-  ammoBox.appendChild(chip('🥟 Rustico', rustico));
-  ammoBox.appendChild(chip('☕ Caffè', caffe));
-
-  // CTA (compat: id "__battle_start_btn")
-  const cta = document.createElement('button');
-  cta.id = '__battle_start_btn';
-  cta.type = 'button';
-  cta.textContent = startLabel;
-  cta.disabled = true;
-  cta.style.cssText = `
-    margin-top:12px; padding:12px 16px; border-radius:12px; border:0;
-    font:700 16px system-ui; background:#ffd166; color:#4a2a00;
-    box-shadow:0 6px 20px rgba(0,0,0,.25); cursor:not-allowed; opacity:.7;
-  `;
-
-  // Tap hint
-  const tap = document.createElement('div');
-  tap.textContent = '…ou tape n’importe où pour continuer';
-  tap.style.cssText = `
-    margin-top:8px; font:600 12px system-ui; opacity:0;
-    transition:opacity .25s ease;
-  `;
-
-  // Footer (compat: id "bdText")
-  const foot = document.createElement('div');
-  foot.id = 'bdText';
-  foot.style.cssText = `margin-top:12px; font:600 12px/1.3 system-ui; opacity:.7`;
-  setTextWithNewlines(foot, subtitle);
-
-  // Assemble
-  card.appendChild(h);
-  card.appendChild(hint);
-  card.appendChild(ammoBox);
-  card.appendChild(cta);
-  card.appendChild(tap);
-  card.appendChild(foot);
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-
-  // Mode "intro" pour piloter le CSS (désactive #c, etc.)
-  try { document.body.classList.add('mode-battle-intro'); } catch {}
-
-  // Overlay “tourne le téléphone”
-  let rotate = document.getElementById('__battle_rotate__');
-  if (!rotate) {
-    rotate = document.createElement('div');
-    rotate.id = '__battle_rotate__';
-    rotate.innerHTML =
-      '<div style="padding:12px 16px;background:rgba(0,0,0,.7);border-radius:12px">📱 Tourne ton téléphone en mode paysage pour démarrer.</div>';
-    document.body.appendChild(rotate);
+  const visual = document.createElement('div');
+  visual.className = 'battle-transition__visual';
+  if (backdrop) {
+    const png = String(backdrop).replace(/"/g, '%22');
+    const webp = /\.png$/i.test(png) ? png.replace(/\.png$/i, '.webp') : png;
+    visual.style.backgroundImage = `linear-gradient(180deg,rgba(10,18,32,.12),rgba(10,18,32,.72)),image-set(url("${webp}") type("image/webp"), url("${png}") type("image/png"))`;
   }
 
-  // ⚠️ Déclare canProceed AVANT updateEnvFlags pour éviter la ReferenceError
-  let canProceed = false;
+  const bossImg = document.createElement('img');
+  bossImg.className = 'battle-transition__boss';
+  bossImg.alt = boss || '';
+  if (bossSprite) {
+    bossImg.src = bossSprite;
+    visual.appendChild(bossImg);
+  }
 
-  // Flag mobile-portrait pour le blocage via CSS
-  const updateEnvFlags = () => {
-    const mobilePortrait = isMobileUA() && isPortrait();
-    document.body.classList.toggle('mobile-portrait', !!mobilePortrait);
-    // ajuste le CTA si le délai de déblocage est passé
-    if (canProceed) {
-      cta.disabled = mobilePortrait;
-      cta.style.cursor = mobilePortrait ? 'not-allowed' : 'pointer';
-      cta.style.opacity = mobilePortrait ? '.7' : '1';
-      tap.style.opacity = mobilePortrait ? '0' : '.85';
-    }
-  };
-  updateEnvFlags();
+  const incoming = document.createElement('div');
+  incoming.className = 'battle-transition__incoming';
+  incoming.textContent = copy.bossIncoming;
+  visual.appendChild(incoming);
 
-  // Écouteurs pour mise à jour des flags
-  const onResize = () => updateEnvFlags();
-  const onOrient = () => updateEnvFlags();
-  window.addEventListener('resize', onResize, { passive:true });
-  window.addEventListener('orientationchange', onOrient, { passive:true });
+  const heading = document.createElement('h2');
+  heading.id = '__battle_intro_title__';
+  heading.className = 'battle-transition__title';
+  heading.textContent = title;
 
-  // Empêche le scroll en arrière-plan
-  const prevOverflow = document.body.style.overflow;
+  const orientation = document.createElement('div');
+  orientation.id = '__battle_intro_orientation__';
+  orientation.className = 'battle-transition__orientation';
+
+  const orientationIcon = document.createElement('div');
+  orientationIcon.className = 'battle-transition__phone';
+  orientationIcon.textContent = '📱↔️';
+
+  const hint = document.createElement('p');
+  hint.className = 'battle-transition__orientation-hint';
+  hint.textContent = copy.rotateLandscape || copy.battleOrientation;
+
+  const orientationStatus = document.createElement('p');
+  orientationStatus.id = '__battle_orientation_status__';
+  orientationStatus.className = 'battle-transition__orientation-status';
+
+  orientation.append(orientationIcon, hint, orientationStatus);
+
+  const supplies = document.createElement('p');
+  supplies.className = 'battle-transition__supplies';
+  supplies.textContent = `${collectibleIcon} ${collectibleLabel}: ${ammo.stars|0} · 🍩 ${ammo.pasticciotto|0} · 🥟 ${ammo.rustico|0} · ☕ ${ammo.caffe|0}`;
+
+  const instructions = document.createElement('p');
+  instructions.className = 'battle-transition__instructions';
+  instructions.textContent = subtitle;
+
+  const button = document.createElement('button');
+  button.id = '__battle_start_btn';
+  button.type = 'button';
+  button.className = 'battle-transition__start';
+  button.textContent = startLabel;
+
+  card.append(phase, visual, heading, orientation, supplies, instructions, button);
+  overlay.append(scrim, card);
+
+  const previousOverflow = document.body.style.overflow;
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('mode-battle-intro');
+  document.body.append(overlay);
 
-  // Keyframes minimalistes
-  injectOnceCss(`@keyframes __bi_fadeIn { from{opacity:0} to{opacity:1} }`);
+  const reveal = () => overlay.classList.add('is-visible');
+  if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(reveal);
+  else window.setTimeout(reveal, 0);
 
-  // Débloque le CTA après 1.2s (mais seulement si pas mobile-portrait)
-  const unlockDelay = setTimeout(() => {
-    canProceed = true;
-    const mp = document.body.classList.contains('mobile-portrait');
-    cta.disabled = mp;
-    cta.style.cursor = mp ? 'not-allowed' : 'pointer';
-    cta.style.opacity = mp ? '.7' : '1';
-    tap.style.opacity = mp ? '0' : '.85';
-  }, 1200);
+  let cleaned = false;
+  let removalTimer = 0;
+  let canProceed = true;
 
-  // Auto-continue après 4s seulement si pas mobile-portrait
-  const autoTimer = setTimeout(() => {
-    const mp = document.body.classList.contains('mobile-portrait');
-    if (!mp && canProceed) continueNow();
-  }, 4000);
+  const stopOrientationWatch = watchRequiredOrientation('landscape', ({ mobile, matches }) => {
+    canProceed = matches;
+    button.disabled = !matches;
+    button.setAttribute('aria-disabled', String(!matches));
+    document.body.classList.toggle('mobile-portrait', mobile && !matches);
+    overlay.classList.toggle('is-landscape-ready', matches);
 
-  // Handlers
-  const tryProceed = () => {
-    if (!canProceed) return;
-    if (document.body.classList.contains('mobile-portrait')) {
-      try { navigator.vibrate?.(60); } catch {}
-      return; // bloque tant que portrait
+    if (!mobile) {
+      orientationStatus.textContent = '';
+      return;
     }
-    continueNow();
-  };
 
-  const onKey = (e) => {
-    if (!canProceed) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      tryProceed();
+    orientationStatus.textContent = matches
+      ? copy.landscapeReady
+      : (copy.rotateLandscape || copy.battleOrientation);
+    orientationStatus.dataset.ready = matches ? 'true' : 'false';
+  });
+
+  function cleanup({ animate = false } = {}) {
+    if (!cleaned) {
+      cleaned = true;
+      stopOrientationWatch?.();
+      button.removeEventListener('click', proceed);
+      document.getElementById('__battle_rotate__')?.remove();
+      document.body.classList.remove('mode-battle-intro', 'mobile-portrait');
+      document.body.style.overflow = previousOverflow;
     }
-  };
 
-  cta.addEventListener('click', tryProceed);
-  overlay.addEventListener('click', tryProceed);
-  window.addEventListener('keydown', onKey);
+    // A later level cleanup must be able to override the cosmetic fade.
+    if (removalTimer) {
+      window.clearTimeout(removalTimer);
+      removalTimer = 0;
+    }
 
-  function continueNow(){
-    // Essais d’immersion non bloquants
-    tryEnterImmersive(document.documentElement).catch(()=>{});
-    try { document.body.classList.remove('mode-battle-intro'); } catch {}
-    cleanup();
-    onProceed && onProceed();
+    overlay.classList.remove('is-visible');
+    if (animate && overlay.isConnected) {
+      removalTimer = window.setTimeout(() => {
+        removalTimer = 0;
+        overlay.remove();
+      }, 180);
+    } else {
+      overlay.remove();
+    }
   }
 
-  function cleanup(){
-    clearTimeout(unlockDelay);
-    clearTimeout(autoTimer);
-    window.removeEventListener('keydown', onKey);
-    window.removeEventListener('resize', onResize);
-    window.removeEventListener('orientationchange', onOrient);
-    cta.removeEventListener('click', tryProceed);
-    overlay.removeEventListener('click', tryProceed);
-    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    document.body.style.overflow = prevOverflow;
+  function proceed() {
+    if (cleaned || !canProceed) return;
+    setGameFlowPhase(FLOW_PHASES.BATTLE, { level, boss });
+    cleanup({ animate: true });
+    onProceed?.();
   }
+
+  button.addEventListener('click', proceed);
+  if (!button.disabled) button.focus();
+
+  return cleanup;
 }
