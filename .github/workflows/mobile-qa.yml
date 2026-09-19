@@ -1,0 +1,55 @@
+name: QA • iPhone + Android
+
+on:
+  push:
+    branches: [ qa/mobile-iphone-android-2026-09-19 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+
+      - name: Build current branch
+        run: npm run build
+
+      - name: Start preview server
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/hirundu-preview.log 2>&1 &
+          echo $! > /tmp/hirundu-preview.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/Hirundu1.1-/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/hirundu-preview.log
+          exit 1
+
+      - name: Run mobile QA
+        run: node qa/mobile-validation.mjs
+
+      - name: Upload QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-qa-report
+          path: qa-results/mobile-report.json
