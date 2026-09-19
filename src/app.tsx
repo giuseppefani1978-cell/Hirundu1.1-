@@ -2,6 +2,7 @@
 import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { initializeDurableProgress, syncDurableProgress } from "./progressStorage.js";
 
 // ---- Lazy load pages (code-splitting)
 const QrHub = lazy(() => import("./features/qr/routes/QrHub"));
@@ -41,6 +42,17 @@ function Loading() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initializeDurableProgress();
+    const sync = () => { syncDurableProgress(); };
+    window.addEventListener("pagehide", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.removeEventListener("pagehide", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
+
   return (
     <HashRouter /* hash routing = compatible GitHub Pages */>
       <ScrollToTop />
