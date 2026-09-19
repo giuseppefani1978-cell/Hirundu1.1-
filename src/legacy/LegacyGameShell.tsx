@@ -195,10 +195,10 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
             <div className="overlay-card" id="overlayCard">
               <div className="overlay-card__badge" id="overlayBadge"></div>
               <h1 className="overlay-card__title" id="titleH1">
-                {t.title}
+                {t('title', 'HIRUNDU')}
               </h1>
               <p className="overlay-card__subtitle" id="subtitleP">
-                {t.subtitle}
+                {t('subtitle', '')}
               </p>
               <div className="overlay-card__highlight" id="overlayHighlight" hidden></div>
               <p className="overlay-card__description" id="overlayDescription"></p>
@@ -261,23 +261,23 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
           </div>
 
           <button id="musicBtn" type="button">
-            {t.musicOff}
+            {t('musicOff', copy.musicStop)}
           </button>
           <button id="pauseBtn" type="button" aria-label={copy.pause} onClick={() => toggleGamePaused()}>
             {paused ? "▶" : "Ⅱ"}
           </button>
           <button id="replayFloat" type="button">
-            {t.replay}
+            {t('replay', copy.replay)}
           </button>
           <div className="err" id="err" style={{ display: "none" }}>
-            <b id="errTitle">{t.errTitle}</b>
+            <b id="errTitle">{t('errTitle', 'HIRUNDU')}</b>
             <div id="errText"></div>
           </div>
 
           <canvas id="c" ref={canvasRef}></canvas>
 
           <div className="hud" id="hud">
-            <h3 id="hudLabel">{t.hudStars}</h3>
+            <h3 id="hudLabel">{t('hudStars', copy.level)}</h3>
             <div className="score" id="score">
               0/10
             </div>
