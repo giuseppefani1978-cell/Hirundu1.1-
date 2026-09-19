@@ -1,44 +1,60 @@
 [
   {
     "id": "otranto_map",
-    "label": "Accès direct à la carte d’Otranto",
+    "label": "[DÉMO] Accès direct à la carte d’Otranto",
     "payload": "hirundu://otranto/map",
-    "expectedAction": { "type": "open-otranto-map" },
-    "notes": "Ouvre la carte Leaflet centrée sur les POI d’Otranto."
+    "expectedAction": {
+      "type": "open-otranto-map"
+    },
+    "notes": "Démonstration : Ouvre la carte Leaflet centrée sur les POI d’Otranto. Aucun tampon réel n’est attribué."
   },
   {
     "id": "otranto_market",
-    "label": "Accès direct au marché",
+    "label": "[DÉMO] Accès direct au marché",
     "payload": "hirundu://otranto/market",
-    "expectedAction": { "type": "open-otranto-market" },
-    "notes": "Redirige vers la liste des partenaires et récompenses."
+    "expectedAction": {
+      "type": "open-otranto-market"
+    },
+    "notes": "Démonstration : ouvre le catalogue de test. Aucun partenaire ni avantage réel n’est confirmé."
   },
   {
     "id": "badge_castle",
-    "label": "Badge du Castello Aragonese",
+    "label": "[DÉMO] Badge du Castello Aragonese",
     "payload": "hirundu://badge/Castello%20Aragonese",
-    "expectedAction": { "type": "badge", "name": "Castello Aragonese" },
-    "notes": "Débloque le badge spécifique au château principal."
+    "expectedAction": {
+      "type": "badge",
+      "name": "Castello Aragonese"
+    },
+    "notes": "Démonstration : teste l’interprétation d’un badge. Ne valide aucune présence réelle."
   },
   {
     "id": "open_market_bonus",
-    "label": "Ouverture générique du marché bonus",
+    "label": "[DÉMO] Ouverture générique du marché bonus",
     "payload": "hirundu://open//bonus/market",
-    "expectedAction": { "type": "open-any", "path": "//bonus/market" },
-    "notes": "Utilise la route open:// pour tester la navigation libre."
+    "expectedAction": {
+      "type": "open-any",
+      "path": "//bonus/market"
+    },
+    "notes": "Démonstration : Utilise la route open:// pour tester la navigation libre. Aucun tampon réel n’est attribué."
   },
   {
     "id": "partner_caffe_mengoli",
-    "label": "Partenaire Caffè Mengoli",
+    "label": "[DÉMO] Partenaire Caffè Mengoli",
     "payload": "QR_CAFFE_MENGOLI",
-    "expectedAction": { "type": "partner", "partnerId": "bar_caffe_mengoli" },
-    "notes": "Simule le scan direct d’un QR partenaire pour accéder aux vues marché/carte."
+    "expectedAction": {
+      "type": "partner",
+      "partnerId": "bar_caffe_mengoli"
+    },
+    "notes": "Démonstration : teste un identifiant QR fictif. Ne valide aucun partenariat, visite ou avantage réel."
   },
   {
     "id": "unknown_debug",
-    "label": "QR inconnu pour tests d’erreur",
+    "label": "[DÉMO] QR inconnu pour tests d’erreur",
     "payload": "hirundu://unknown/payload",
-    "expectedAction": { "type": "unknown", "raw": "hirundu://unknown/payload" },
-    "notes": "Permet de valider la gestion des QR non pris en charge."
+    "expectedAction": {
+      "type": "unknown",
+      "raw": "hirundu://unknown/payload"
+    },
+    "notes": "Démonstration : valide la gestion d’un QR inconnu et l’affichage d’une erreur compréhensible."
   }
 ]
