@@ -170,10 +170,16 @@ export default function QrHub() {
       dispatch(scanSucceeded(record));
 
       if (action.type === "partner") {
-        markPartnerVisit(action.partnerId, enrichedPois);
+        const partner = PARTNER_BY_ID.get(action.partnerId) || findPartnerById(action.partnerId);
+        if (partner && getPartnerVerificationStatus(partner) === "confirmed") {
+          markPartnerVisit(action.partnerId, enrichedPois);
+        }
       }
       if (action.type === "badge") {
-        markBadgeVisit(action.name, enrichedPois);
+        const partner = PARTNER_BY_NAME.get(normalizeToken(action.name)) || findPartnerByName(action.name);
+        if (partner && getPartnerVerificationStatus(partner) === "confirmed") {
+          markBadgeVisit(action.name, enrichedPois);
+        }
       }
     },
     [dispatch, enrichedPois]
@@ -392,7 +398,7 @@ function describeAction(
         title: `${bt("Badge débloqué")} : ${action.name}`,
         subtitle: (partnerByName ? bt(partnerByName.description) : "") || bt("Badge fictif pour valider le flux de progression."),
         meta: partnerByName ? rewardLabel(partnerByName.reward) : undefined,
-        tone: "success",
+        tone: partnerByName && getPartnerVerificationStatus(partnerByName) === "confirmed" ? "success" : "neutral",
         actionLabel: bt("Voir les bonus"),
         onAction: () => navigate("/bonus"),
       };
@@ -411,7 +417,7 @@ function describeAction(
         meta: partner && getPartnerVerificationStatus(partner) === "confirmed"
           ? rewardLabel(partner.reward)
           : bt("Aucune récompense réelle attribuée"),
-        tone: "success",
+        tone: partner && getPartnerVerificationStatus(partner) === "confirmed" ? "success" : "neutral",
         actionLabel: bt("Voir sur la carte"),
         onAction: () => navigate(`/poi/${encodeURIComponent(resolveBonusKey(poi))}/realmap`),
       };
