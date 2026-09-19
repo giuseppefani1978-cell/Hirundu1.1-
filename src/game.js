@@ -16,7 +16,7 @@ import * as ui from './ui.js';
 import { startBattleIntro } from './battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from './hof/storage.js';
 import { prepareLevelIntro, queueLevelTransition } from './level_transition.js';
-import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from './game_flow.js';
+import { FLOW_PHASES, LANGUAGE_EVENT, clearGameFlow, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[GAME]', ...a); }
@@ -211,13 +211,14 @@ export function boot(options = {}){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  prepareLevelIntro({
+  const renderIntroCopy = () => prepareLevelIntro({
     level: 1, theme: 'otranto', badge: `${copy.level} 1`,
     title: t.title, subtitle: t.subtitle, description: copy.mission,
     footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
     highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#f97316',
   });
+  renderIntroCopy();
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -280,6 +281,15 @@ export function boot(options = {}){
       questionReady = true;
     }
   }
+  const refreshLanguageUI = () => {
+    const hudLabel = document.getElementById('hudLabel');
+    if (hudLabel) hudLabel.textContent = t.hudStars;
+    ui.setMusicLabel(isMusicOn());
+    if (mode === 'splash') renderIntroCopy();
+    if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
+  };
+  session.listen(window, LANGUAGE_EVENT, refreshLanguageUI);
+
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
     questionReady = false;
