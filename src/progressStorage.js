@@ -6,6 +6,8 @@ const STATIC_KEYS = new Set([
   "player_name",
   "hirundu_player_id_v1",
   "__lang__",
+  "hirundu_music_v1",
+  "hirundu_flight_music_v1",
   "bonus_unlocked",
   "bonus_unlocked_v1",
   PASSPORT_STORAGE_KEY,
@@ -204,6 +206,14 @@ export function readDurableProgress() {
   const previous = readStoredSnapshot(storage);
   if (!previous) return initializeDurableProgress();
   return buildSnapshot(storage, previous.values || {});
+}
+
+export function replaceDurableProgressSnapshot() {
+  const storage = getStorage();
+  if (!storage) return null;
+  const snapshot = buildSnapshot(storage);
+  writeSnapshot(storage, snapshot);
+  return snapshot;
 }
 
 export function clearDurableProgressSnapshot() {
