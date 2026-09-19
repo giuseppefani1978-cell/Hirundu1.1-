@@ -1,8 +1,10 @@
-name: Legacy PR validation — no Pages deploy
+name: HIRUNDU PR validation — no Pages deploy
 
 on:
   pull_request:
-    branches: [ version-1.0 ]
+    branches:
+      - version-1.0
+      - main
 
 permissions:
   contents: read
@@ -16,6 +18,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci || npm install
-      - run: npm run typecheck
-      - run: npm run build
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Regression tests
+        run: npm test
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Production build
+        run: npm run build
