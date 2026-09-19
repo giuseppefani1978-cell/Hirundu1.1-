@@ -292,13 +292,26 @@ function _refreshBattleLanguageUI(){
   if (replay) replay.textContent = '↻ ' + (state.ending?.mode === 'win' ? battleCopy.continue : battleCopy.replay);
 }
 
-function _onBattleLanguage(event){
-  const next = String(event?.detail?.lang || '').slice(0,2).toLowerCase();
-  if (!BATTLE_WORDS[next]) return;
+function _setBattleLanguage(nextLanguage){
+  const next = String(nextLanguage || '').slice(0,2).toLowerCase();
+  if (!BATTLE_WORDS[next]) return false;
   currentBattleLang = next;
   battleWords = BATTLE_WORDS[next];
   battleCopy = BATTLE_COPY[next];
   _refreshBattleLanguageUI();
+  return true;
+}
+
+function _syncBattleLanguageFromStorage(){
+  try {
+    _setBattleLanguage(localStorage.getItem('__lang__') || currentBattleLang);
+  } catch {
+    _setBattleLanguage(currentBattleLang);
+  }
+}
+
+function _onBattleLanguage(event){
+  _setBattleLanguage(event?.detail?.lang);
 }
 
 export function disposeBattle() {
@@ -346,6 +359,7 @@ export function setBattleAmmo(ammo){
 
 export function startBattle(foeType='jelly'){
   if (state.active) return;
+  _syncBattleLanguageFromStorage();
   setGameFlowPhase(FLOW_PHASES.BATTLE, { boss: foeType });
   state.shots.length = 0;
   for (const key of Object.keys(state.input)) state.input[key] = false;
