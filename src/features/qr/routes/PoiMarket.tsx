@@ -5,6 +5,7 @@ import QrBadge from "../components/QrBadge";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
 import {
   findPartnerById,
+  getPartnerVerificationStatus,
   type Partner,
   type PartnerCategory,
   type PartnerReward,
@@ -63,7 +64,7 @@ export default function PoiMarket() {
       <header className="poi-market__header">
         <div className="poi-market__header-copy">
           <h1 className="poi-market__title">🛒 {bt("Marché & Souvenirs")} · {cfg.title}</h1>
-          <p className="poi-market__subtitle">{bt("Partenaires de démonstration et récompenses de cette carte.")}</p>
+          <p className="poi-market__subtitle">{bt("Catalogue de démonstration : aucun commerce, partenariat ni avantage réel n’est confirmé dans cette bêta.")}</p>
           {summary ? (
             <p className="poi-market__summary">
               {bt("Partenaires")} : {summary.count} — {summary.categories.join(", ")}
@@ -107,10 +108,22 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
           <h2 className="poi-market__card-title">{partner.name}</h2>
           <span className="poi-market__card-type">{CATEGORY_LABELS[partner.type]}</span>
         </div>
-        <span className="poi-market__qr-id">{partner.qr_id}</span>
+        <span className="poi-market__qr-id">
+          {getPartnerVerificationStatus(partner) === "confirmed"
+            ? partner.qr_id
+            : getPartnerVerificationStatus(partner) === "listed"
+              ? "Commerce référencé"
+              : "QR de démonstration"}
+        </span>
       </header>
 
-      <p className="poi-market__card-description">{bt(partner.description)}</p>
+      <p className="poi-market__card-description">
+        {getPartnerVerificationStatus(partner) === "confirmed"
+          ? bt(partner.description)
+          : getPartnerVerificationStatus(partner) === "listed"
+            ? bt("Commerce référencé ; aucun partenariat ni avantage n’est confirmé.")
+            : bt("Scénario de démonstration uniquement ; ce contenu ne constitue ni un partenariat ni une offre réelle.")}
+      </p>
 
       <QrBadge
         icon={partner.reward.type === "bonus" ? "🎁" : partner.reward.type === "stars" ? "⭐" : "🏆"}
@@ -132,7 +145,13 @@ function PartnerCard({ entry, onOpenMap }: PartnerCardProps) {
         ) : null}
         <div>
           <dt>{bt("QR à scanner")}</dt>
-          <dd>{partner.qr_id}</dd>
+          <dd>
+            {getPartnerVerificationStatus(partner) === "confirmed"
+              ? partner.qr_id
+              : getPartnerVerificationStatus(partner) === "listed"
+                ? bt("Non disponible — partenariat non confirmé")
+                : bt("Code de démonstration")}
+          </dd>
         </div>
       </dl>
 
