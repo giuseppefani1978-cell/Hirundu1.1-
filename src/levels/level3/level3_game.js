@@ -60,6 +60,20 @@ function computeMapViewport(canvasW, canvasH, mapW, mapH, fitWidth = false){
   return { ox, oy, dw, dh, scale };
 }
 
+function computeStandardClassicViewport(canvasW, canvasH, mapW, mapH){
+  const side = Math.min(12, canvasW * 0.035);
+  const availW = Math.max(1, canvasW - side * 2);
+  const top = Math.min(120, canvasH * 0.2);
+  const bottom = Math.min(160, canvasH * 0.25);
+  const availH = Math.max(1, canvasH - bottom - top);
+  const baseScale = Math.min(availW / mapW, availH / mapH);
+  const scale = Math.min(baseScale * 1.04, availW / mapW);
+  const dw = mapW * scale, dh = mapH * scale;
+  const ox = (canvasW - dw) / 2;
+  const oy = top + (availH - dh) / 2;
+  return { ox, oy, dw, dh, scale };
+}
+
 // ------------------------
 // Données chasse — L3 : 10 FEUILLES
 // ------------------------
@@ -483,7 +497,9 @@ export function boot(options = {}){
 
     const mw = mapImg.naturalWidth || 1920;
     const mh = mapImg.naturalHeight || 1080;
-    const { ox, oy, dw, dh } = computeMapViewport(W, H, mw, mh, Boolean(regional));
+    const { ox, oy, dw, dh } = regional?.framing === 'standard-classic'
+      ? computeStandardClassicViewport(W, H, mw, mh)
+      : computeMapViewport(W, H, mw, mh, Boolean(regional));
 
     const ctx2 = canvas.getContext('2d');
     ctx2.clearRect(0,0,W,H);
