@@ -6,7 +6,37 @@ it:{title:'Volo sull’Arneo',tag:'LIVELLO 6 · CACCIA IN VOLO',help:'Usa il pad
 en:{title:'Flight over Arneo',tag:'LEVEL 6 · FLIGHT HUNT',help:'Use the pad at the bottom to guide Hirundu. Reach the right card and avoid obstacles.',detail:'☕ Energy · 🥐 Shield. Touching the scenery does not steer Hirundu: use the pad only.',start:'Take flight',ready:'Ready? Fly over Arneo with me!',free:'Follow the coast! Avoid waste and flying enemies.',wrong:'Not this place. Try another target!',miss:'The answers will return. Take your time!',hit:'Careful! Stay clear of obstacles.',good:'Place discovered',pause:'Flight paused',resume:'Resume flight',again:'Restart',win:'Ten places discovered!',end:'End of this hunt test. Ten pines collected; the battle remains in the main game.',lost:'Catch your breath',lostHelp:'Out of energy. Try another flight?',slow:'Gentle',normal:'Normal',fast:'Fast',coffee:'A caffè! +30 energy.',shield:'A rustico! Shield for 8 seconds.',read:'Read the question: answers are on their way.'},
 es:{title:'Vuelo sobre el Arneo',tag:'NIVEL 6 · CAZA EN VUELO',help:'Usa el mando de abajo para guiar a Hirundu. Llega a la carta correcta y evita los obstáculos.',detail:'☕ Energía · 🥐 Escudo. Tocar el paisaje no mueve a Hirundu: usa solo el mando.',start:'Empezar a volar',ready:'¿Lista? ¡Vuela conmigo sobre el Arneo!',free:'¡Sigue la costa! Evita los residuos y los enemigos voladores.',wrong:'No es este lugar. ¡Prueba otro objetivo!',miss:'Las respuestas vuelven. ¡Tómate tu tiempo!',hit:'¡Cuidado! Evita los obstáculos.',good:'Lugar descubierto',pause:'Vuelo en pausa',resume:'Continuar',again:'Reiniciar',win:'¡Diez lugares descubiertos!',end:'Fin de esta prueba de caza. Diez pinos recogidas; la batalla sigue en el juego principal.',lost:'Recuperemos el aliento',lostHelp:'Sin energía. ¿Otro vuelo?',slow:'Suave',normal:'Normal',fast:'Rápido',coffee:'¡Un caffè! +30 energía.',shield:'¡Un rustico! Escudo durante 8 segundos.',read:'Lee la pregunta: llegan las respuestas.'}
 };
-let lang='fr',W=390,H=600,ratio=1,last=0,keys={},images={},loaded=false;
+const SUPPORTED_LANGS=['fr','it','en','es'];
+const savedLang=(()=>{try{const value=(localStorage.getItem('__lang__')||'').toLowerCase();return SUPPORTED_LANGS.includes(value)?value:'fr';}catch(_){return 'fr';}})();
+let lang=savedLang,W=390,H=600,ratio=1,last=0,keys={},images={},loaded=false;
+const FLIGHT_HANDOFF_KEY='hirundu_flight_handoff_v1';
+const MUSIC_PREF_KEY='hirundu_flight_music_v1';
+let huntAudio=null;
+let musicEnabled=(()=>{try{return localStorage.getItem(MUSIC_PREF_KEY)!=='off';}catch(_){return true;}})();
+function persistLang(){try{localStorage.setItem('__lang__',lang);}catch(_){}}
+function ensureHuntAudio(){
+  if(!huntAudio){
+    huntAudio=new Audio('../assets/hunt_loop.wav');
+    huntAudio.loop=true;
+    huntAudio.preload='auto';
+    huntAudio.volume=.34;
+  }
+  return huntAudio;
+}
+function startHuntMusic(){
+  if(!musicEnabled)return;
+  const audio=ensureHuntAudio();
+  audio.play().catch(()=>{});
+}
+function pauseHuntMusic(){try{huntAudio?.pause();}catch(_){}}
+function stopHuntMusic(){try{if(huntAudio){huntAudio.pause();huntAudio.currentTime=0;}}catch(_){}}
+function updatePauseOptions(){
+  const langRow=$('pauseLangRow'),music=$('musicToggle');
+  const paused=S.mode==='paused';
+  if(langRow)langRow.hidden=!paused;
+  if(music)music.hidden=!paused;
+  if(music)music.textContent=(musicEnabled?'🔊 ':'🔇 ')+(lang==='fr'?'Musique':lang==='it'?'Musica':lang==='es'?'Música':'Music');
+}
 const S={mode:'intro',phase:'free',round:0,clock:0,timer:0,offset:0,x:195,y:420,tx:195,ty:420,vx:0,vy:0,energy:100,shield:0,immune:0,obstacles:[],targets:[],foods:[],spawn:0,wave:0,foodTimer:0,coffee:0,rustico:0,found:[],notice:'',noticeUntil:0};
 const battleTexts={
 fr:{title:'La chasse est terminée',help:'Tes dix pins sont réunis. La bataille du niveau 4 reste la bataille HIRUNDU habituelle.',detail:'Tourne ensuite le téléphone en paysage : on ne change pas la bataille, seulement la chasse.',start:'Continuer vers la bataille'},
@@ -16,12 +46,12 @@ es:{title:'La caza ha terminado',help:'Ya tienes las diez conchas. El nivel 6 co
 };
 const T=()=>texts[lang],clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function resize(){const r=canvas.getBoundingClientRect(),oldW=W,oldH=H;W=r.width;H=r.height;ratio=Math.min(devicePixelRatio||1,2);canvas.width=W*ratio;canvas.height=H*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);for(const o of [...S.obstacles,...S.targets,...S.foods]){o.x*=W/oldW;o.y*=H/oldH;if(o.w)o.w*=W/oldW;}S.x*=W/oldW;S.tx*=W/oldW;S.y*=H/oldH;S.ty*=H/oldH;}
-function label(){const t=T(),bt=battleTexts[lang];document.documentElement.lang=lang;$('eyebrow').textContent=t.tag;$('title').textContent=S.mode==='paused'?t.pause:S.mode==='battleReady'?bt.title:S.mode==='won'?t.win:S.mode==='lost'?t.lost:t.title;$('help').textContent=S.mode==='battleReady'?bt.help:S.mode==='won'?t.end:S.mode==='lost'?t.lostHelp:t.help;$('detail').textContent=S.mode==='battleReady'?bt.detail:t.detail;$('start').textContent=S.mode==='paused'?t.resume:S.mode==='battleReady'?bt.start:S.mode==='won'||S.mode==='lost'?t.again:t.start;$('again').textContent=t.again;$('again').hidden=S.mode!=='paused';hud();}
+function label(){const t=T(),bt=battleTexts[lang];document.documentElement.lang=lang;if($('lang'))$('lang').value=lang;updatePauseOptions();$('eyebrow').textContent=t.tag;$('title').textContent=S.mode==='paused'?t.pause:S.mode==='battleReady'?bt.title:S.mode==='won'?t.win:S.mode==='lost'?t.lost:t.title;$('help').textContent=S.mode==='battleReady'?bt.help:S.mode==='won'?t.end:S.mode==='lost'?t.lostHelp:t.help;$('detail').textContent=S.mode==='battleReady'?bt.detail:t.detail;$('start').textContent=S.mode==='paused'?t.resume:S.mode==='battleReady'?bt.start:S.mode==='won'||S.mode==='lost'?t.again:t.start;$('again').textContent=t.again;$('again').hidden=S.mode!=='paused';hud();}
 function hud(){const t=T();$('count').textContent=S.round+'/10';$('energy').textContent='⚡ '+Math.ceil(S.energy);$('bonuses').textContent='☕ '+S.coffee+' · 🥐 '+S.rustico+(S.shield>0?' 🛡':'');$('question').textContent=S.notice&&S.clock<S.noticeUntil?S.notice:S.mode==='intro'?t.ready:S.phase==='free'?t.free:places[Math.min(S.round,9)].clue[['fr','it','en','es'].indexOf(lang)];$('progress').innerHTML=places.map((p,i)=>'<i class="'+(i<S.round?'done':'')+'" title="'+(i<S.round?p.name:'?')+'">'+(i<S.round?'🌲':'×')+'</i>').join('');}
 function say(message,seconds=2){S.notice=message;S.noticeUntil=S.clock+seconds;hud();}
-function start(){Object.assign(S,{mode:'playing',phase:'free',round:0,clock:0,timer:0,offset:0,x:W*.5,y:H*.68,tx:W*.5,ty:H*.68,vx:0,vy:0,energy:100,shield:0,immune:0,obstacles:[],targets:[],foods:[],spawn:0,wave:0,foodTimer:0,coffee:0,rustico:0,found:[],notice:'',noticeUntil:0});$('cover').hidden=true;$('microPad').hidden=false;keys={};hud();}
+function start(){stopHuntMusic();Object.assign(S,{mode:'playing',phase:'free',round:0,clock:0,timer:0,offset:0,x:W*.5,y:H*.68,tx:W*.5,ty:H*.68,vx:0,vy:0,energy:100,shield:0,immune:0,obstacles:[],targets:[],foods:[],spawn:0,wave:0,foodTimer:0,coffee:0,rustico:0,found:[],notice:'',noticeUntil:0});$('cover').hidden=true;$('microPad').hidden=false;keys={};hud();startHuntMusic();}
 function overlay(mode){S.mode=mode;$('cover').hidden=false;$('microPad').hidden=true;padDX=0;padDY=0;keys={};label();}
-function pause(){if(S.mode==='playing')overlay('paused');}
+function pause(){if(S.mode==='playing'){pauseHuntMusic();overlay('paused');}}
 function targets(){
   S.phase='answers';S.timer=0;
   const correct=S.round;
@@ -157,16 +187,35 @@ for(const t of S.targets){
 ctx.save();ctx.translate(S.x,S.y+Math.sin(S.clock*3.8)*1.5);ctx.rotate(clamp(S.vx*.00215,-.27,.27));if(S.shield>0){ctx.beginPath();ctx.arc(0,0,32,0,Math.PI*2);ctx.fillStyle='#e8f7ff55';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff4b0';ctx.stroke();}if(S.immune>0)ctx.globalAlpha=.45+.35*Math.sin(S.clock*30);ctx.scale(1+Math.sin(S.clock*16)*.08,1-Math.sin(S.clock*16)*.06);sprite('bird',0,0,68);ctx.restore();}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();},{passive:false});
 addEventListener('keydown',e=>{if(e.key.startsWith('Arrow')){e.preventDefault();keys[e.key]=true;}});addEventListener('keyup',e=>delete keys[e.key]);
-function resume(){S.mode='playing';$('cover').hidden=true;$('microPad').hidden=false;keys={};}
+function resume(){S.mode='playing';$('cover').hidden=true;$('microPad').hidden=false;keys={};startHuntMusic();updatePauseOptions();}
 function launchBattle(){
   $('microPad').hidden=true;
+  stopHuntMusic();
+  persistLang();
   const rootPath=location.pathname.replace(/\/level6-flight\/(?:index\.html)?$/,'/');
-  location.href=location.origin+rootPath+'#/level/6?test=battle';
+  const returnUrl=location.origin+rootPath+'level6-flight/';
+  try{
+    localStorage.setItem(FLIGHT_HANDOFF_KEY,JSON.stringify({
+      version:1,
+      level:6,
+      lang,
+      createdAt:Date.now(),
+      returnUrl,
+      ammo:{
+        pasticciotto:0,
+        rustico:S.rustico|0,
+        caffe:S.coffee|0,
+        stars:S.round|0
+      }
+    }));
+  }catch(_){}
+  location.href=location.origin+rootPath+'#/level/6?test=battle&from=flight';
 }
 $('start').onclick=()=>{if(!loaded)return;if(S.mode==='paused')resume();else if(S.mode==='battleReady')launchBattle();else start();};
 $('again').onclick=start;
 $('pause').onclick=()=>S.mode==='paused'?resume():pause();
-$('lang').onchange=e=>{lang=e.target.value;S.notice='';label();};
+$('lang').onchange=e=>{const next=String(e.target.value||'fr').toLowerCase();lang=SUPPORTED_LANGS.includes(next)?next:'fr';persistLang();S.notice='';label();};
+if($('musicToggle'))$('musicToggle').onclick=()=>{musicEnabled=!musicEnabled;try{localStorage.setItem(MUSIC_PREF_KEY,musicEnabled?'on':'off');}catch(_){}if(musicEnabled&&S.mode==='playing')startHuntMusic();else pauseHuntMusic();updatePauseOptions();};
 let padDX=0,padDY=0,activePadPointer=null;
 const resetPad=()=>{padDX=0;padDY=0;activePadPointer=null;for(const b of document.querySelectorAll('#microPad button'))b.classList.remove('is-active');};
 for(const btn of document.querySelectorAll('#microPad button')){
@@ -192,5 +241,5 @@ addEventListener('pointercancel',e=>{if(activePadPointer===e.pointerId)resetPad(
 addEventListener('blur',resetPad);
 addEventListener('resize',resize);
 Promise.all(['bird','tarantula','crow','jelly','coffee','rustico','coast'].map(name=>new Promise(resolve=>{const im=new Image();images[name]=im;im.onload=()=>resolve(true);im.onerror=()=>resolve(false);im.src=name==='coast'?'coast.webp':'../level4-flight/assets/'+name+'.png';}))).then(result=>{loaded=result.every(Boolean);$('start').disabled=!loaded;if(!loaded)$('help').textContent='Chargement incomplet. Actualise la page pour réessayer.';});
-resize();label();$('start').disabled=true;const loading=setInterval(()=>{if(loaded){$('start').disabled=false;clearInterval(loading);}},150);
+resize();if($('lang'))$('lang').value=lang;persistLang();label();$('start').disabled=true;const loading=setInterval(()=>{if(loaded){$('start').disabled=false;clearInterval(loading);}},150);
 function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;tick(dt);draw();requestAnimationFrame(frame);}requestAnimationFrame(frame);
