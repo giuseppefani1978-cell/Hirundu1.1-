@@ -1,0 +1,13 @@
+name: Pages deployment disabled on Level 3 test branch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  locked:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No GitHub Pages deployment is allowed from this branch."
