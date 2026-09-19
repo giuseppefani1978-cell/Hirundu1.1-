@@ -20,8 +20,11 @@ import { findPartnerById, getPartnerVerificationStatus, type Partner } from "../
 import {
   PASSPORT_EVENT,
   PASSPORT_STORAGE_KEY,
-  getVisitedFor,
+  getDeclaredVisitedFor,
+  getQrValidatedFor,
   isBrowserEnvironment,
+  isMapConsulted,
+  markMapConsulted,
 } from "../passport/passportStorage";
 import { useBonusProgress } from "../../bonus/useBonusProgress";
 import type { ItineraryStep } from "../../bonus/bonusStorage";
@@ -124,11 +127,15 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
     () =>
       computePassportProgress({
         itinerary,
-        visitedPoiIds: passport.visited,
+        qrValidatedPoiIds: passport.qrValidated,
         pois: relevantPois,
       }),
-    [itinerary, passport.visited, relevantPois]
+    [itinerary, passport.qrValidated, relevantPois]
   );
+
+  useEffect(() => {
+    if (!passportOnly) markMapConsulted(key);
+  }, [key, passportOnly]);
 
   const goToBonusHub = useCallback(() => {
     navigate("/bonus");
@@ -183,7 +190,15 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           );
         })}
       </nav>
-      <PassportSalentino mapTitle={cfg.title} itinerary={itinerary} pois={relevantPois} visitedPoiIds={passport.visited} progress={passportProgress} />
+      <PassportSalentino
+        mapTitle={cfg.title}
+        itinerary={itinerary}
+        pois={relevantPois}
+        qrValidatedPoiIds={passport.qrValidated}
+        declaredVisitedPoiIds={passport.declaredVisited}
+        mapConsulted={passport.consulted}
+        progress={passportProgress}
+      />
       <nav className="real-map__actions">
         <button className="app-button" onClick={() => navigate('/qr')}>{pc.scan}</button>
         <button className="app-button" onClick={() => navigate(`/poi/${key}/realmap`)}>{copy.maps}</button>
@@ -298,7 +313,7 @@ function enrichPartners(ids: string[] | undefined): Partner[] {
 
 type PassportProgressInput = {
   itinerary: ItineraryStep[];
-  visitedPoiIds: Set<string>;
+  qrValidatedPoiIds: Set<string>;
   pois: EnrichedPoi[];
 };
 
@@ -307,7 +322,7 @@ type PassportProgress = {
   totalPoints: number;
   earnedPoints: number;
   totalPoiCount: number;
-  visitedPoiCount: number;
+  qrValidatedPoiCount: number;
   totalItinerarySteps: number;
   completedItinerarySteps: number;
   level: PassportLevel;
@@ -340,19 +355,27 @@ const TARANTULA_POI_ICON = new Icon({
 });
 
 function usePassport(mapKey: BonusKey, poiIds: string[]): {
-  visited: Set<string>;
+  qrValidated: Set<string>;
+  declaredVisited: Set<string>;
+  consulted: boolean;
 } {
   const allowedKey = useMemo(() => [...poiIds].sort().join("|"), [poiIds]);
-  const [visited, setVisited] = useState<Set<string>>(() => getVisitedFor(mapKey, poiIds));
+  const [qrValidated, setQrValidated] = useState<Set<string>>(() => getQrValidatedFor(mapKey, poiIds));
+  const [declaredVisited, setDeclaredVisited] = useState<Set<string>>(() => getDeclaredVisitedFor(mapKey, poiIds));
+  const [consulted, setConsulted] = useState(() => isMapConsulted(mapKey));
 
   useEffect(() => {
-    setVisited(getVisitedFor(mapKey, poiIds));
+    setQrValidated(getQrValidatedFor(mapKey, poiIds));
+    setDeclaredVisited(getDeclaredVisitedFor(mapKey, poiIds));
+    setConsulted(isMapConsulted(mapKey));
   }, [mapKey, allowedKey, poiIds]);
 
   useEffect(() => {
     if (!isBrowserEnvironment()) return undefined;
     const sync = () => {
-      setVisited(getVisitedFor(mapKey, poiIds));
+      setQrValidated(getQrValidatedFor(mapKey, poiIds));
+      setDeclaredVisited(getDeclaredVisitedFor(mapKey, poiIds));
+      setConsulted(isMapConsulted(mapKey));
     };
     const onStorage = (event: StorageEvent) => {
       if (event.key && event.key !== PASSPORT_STORAGE_KEY) return;
@@ -366,21 +389,23 @@ function usePassport(mapKey: BonusKey, poiIds: string[]): {
     };
   }, [mapKey, allowedKey, poiIds]);
 
-  return { visited };
+  return { qrValidated, declaredVisited, consulted };
 }
 
 function computePassportProgress({
   itinerary,
-  visitedPoiIds,
+  qrValidatedPoiIds,
   pois,
 }: PassportProgressInput): PassportProgress {
   const totalPoiCount = pois.length;
-  const visitedPoiCount = visitedPoiIds.size;
+  const qrValidatedPoiCount = qrValidatedPoiIds.size;
   const totalItinerarySteps = itinerary.length;
   const completedItinerarySteps = itinerary.filter((step) => step.completed).length;
 
-  const totalPoints = totalPoiCount + totalItinerarySteps;
-  const earnedPoints = visitedPoiCount + completedItinerarySteps;
+  // Passport validation is real-world QR validation only.
+  // Virtual victories remain visible in the itinerary but do not count as proof of a visit.
+  const totalPoints = totalPoiCount;
+  const earnedPoints = qrValidatedPoiCount;
   const ratio = totalPoints > 0 ? earnedPoints / totalPoints : 0;
 
   const level = resolvePassportLevel(ratio);
@@ -395,7 +420,7 @@ function computePassportProgress({
     totalPoints,
     earnedPoints,
     totalPoiCount,
-    visitedPoiCount,
+    qrValidatedPoiCount,
     totalItinerarySteps,
     completedItinerarySteps,
     level,
@@ -424,7 +449,9 @@ type PassportSalentinoProps = {
   mapTitle: string;
   itinerary: ItineraryStep[];
   pois: EnrichedPoi[];
-  visitedPoiIds: Set<string>;
+  qrValidatedPoiIds: Set<string>;
+  declaredVisitedPoiIds: Set<string>;
+  mapConsulted: boolean;
   progress: PassportProgress;
 };
 
@@ -432,7 +459,9 @@ function PassportSalentino({
   mapTitle,
   itinerary,
   pois,
-  visitedPoiIds,
+  qrValidatedPoiIds,
+  declaredVisitedPoiIds,
+  mapConsulted,
   progress,
 }: PassportSalentinoProps) {
   const completionPercent = Math.round(progress.ratio * 100);
@@ -446,6 +475,7 @@ function PassportSalentino({
         </p>
         <p className="real-map__passport-subtitle">
           {mapTitle} · {pc.points} : {progress.earnedPoints} / {progress.totalPoints}
+          {mapConsulted ? ` · ${pc.consulted}` : ""}
         </p>
         <div className="real-map__passport-progress">
           <div className="real-map__passport-progress-bar" aria-hidden>
@@ -503,33 +533,33 @@ function PassportSalentino({
       <section className="real-map__passport-section">
         <h3>{pc.visits}</h3>
         <p className="real-map__passport-hint">
-          {pc.hint} ({progress.visitedPoiCount}/{progress.totalPoiCount})
+          {pc.hint} ({progress.qrValidatedPoiCount}/{progress.totalPoiCount})
         </p>
         <ul className="real-map__passport-pois">
           {pois.map((poi) => {
-            const checked = visitedPoiIds.has(poi.id);
+            const qrValidated = qrValidatedPoiIds.has(poi.id);
+            const declared = declaredVisitedPoiIds.has(poi.id);
+            const status = qrValidated ? pc.validated : declared ? pc.declared : pc.pending;
             return (
               <li key={poi.id} className="real-map__passport-poi">
                 <span
                   className={
                     "real-map__passport-poi-status" +
-                    (checked
+                    (qrValidated
                       ? " real-map__passport-poi-status--validated"
                       : " real-map__passport-poi-status--pending")
                   }
                   role="img"
-                  aria-label={checked ? pc.validated : pc.pending}
+                  aria-label={status}
                 >
-                  {checked ? "✅" : "⌛"}
+                  {qrValidated ? "✅" : declared ? "📝" : "⌛"}
                 </span>
                 <div>
                   <strong>{poi.label}</strong>
                   {poi.partner ? (
                     <span className="real-map__passport-poi-partner"> – {poi.partner.name}</span>
                   ) : null}
-                  <div className="real-map__passport-poi-state">
-                    {checked ? pc.validated : pc.pending}
-                  </div>
+                  <div className="real-map__passport-poi-state">{status}</div>
                 </div>
               </li>
             );
