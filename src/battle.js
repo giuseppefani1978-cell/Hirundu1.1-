@@ -4,17 +4,28 @@
 // Exporte: setupBattleInputs, setBattleCallbacks, setBattleAmmo,
 //          startBattle, tickBattle, renderBattle, isBattleActive
 // ---------------------------------------------------------
-import { copy } from './ui/copy.js';
 import { LANG } from './i18n.js';
-const battleWords = {
- fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie',watch:'Attention !',counter:'Maintenant ! Riposte !',hurt:'Touché ! Reprends de l’altitude.',phase:'Le gardien accélère !',strike:'Bien joué !'},
- it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita',watch:'Attenzione!',counter:'Ora! Contrattacca!',hurt:'Colpito! Riprendi quota.',phase:'Il guardiano accelera!',strike:'Ben fatto!'},
- en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'},
- es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida',watch:'¡Atención!',counter:'¡Ahora! ¡Contraataca!',hurt:'¡Golpe! Recupera altura.',phase:'¡El guardián acelera!',strike:'¡Buen golpe!'},
-}[LANG] || {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'};
+
+const BATTLE_WORDS = {
+  fr: {attack:'Attaque',special:'Spécial',ready:'PRÊT…',go:'PARTEZ !',dive:'Plongée',dodge:'Esquive',perfect:'ESQUIVE PARFAITE',high:'ATTAQUE HAUTE',low:'ATTAQUE BASSE',aim:'VISÉE',left:'Gauche',right:'Droite',flap:'Battement d’ailes',end:'Fin de la partie',watch:'Attention !',counter:'Maintenant ! Riposte !',hurt:'Touché ! Reprends de l’altitude.',phase:'Le gardien accélère !',strike:'Bien joué !'},
+  it: {attack:'Attacco',special:'Speciale',ready:'PRONTI…',go:'VIA!',dive:'Picchiata',dodge:'Schivata',perfect:'SCHIVATA PERFETTA',high:'ATTACCO ALTO',low:'ATTACCO BASSO',aim:'MIRA',left:'Sinistra',right:'Destra',flap:'Battito d’ali',end:'Fine della partita',watch:'Attenzione!',counter:'Ora! Contrattacca!',hurt:'Colpito! Riprendi quota.',phase:'Il guardiano accelera!',strike:'Ben fatto!'},
+  en: {attack:'Attack',special:'Special',ready:'READY…',go:'GO!',dive:'Dive',dodge:'Dodge',perfect:'PERFECT DODGE',high:'HIGH ATTACK',low:'LOW ATTACK',aim:'AIM',left:'Left',right:'Right',flap:'Wingbeat',end:'End of battle',watch:'Watch out!',counter:'Now! Counterattack!',hurt:'Hit! Gain altitude.',phase:'The guardian speeds up!',strike:'Nice hit!'},
+  es: {attack:'Ataque',special:'Especial',ready:'PREPARADOS…',go:'¡YA!',dive:'Picado',dodge:'Esquiva',perfect:'ESQUIVA PERFECTA',high:'ATAQUE ALTO',low:'ATAQUE BAJO',aim:'APUNTA',left:'Izquierda',right:'Derecha',flap:'Aleteo',end:'Fin de la partida',watch:'¡Atención!',counter:'¡Ahora! ¡Contraataca!',hurt:'¡Golpe! Recupera altura.',phase:'¡El guardián acelera!',strike:'¡Buen golpe!'},
+};
+
+const BATTLE_COPY = {
+  fr: {battleOrientation:'Tourne ton téléphone en paysage pour commencer la bataille.',battleHint:'En paysage : ← / → pour bouger, ↑ pour sauter, A pour attaquer, B pour le spécial.',won:'Bataille gagnée !',defeat:'Défaite…',continue:'Continuer la chasse',replay:'Rejouer'},
+  it: {battleOrientation:'Ruota il telefono in orizzontale per iniziare la battaglia.',battleHint:'In orizzontale: ← / → per muoverti, ↑ per saltare, A per attaccare, B per lo speciale.',won:'Battaglia vinta!',defeat:'Sconfitta…',continue:'Continua la caccia',replay:'Gioca di nuovo'},
+  en: {battleOrientation:'Turn your phone to landscape to start the battle.',battleHint:'In landscape: ← / → to move, ↑ to jump, A to attack, B for the special move.',won:'Battle won!',defeat:'Defeat…',continue:'Continue the hunt',replay:'Play again'},
+  es: {battleOrientation:'Gira el teléfono en horizontal para comenzar la batalla.',battleHint:'En horizontal: ← / → para moverte, ↑ para saltar, A para atacar, B para el especial.',won:'¡Batalla ganada!',defeat:'Derrota…',continue:'Continuar la búsqueda',replay:'Volver a jugar'},
+};
+
+let currentBattleLang = BATTLE_WORDS[LANG] ? LANG : 'en';
+let battleWords = BATTLE_WORDS[currentBattleLang];
+let battleCopy = BATTLE_COPY[currentBattleLang];
 import { withBase } from './utils/basePath.js';
 import { markLevelWin } from './bonus_maps.js';
-import { FLOW_PHASES, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
+import { FLOW_PHASES, LANGUAGE_EVENT, PAUSE_EVENT, isGamePaused, setGameFlowPhase } from './game_flow.js';
 
 const BTL = {
   FLOOR_H: 0,
@@ -239,6 +250,57 @@ function _onBattlePause(event){
   } catch {}
 }
 
+function _refreshBattleLanguageUI(){
+  if (typeof document !== 'undefined') document.documentElement.lang = currentBattleLang;
+
+  const move = state.ui.move;
+  if (move) {
+    const left = move.querySelector('[data-act="left"]');
+    const up = move.querySelector('[data-act="up"]');
+    const down = move.querySelector('[data-act="down"]');
+    const right = move.querySelector('[data-act="right"]');
+    const dodge = move.querySelector('[data-act="dodge"]');
+    if (left) left.setAttribute('aria-label', battleWords.left);
+    if (up) up.setAttribute('aria-label', battleWords.flap);
+    if (down) down.setAttribute('aria-label', battleWords.dive);
+    if (right) right.setAttribute('aria-label', battleWords.right);
+    if (dodge) {
+      dodge.setAttribute('aria-label', battleWords.dodge);
+      dodge.textContent = '↯ ' + battleWords.dodge;
+    }
+  }
+
+  const ab = state.ui.ab;
+  if (ab) {
+    const atk = ab.querySelector('[data-act="atk"]');
+    const spc = ab.querySelector('[data-act="spc"]');
+    if (atk) {
+      atk.setAttribute('aria-label', battleWords.attack);
+      atk.textContent = 'A • ' + battleWords.attack;
+    }
+    if (spc) {
+      spc.setAttribute('aria-label', battleWords.special);
+      spc.textContent = 'B • ' + battleWords.special;
+    }
+  }
+
+  if (state.ui.rotateOverlay) state.ui.rotateOverlay.textContent = '📱 ' + battleCopy.battleOrientation;
+
+  const endTitle = state.ui.endOverlay?.querySelector('#__battle_end_title');
+  const replay = state.ui.endOverlay?.querySelector('#__battle_replay_btn');
+  if (endTitle) endTitle.textContent = state.ending?.mode === 'win' ? battleCopy.won : state.ending?.mode === 'lose' ? battleCopy.defeat : battleWords.end;
+  if (replay) replay.textContent = '↻ ' + (state.ending?.mode === 'win' ? battleCopy.continue : battleCopy.replay);
+}
+
+function _onBattleLanguage(event){
+  const next = String(event?.detail?.lang || '').slice(0,2).toLowerCase();
+  if (!BATTLE_WORDS[next]) return;
+  currentBattleLang = next;
+  battleWords = BATTLE_WORDS[next];
+  battleCopy = BATTLE_COPY[next];
+  _refreshBattleLanguageUI();
+}
+
 export function disposeBattle() {
   state.active = false;
   _stopBattleTheme();
@@ -248,6 +310,7 @@ export function disposeBattle() {
   window.removeEventListener('orientationchange', _updateRotateOverlay);
   window.removeEventListener('resize', _updateRotateOverlay);
   window.removeEventListener(PAUSE_EVENT, _onBattlePause);
+  window.removeEventListener(LANGUAGE_EVENT, _onBattleLanguage);
   state.input = { left:false, right:false, up:false, down:false, dodge:false, atk:false, spc:false };
   if (state.ui.root) state.ui.root.style.display = 'none';
 }
@@ -264,6 +327,8 @@ export function setupBattleInputs(){
   _installOrientationWatch();
   window.removeEventListener(PAUSE_EVENT, _onBattlePause);
   window.addEventListener(PAUSE_EVENT, _onBattlePause);
+  window.removeEventListener(LANGUAGE_EVENT, _onBattleLanguage);
+  window.addEventListener(LANGUAGE_EVENT, _onBattleLanguage);
 }
 
 export function setBattleCallbacks({ onWin, onLose } = {}){
@@ -1015,7 +1080,7 @@ export function renderBattle(ctx, _view, sprites){
 
   // Aide
   ctx.font='12px system-ui'; ctx.fillStyle='rgba(255,255,255,.8)';
-  ctx.fillText(copy.battleHint, 16, Math.max(12, h-12));
+  ctx.fillText(battleCopy.battleHint, 16, Math.max(12, h-12));
 
   ctx.restore();
 }
@@ -1039,12 +1104,12 @@ function _endBattle(victory){
   // 3) Overlay de fin + bouton
   if (state.ui.endOverlay){
     const t = state.ui.endOverlay.querySelector('#__battle_end_title');
-    if (t) t.textContent = victory ? copy.won : copy.defeat;
+    if (t) t.textContent = victory ? battleCopy.won : battleCopy.defeat;
 
     const btn = state.ui.endOverlay.querySelector('#__battle_replay_btn');
     if (btn){
       btn.disabled = false;
-      btn.textContent = victory ? copy.continue : copy.replay;
+      btn.textContent = victory ? battleCopy.continue : battleCopy.replay;
       btn.style.padding = '12px 16px';
       btn.style.fontSize = '16px';
       btn.style.transform = 'none';
@@ -1304,7 +1369,7 @@ function _ensureBattleUI(show){
       position:absolute; inset:0; display:none; align-items:center; justify-content:center;
       background:rgba(0,0,0,.75); color:#fff; font:700 18px system-ui; text-align:center; padding:20px; pointer-events:auto;
     `;
-    rot.textContent = `📱 ${copy.battleOrientation}`;
+    rot.textContent = `📱 ${battleCopy.battleOrientation}`;
 
     // overlay fin de partie
     const end = document.createElement('div');
@@ -1319,7 +1384,7 @@ function _ensureBattleUI(show){
         <div id="__battle_end_title" style="font:800 18px system-ui; margin-bottom:10px">${battleWords.end}</div>
         <button id="__battle_replay_btn"
                 style="padding:10px 14px; border:0; border-radius:12px; font:700 14px system-ui;
-                       background:#06d6a0; color:#083d2b">↻ ${copy.replay}</button>
+                       background:#06d6a0; color:#083d2b">↻ ${battleCopy.replay}</button>
       </div>
     `;
 
@@ -1360,6 +1425,7 @@ function _ensureBattleUI(show){
     state.ui.endOverlay = end;
   }
 
+  _refreshBattleLanguageUI();
   state.ui.root.style.display = show ? 'block' : 'none';
 }
 
