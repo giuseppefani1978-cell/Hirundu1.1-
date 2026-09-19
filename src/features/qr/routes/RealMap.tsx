@@ -59,6 +59,19 @@ function circleToPolygon(
   return pts;
 }
 
+function openExternalDirections(lat: number, lng: number, label: string): void {
+  const destination = `${lat},${lng}`;
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("destination", destination);
+  url.searchParams.set("travelmode", "driving");
+  try {
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  } catch (error) {
+    console.warn(`Impossible d’ouvrir l’itinéraire vers ${label}`, error);
+  }
+}
+
 function FitAndRestrict({ lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number }) {
   const map = useMap();
 
@@ -238,6 +251,14 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
             <strong>{cfg.title}</strong>
             <br />
             {bt("Carte bonus")}
+            <br />
+            <button
+              type="button"
+              className="app-button app-button--ghost"
+              onClick={() => openExternalDirections(cfg.lat, cfg.lng, cfg.title)}
+            >
+              🧭 {bt("Itinéraire")} · {cfg.title}
+            </button>
           </Popup>
         </Marker>
 
@@ -256,6 +277,13 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
                         : "Démonstration · aucun partenariat ni avantage réel confirmé"}
                   </div>
                 ) : null}
+                <button
+                  type="button"
+                  className="app-button app-button--ghost"
+                  onClick={() => openExternalDirections(poi.lat, poi.lng, poi.label)}
+                >
+                  🧭 {bt("Itinéraire")} · {poi.label}
+                </button>
               </div>
             </Popup>
           </Marker>
@@ -273,6 +301,13 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
                       ? "Commerce référencé · partenariat non confirmé"
                       : "Démonstration · aucun partenariat ni avantage réel confirmé"}
                 </div>
+                <button
+                  type="button"
+                  className="app-button app-button--ghost"
+                  onClick={() => openExternalDirections(partner.lat, partner.lng, partner.name)}
+                >
+                  🧭 {bt("Itinéraire")} · {partner.name}
+                </button>
               </div>
             </Popup>
           </Marker>
