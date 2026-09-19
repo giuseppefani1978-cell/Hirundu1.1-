@@ -51,7 +51,7 @@
           if (!retried) {
             try { sessionStorage.setItem(RECOVERY_KEY, "1"); } catch {}
             const url = new URL(BASE, location.origin);
-            url.searchParams.set("fresh", "20260919");
+            url.searchParams.set("fresh", Date.now().toString());
             url.hash = location.hash;
             location.replace(url.toString());
             return;
@@ -98,9 +98,21 @@
     <!-- Désactiver/Nettoyer d’anciens Service Workers -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+        const HIRUNDU_SCOPE = "/Hirundu1.1-/";
+        navigator.serviceWorker.getRegistrations()
+          .then(rs => rs
+            .filter(r => {
+              try { return new URL(r.scope).pathname.startsWith(HIRUNDU_SCOPE); }
+              catch { return false; }
+            })
+            .forEach(r => r.unregister()))
+          .catch(() => {});
         if (window.caches && caches.keys) {
-          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+          caches.keys()
+            .then(keys => keys
+              .filter(k => /hirundu|aracne/i.test(k))
+              .forEach(k => caches.delete(k)))
+            .catch(() => {});
         }
         try { localStorage.setItem("sw_disabled", "true"); } catch {}
       }
