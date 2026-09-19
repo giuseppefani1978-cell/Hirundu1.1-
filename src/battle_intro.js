@@ -3,6 +3,7 @@ import {
   FLOW_PHASES,
   setGameFlowPhase,
   watchRequiredOrientation,
+  LANGUAGE_EVENT,
 } from './game_flow.js';
 
 // Battle intro is an intentional orientation gate:
@@ -36,6 +37,11 @@ export function startBattleIntro({
   const card = document.createElement('section');
   card.className = 'battle-transition__card';
 
+  const resolveCopy = (value, fallback = '') => {
+    const resolved = typeof value === 'function' ? value() : value;
+    return resolved ?? fallback;
+  };
+
   const phase = document.createElement('div');
   phase.className = 'battle-transition__phase';
   phase.textContent = copy.huntComplete;
@@ -64,7 +70,7 @@ export function startBattleIntro({
   const heading = document.createElement('h2');
   heading.id = '__battle_intro_title__';
   heading.className = 'battle-transition__title';
-  heading.textContent = title;
+  heading.textContent = resolveCopy(title);
 
   const orientation = document.createElement('div');
   orientation.id = '__battle_intro_orientation__';
@@ -86,17 +92,20 @@ export function startBattleIntro({
 
   const supplies = document.createElement('p');
   supplies.className = 'battle-transition__supplies';
-  supplies.textContent = `${collectibleIcon} ${collectibleLabel}: ${ammo.stars|0} · 🍩 ${ammo.pasticciotto|0} · 🥟 ${ammo.rustico|0} · ☕ ${ammo.caffe|0}`;
+  const refreshSupplies = () => {
+    supplies.textContent = `${collectibleIcon} ${resolveCopy(collectibleLabel, copy.battleStars)}: ${ammo.stars|0} · 🍩 ${ammo.pasticciotto|0} · 🥟 ${ammo.rustico|0} · ☕ ${ammo.caffe|0}`;
+  };
+  refreshSupplies();
 
   const instructions = document.createElement('p');
   instructions.className = 'battle-transition__instructions';
-  instructions.textContent = subtitle;
+  instructions.textContent = resolveCopy(subtitle, copy.battleHint);
 
   const button = document.createElement('button');
   button.id = '__battle_start_btn';
   button.type = 'button';
   button.className = 'battle-transition__start';
-  button.textContent = startLabel;
+  button.textContent = resolveCopy(startLabel, copy.fight);
 
   card.append(phase, visual, heading, orientation, supplies, instructions, button);
   overlay.append(scrim, card);
@@ -113,6 +122,22 @@ export function startBattleIntro({
   let cleaned = false;
   let removalTimer = 0;
   let canProceed = true;
+
+  const refreshLanguage = () => {
+    phase.textContent = copy.huntComplete;
+    incoming.textContent = copy.bossIncoming;
+    heading.textContent = boss ? `⚔️ ${copy.battle} · ${boss}` : resolveCopy(title);
+    hint.textContent = copy.rotateLandscape || copy.battleOrientation;
+    instructions.textContent = resolveCopy(subtitle, copy.battleHint);
+    button.textContent = resolveCopy(startLabel, copy.fight);
+    refreshSupplies();
+    if (orientationStatus.dataset.ready === 'true') {
+      orientationStatus.textContent = copy.landscapeReady;
+    } else if (orientationStatus.textContent) {
+      orientationStatus.textContent = copy.rotateLandscape || copy.battleOrientation;
+    }
+  };
+  window.addEventListener(LANGUAGE_EVENT, refreshLanguage);
 
   const stopOrientationWatch = watchRequiredOrientation('landscape', ({ mobile, matches }) => {
     canProceed = matches;
@@ -136,6 +161,7 @@ export function startBattleIntro({
     if (!cleaned) {
       cleaned = true;
       stopOrientationWatch?.();
+      window.removeEventListener(LANGUAGE_EVENT, refreshLanguage);
       button.removeEventListener('click', proceed);
       document.getElementById('__battle_rotate__')?.remove();
       document.body.classList.remove('mode-battle-intro', 'mobile-portrait');
