@@ -137,7 +137,8 @@ export default function QrScannerView({ onResult, onError, onClose }: QrScannerP
   );
 
   const retry = useCallback(() => {
-    if (pref === "once") {
+    if (pref === "once" || pref === "never") {
+      if (pref === "never") persistPref("once");
       setPhase("consent");
       return;
     }
