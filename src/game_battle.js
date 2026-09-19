@@ -110,14 +110,22 @@ function _loadSprites({ bossSprite, backdrop } = {}) {
   if (_spriteCache.has(cacheKey)) return _spriteCache.get(cacheKey);
 
   const pending = new Promise((resolve) => {
-    const birdImg   = new Image();
-    const spiderImg = new Image();
-    const crowImg   = new Image();
-    const jellyImg  = new Image();
-    const bgImg     = new Image();   // ✅ ajouté
+    const birdImg         = new Image();
+    const spiderImg       = new Image();
+    const crowImg         = new Image();
+    const jellyImg        = new Image();
+    const caffeImg        = new Image();
+    const rusticoImg      = new Image();
+    const pasticciottoImg = new Image();
+    const bgImg           = new Image();
 
-    let left = 5;  // était 4 → maintenant 5 images à charger
-    const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg, bgImg }); };
+    let left = 8;
+    const done = () => {
+      if(--left===0) resolve({
+        birdImg, spiderImg, crowImg, jellyImg, bgImg,
+        caffeImg, rusticoImg, pasticciottoImg
+      });
+    };
 
     birdImg.onload = done;         birdImg.onerror = done;         birdImg.src = SPRITES_SRC.bird;
     spiderImg.onload = done;       spiderImg.onerror = done;       spiderImg.src = SPRITES_SRC.spider;
