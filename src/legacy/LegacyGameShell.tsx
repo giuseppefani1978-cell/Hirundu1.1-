@@ -321,7 +321,7 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 </label>
                 {installAvailable ? (
                   <button type="button" onClick={installApp}>
-                    📲 Installer l’app
+                    📲 {copy.installApp}
                   </button>
                 ) : null}
                 {onDiscoveriesClick ? (
