@@ -16,6 +16,7 @@ const messages = {
 
     musicStart: "Activer la musique",
     musicStop: "Couper la musique",
+    installApp: "Installer l’app",
 
     hofLead: "Les meilleurs scores sont enregistrés sur cet appareil.",
     points: "Points cumulés",
@@ -57,6 +58,7 @@ const messages = {
 
     musicStart: "Attiva la musica",
     musicStop: "Disattiva la musica",
+    installApp: "Installa l’app",
 
     hofLead: "I migliori punteggi sono salvati su questo dispositivo.",
     points: "Punti totali",
@@ -98,6 +100,7 @@ const messages = {
 
     musicStart: "Enable music",
     musicStop: "Mute music",
+    installApp: "Install app",
 
     hofLead: "Best scores are saved on this device.",
     points: "Total points",
@@ -139,6 +142,7 @@ const messages = {
 
     musicStart: "Activar la música",
     musicStop: "Silenciar la música",
+    installApp: "Instalar la app",
 
     hofLead: "Las mejores puntuaciones se guardan en este dispositivo.",
     points: "Puntos totales",
