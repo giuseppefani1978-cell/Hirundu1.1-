@@ -1,6 +1,6 @@
 // src/app.tsx
 import { copy } from "./ui/copy.js";
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { initializeDurableProgress, syncDurableProgress } from "./progressStorage.js";
 
@@ -42,14 +42,19 @@ function Loading() {
 }
 
 export default function App() {
+  const [, setLanguageRevision] = useState(0);
+
   useEffect(() => {
     initializeDurableProgress();
     const sync = () => { syncDurableProgress(); };
+    const refreshLanguage = () => setLanguageRevision((value) => value + 1);
     window.addEventListener("pagehide", sync);
     document.addEventListener("visibilitychange", sync);
+    window.addEventListener("hirundu:language", refreshLanguage);
     return () => {
       window.removeEventListener("pagehide", sync);
       document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("hirundu:language", refreshLanguage);
     };
   }, []);
 
