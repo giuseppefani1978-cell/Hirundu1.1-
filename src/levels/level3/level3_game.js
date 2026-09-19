@@ -361,7 +361,6 @@ export function boot(options = {}){
     ui.updateScore(leavesPicked, LEAVES_TARGET);
     renderInventory(leavesPicked, LEAVES_TARGET);
     updateScoreLive();
-    try { localStorage.removeItem(FLIGHT_HANDOFF_KEY); } catch {}
   }
 
   // Win animation state
@@ -848,6 +847,7 @@ export function boot(options = {}){
 
   // ---------- modes ----------
   function triggerWin() {
+    if (flightHandoff) { try { localStorage.removeItem(FLIGHT_HANDOFF_KEY); } catch {} }
     setGameFlowPhase(FLOW_PHASES.VICTORY, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'win';
     finalizeRun({ won: true });
@@ -865,6 +865,7 @@ export function boot(options = {}){
   }
 
   function triggerGameOver(){
+    if (flightHandoff) { try { localStorage.removeItem(FLIGHT_HANDOFF_KEY); } catch {} }
     setGameFlowPhase(FLOW_PHASES.DEFEAT, { level: levelId, boss: regional?.bossName || 'Lecce' });
     mode = 'dead';
     running = false;
