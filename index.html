@@ -16,6 +16,50 @@
     }
   })();
 </script>
+    <script>
+      // PWA boot recovery: if an old standalone launch/cache leaves the React root blank,
+      // retry once from the canonical GitHub Pages root with a cache-busting query.
+      (() => {
+        const RECOVERY_KEY = "hirundu_boot_recovery_20260919";
+        const BASE = "/Hirundu1.1-/";
+
+        const showRecovery = () => {
+          const root = document.getElementById("root");
+          if (!root) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#a9d6f5;color:#0e2b4a;font:600 16px system-ui;text-align:center">' +
+            '<div><strong>HIRUNDU</strong><br><br>Rechargement nécessaire.<br>' +
+            '<button id="hirunduRecoveryButton" style="margin-top:16px;padding:12px 16px;border:0;border-radius:12px;background:#0e2b4a;color:#fff;font:700 15px system-ui">Recharger</button></div></div>';
+          document.getElementById("hirunduRecoveryButton")?.addEventListener("click", () => {
+            try { sessionStorage.removeItem(RECOVERY_KEY); } catch {}
+            const url = new URL(BASE, location.origin);
+            url.searchParams.set("fresh", Date.now().toString());
+            url.hash = location.hash;
+            location.replace(url.toString());
+          });
+        };
+
+        window.setTimeout(() => {
+          const root = document.getElementById("root");
+          if (root && root.childElementCount > 0) {
+            try { sessionStorage.removeItem(RECOVERY_KEY); } catch {}
+            return;
+          }
+
+          let retried = false;
+          try { retried = sessionStorage.getItem(RECOVERY_KEY) === "1"; } catch {}
+          if (!retried) {
+            try { sessionStorage.setItem(RECOVERY_KEY, "1"); } catch {}
+            const url = new URL(BASE, location.origin);
+            url.searchParams.set("fresh", "20260919");
+            url.hash = location.hash;
+            location.replace(url.toString());
+            return;
+          }
+          showRecovery();
+        }, 3200);
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
