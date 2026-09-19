@@ -8,7 +8,7 @@ import { canCollectTarget, computeTargetHitRadiusPx } from '../../legacy/huntVal
 // Dépendances: i18n.js, audio.js, ui.js, battle_intro.js, bonus_maps.js
 // =====================================================
 
-import { t, poiName, poiInfo } from '../../i18n.js';
+import { LANG, t, poiName, poiInfo } from '../../i18n.js';
 import { withBase } from '../../paths';
 import { openBonusMap, unlockBonus, isBonusUnlocked } from '../../bonus_maps.js';
 import {
@@ -20,7 +20,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro } from '../../level_transition.js';
-import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
+import { FLOW_PHASES, LANGUAGE_EVENT, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L3]', ...a); }
@@ -158,9 +158,14 @@ export function boot(options = {}){
   const flightReturnUrl = typeof flightHandoff?.returnUrl === 'string' ? flightHandoff.returnUrl : null;
   const collectibleIcon = regional?.token || '🐚';
   const places = regional?.pois || POIS;
-  const inventoryLabel = regional?.inventoryLabel || INVENTORY_LABEL;
+  const localize = value => {
+    if (!Array.isArray(value)) return value || '';
+    const index = ({fr:0,it:1,en:2,es:3})[LANG] ?? 2;
+    return value[index] ?? value[2] ?? value[0] ?? '';
+  };
+  const inventoryLabel = () => regional ? localize(regional?.inventoryLabel) : (t.level3?.hudLabel || INVENTORY_LABEL);
   const placeName = key => regional ? places.find(p => p.key === key)?.name || key : poiName(key);
-  const question = key => regional ? places.find(p => p.key === key)?.clue || '' : t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`;
+  const question = key => regional ? localize(places.find(p => p.key === key)?.clue) : t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`;
   const renderInventory = (n,total) => {
     ui.renderStars(n,total);
     if(regional) document.querySelectorAll('#stars .star').forEach((node,i)=>{
@@ -185,7 +190,7 @@ export function boot(options = {}){
 
   // Titres L3 + HUD "Feuilles"
   const hudLabel = document.getElementById('hudLabel');
-  if (hudLabel) hudLabel.textContent = inventoryLabel;
+  if (hudLabel) hudLabel.textContent = inventoryLabel();
 
   ui.updateScore(0, LEAVES_TARGET);
   renderInventory(0, LEAVES_TARGET);
@@ -239,13 +244,16 @@ export function boot(options = {}){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  prepareLevelIntro({
+  const renderIntroCopy = () => prepareLevelIntro({
     level: levelId, theme: 'lecce', badge: `${copy.level} ${levelId}`,
-    title: regional?.title || t.level3.title, subtitle: regional?.subtitle || t.level3.subtitle, description: regional?.mission || copy.mission,
+    title: regional ? localize(regional.title) : t.level3.title,
+    subtitle: regional ? localize(regional.subtitle) : t.level3.subtitle,
+    description: regional ? localize(regional.mission) : copy.mission,
     footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
-    highlight: { title: copy.briefing, body: regional?.mission || copy.mission },
+    highlight: { title: copy.briefing, body: regional ? localize(regional.mission) : copy.mission },
     accentColor: '#38bdf8',
   });
+  renderIntroCopy();
 
   // V9.1: warm the battle chunk + heavy regional background while the player hunts.
   // The promise is deliberately fire-and-forget; gameplay must never wait for preloading.
@@ -314,6 +322,14 @@ export function boot(options = {}){
       questionReady = true;
     }
   }
+  const refreshLanguageUI = () => {
+    if (hudLabel) hudLabel.textContent = inventoryLabel();
+    ui.setMusicLabel(isMusicOn());
+    if (mode === 'splash') renderIntroCopy();
+    if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
+  };
+  session.listen(window, LANGUAGE_EVENT, refreshLanguageUI);
+
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
     questionReady = false;
@@ -464,7 +480,7 @@ export function boot(options = {}){
       ``,
       `👉 Consulte le Hall of Fame depuis la page Bonus.`
     ];
-    if(regional) baseLines.splice(0,baseLines.length,title,`${copy.points}: ${total}`,`${inventoryLabel}: ${leavesPicked}/10`,`${copy.hits}: ${hits}`,`${copy.time}: ${fmtTime(entry.time)}`);
+    if(regional) baseLines.splice(0,baseLines.length,title,`${copy.points}: ${total}`,`${inventoryLabel()}: ${leavesPicked}/10`,`${copy.hits}: ${hits}`,`${copy.time}: ${fmtTime(entry.time)}`);
     ui.showSuccess(baseLines.join('\n'));
     ui.showReplay(true);
 
