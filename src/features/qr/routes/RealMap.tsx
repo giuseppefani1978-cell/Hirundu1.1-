@@ -16,7 +16,7 @@ import "leaflet/dist/leaflet.css";
 
 import { BONUS_MAPS, type BonusKey, type BonusMapConfig } from "../../bonus/bonusData";
 import { getEnrichedPois, type EnrichedPoi } from "../services/pois";
-import { findPartnerById, type Partner } from "../services/partners";
+import { findPartnerById, getPartnerVerificationStatus, type Partner } from "../services/partners";
 import {
   PASSPORT_EVENT,
   PASSPORT_STORAGE_KEY,
@@ -233,7 +233,13 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
                 <strong>{poi.label}</strong>
                 {poi.partner ? <div>{poi.partner.name}</div> : null}
                 {poi.partner ? (
-                  <div className="real-map__popup-meta">QR : {poi.partner.qr_id}</div>
+                  <div className="real-map__popup-meta">
+                    {getPartnerVerificationStatus(poi.partner) === "confirmed"
+                      ? `Partenaire confirmé · QR : ${poi.partner.qr_id}`
+                      : getPartnerVerificationStatus(poi.partner) === "listed"
+                        ? "Commerce référencé · partenariat non confirmé"
+                        : "Démonstration · aucun partenariat ni avantage réel confirmé"}
+                  </div>
                 ) : null}
               </div>
             </Popup>
@@ -245,7 +251,13 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
             <Popup>
               <div className="real-map__popup">
                 <strong>{partner.name}</strong>
-                <div className="real-map__popup-meta">QR : {partner.qr_id}</div>
+                <div className="real-map__popup-meta">
+                  {getPartnerVerificationStatus(partner) === "confirmed"
+                    ? `Partenaire confirmé · QR : ${partner.qr_id}`
+                    : getPartnerVerificationStatus(partner) === "listed"
+                      ? "Commerce référencé · partenariat non confirmé"
+                      : "Démonstration · aucun partenariat ni avantage réel confirmé"}
+                </div>
               </div>
             </Popup>
           </Marker>
