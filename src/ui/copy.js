@@ -165,4 +165,21 @@ const messages = {
     battleHint: 'En horizontal: ← / → para moverte, ↑ para saltar, A para atacar, B para el especial.',
   },
 };
-export const copy = messages[LANG] || messages.en;
+export const copy = new Proxy({}, {
+  get(_target, property) {
+    const dict = messages[LANG] || messages.en;
+    return dict[property] ?? messages.en[property];
+  },
+  has(_target, property) {
+    const dict = messages[LANG] || messages.en;
+    return property in dict || property in messages.en;
+  },
+  ownKeys() {
+    return Reflect.ownKeys(messages[LANG] || messages.en);
+  },
+  getOwnPropertyDescriptor(_target, property) {
+    const dict = messages[LANG] || messages.en;
+    if (!(property in dict) && !(property in messages.en)) return undefined;
+    return { enumerable: true, configurable: true };
+  },
+});
