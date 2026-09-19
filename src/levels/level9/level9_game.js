@@ -8,6 +8,7 @@ export function startLevel9(options = {}) {
   const region = regionById(9);
   return bootHunt({ ...options, region: {
     id: 9, key: 'itria', token: '💎', foeType: 'calcara',
+    framing: 'standard-classic',
     title: tr(region.title),
     subtitle: tr(['Dix lieux réels, dix découvertes, une bataille.','Dieci luoghi reali, dieci scoperte, una battaglia.','Ten real places, ten discoveries, one battle.','Diez lugares reales, diez descubrimientos, una batalla.']),
     mission: tr(['Guide Hirundu avec les flèches vers le lieu de chaque énigme. Évite les ennemis et ramasse les bonus.','Guida Hirundu con le frecce verso il luogo di ogni enigma. Evita i nemici e raccogli i bonus.','Guide Hirundu with the arrows to each clue’s place. Avoid enemies and collect bonuses.','Guía a Hirundu con las flechas hasta el lugar de cada enigma. Evita enemigos y recoge bonos.']),
