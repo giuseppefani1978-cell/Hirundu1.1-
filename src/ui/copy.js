@@ -32,7 +32,7 @@ const messages = {
 
     defeat: 'Défaite…',
     language: 'Langue', ready: 'Prêt·e pour la chasse ?', lead: 'Explore le Salento, collecte les trésors et gagne les batailles pour débloquer les cartes.',
-    start: 'Lancer la chasse', bonus: 'Mes découvertes', home: 'Accueil', loading: 'Chargement…', level: 'Niveau',
+    start: 'Lancer la chasse', bonus: 'Mes découvertes', home: 'Accueil', loading: 'Chargement…', reloadRequired: 'HIRUNDU doit être rechargé après une mise à jour ou une erreur réseau.', offlineNotGuaranteed: 'Le mode hors ligne complet n’est pas garanti dans cette bêta.', localSaveSafe: 'La progression locale n’est pas effacée par cette opération.', retry: 'Réessayer', level: 'Niveau',
     continue: 'Continuer la chasse', replay: 'Rejouer', replayLevel: 'Rejouer un niveau', newGame: 'Nouvelle partie', chooseLevel: 'Choisir un niveau', confirmNewGame: 'Effacer la progression de cette partie et recommencer au niveau 1 ?', confirm: 'Oui, recommencer', cancel: 'Annuler', complete: 'Les neuf chasses sont terminées !',
     bonusLead: 'La chasse continue. Les visites et les QR sont facultatifs : explore-les à ton rythme.',
     maps: 'Explorer une carte', mapHint: 'Retrouve les lieux dans le Salento réel.', open: 'Explorer', locked: 'À débloquer',
@@ -74,7 +74,7 @@ const messages = {
 
     defeat: 'Sconfitta…',
     language: 'Lingua', ready: 'Pronti per la caccia?', lead: 'Esplora il Salento, raccogli i tesori e vinci le battaglie per sbloccare le mappe.',
-    start: 'Inizia la caccia', bonus: 'Le mie scoperte', home: 'Inizio', loading: 'Caricamento…', level: 'Livello',
+    start: 'Inizia la caccia', bonus: 'Le mie scoperte', home: 'Inizio', loading: 'Caricamento…', reloadRequired: 'HIRUNDU deve essere ricaricato dopo un aggiornamento o un errore di rete.', offlineNotGuaranteed: 'La modalità offline completa non è garantita in questa beta.', localSaveSafe: 'I progressi locali non vengono cancellati da questa operazione.', retry: 'Riprova', level: 'Livello',
     continue: 'Continua la caccia', replay: 'Gioca di nuovo', replayLevel: 'Rigioca un livello', newGame: 'Nuova partita', chooseLevel: 'Scegli un livello', confirmNewGame: 'Cancellare i progressi di questa partita e ricominciare dal livello 1?', confirm: 'Sì, ricomincia', cancel: 'Annulla', complete: 'Hai completato tutte e nove le cacce!',
     bonusLead: 'La caccia continua. Visite e QR sono facoltativi: esplorali quando vuoi.',
     maps: 'Esplora una mappa', mapHint: 'Ritrova i luoghi nel Salento reale.', open: 'Esplora', locked: 'Da sbloccare',
@@ -116,7 +116,7 @@ const messages = {
 
     defeat: 'Defeat…',
     language: 'Language', ready: 'Ready for the hunt?', lead: 'Explore Salento, collect treasures and win battles to unlock the maps.',
-    start: 'Start the hunt', bonus: 'My discoveries', home: 'Home', loading: 'Loading…', level: 'Level',
+    start: 'Start the hunt', bonus: 'My discoveries', home: 'Home', loading: 'Loading…', reloadRequired: 'HIRUNDU needs to reload after an update or network error.', offlineNotGuaranteed: 'Full offline mode is not guaranteed in this beta.', localSaveSafe: 'Your local progress is not erased by this operation.', retry: 'Try again', level: 'Level',
     continue: 'Continue the hunt', replay: 'Play again', replayLevel: 'Replay a level', newGame: 'New game', chooseLevel: 'Choose a level', confirmNewGame: 'Erase this game progress and restart from level 1?', confirm: 'Yes, restart', cancel: 'Cancel', complete: 'All nine hunts completed!',
     bonusLead: 'The hunt continues. Visits and QR codes are optional: explore them at your own pace.',
     maps: 'Explore a map', mapHint: 'Find the places in real-world Salento.', open: 'Explore', locked: 'Locked',
@@ -158,7 +158,7 @@ const messages = {
 
     defeat: 'Derrota…',
     language: 'Idioma', ready: '¿Listo para la búsqueda?', lead: 'Explora el Salento, recoge tesoros y gana las batallas para desbloquear los mapas.',
-    start: 'Iniciar la búsqueda', bonus: 'Mis descubrimientos', home: 'Inicio', loading: 'Cargando…', level: 'Nivel',
+    start: 'Iniciar la búsqueda', bonus: 'Mis descubrimientos', home: 'Inicio', loading: 'Cargando…', reloadRequired: 'HIRUNDU debe recargarse después de una actualización o un error de red.', offlineNotGuaranteed: 'El modo sin conexión completo no está garantizado en esta beta.', localSaveSafe: 'El progreso local no se borra con esta operación.', retry: 'Reintentar', level: 'Nivel',
     continue: 'Continuar la búsqueda', replay: 'Volver a jugar', replayLevel: 'Repetir un nivel', newGame: 'Nueva partida', chooseLevel: 'Elegir un nivel', confirmNewGame: '¿Borrar el progreso de esta partida y volver a empezar desde el nivel 1?', confirm: 'Sí, reiniciar', cancel: 'Cancelar', complete: '¡Has completado las nueve búsquedas!',
     bonusLead: 'La búsqueda continúa. Las visitas y los QR son opcionales: explóralos a tu ritmo.',
     maps: 'Explorar un mapa', mapHint: 'Encuentra los lugares en el Salento real.', open: 'Explorar', locked: 'Por desbloquear',
