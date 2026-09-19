@@ -21,10 +21,13 @@ const BTL_BG_SRC = withBase('assets/battle_bg_lecce.webp'); // 🖼 fond baroque
 // Config assets (sprites)
 // ---------------------------
 const SPRITES_SRC = {
-  bird:       withBase('assets/aracne .PNG'),            // héros (Hirundu)
-  spider:     withBase('assets/tarantula .PNG'),         // guide
-  sputacchina:withBase('assets/sputacchina_boss.png'),  // 🐞 boss insecte
-  dust:       withBase('assets/xylella_spores.PNG')     // spores ou gouttelettes (attaques)
+  bird:         withBase('assets/aracne .PNG'),
+  spider:       withBase('assets/tarantula .PNG'),
+  sputacchina:  withBase('assets/sputacchina_boss.png'),
+  dust:         withBase('assets/xylella_spores.PNG'),
+  caffe:        withBase('assets/caffeleccese .PNG'),
+  rustico:      withBase('assets/rustico.PNG'),
+  pasticciotto: withBase('assets/bonus-pasticciotto.PNG')
 };
 
 const BTL_VIRTUAL = { W: 800, H: 450 };
@@ -102,19 +105,30 @@ function _onResize() {
 // ---------------------------
 function _loadSprites() {
   return new Promise((resolve) => {
-    const birdImg   = new Image();
-    const spiderImg = new Image();
-    const sputImg   = new Image();
-    const dustImg   = new Image();
-    const bgImg     = new Image();
+    const birdImg         = new Image();
+    const spiderImg       = new Image();
+    const sputImg         = new Image();
+    const dustImg         = new Image();
+    const caffeImg        = new Image();
+    const rusticoImg      = new Image();
+    const pasticciottoImg = new Image();
+    const bgImg           = new Image();
 
-    let left = 5;
-    const done = () => { if(--left===0) resolve({ birdImg, spiderImg, sputImg, dustImg, bgImg }); };
+    let left = 8;
+    const done = () => {
+      if(--left===0) resolve({
+        birdImg, spiderImg, sputImg, dustImg, bgImg,
+        caffeImg, rusticoImg, pasticciottoImg
+      });
+    };
 
-    birdImg.onload = done;   birdImg.onerror = done;   birdImg.src   = SPRITES_SRC.bird;
-    spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
-    sputImg.onload = done;   sputImg.onerror = done;   sputImg.src   = SPRITES_SRC.sputacchina;
-    dustImg.onload = done;   dustImg.onerror = done;   dustImg.src   = SPRITES_SRC.dust;
+    birdImg.onload = done;         birdImg.onerror = done;         birdImg.src = SPRITES_SRC.bird;
+    spiderImg.onload = done;       spiderImg.onerror = done;       spiderImg.src = SPRITES_SRC.spider;
+    sputImg.onload = done;         sputImg.onerror = done;         sputImg.src = SPRITES_SRC.sputacchina;
+    dustImg.onload = done;         dustImg.onerror = done;         dustImg.src = SPRITES_SRC.dust;
+    caffeImg.onload = done;        caffeImg.onerror = done;        caffeImg.src = SPRITES_SRC.caffe;
+    rusticoImg.onload = done;      rusticoImg.onerror = done;      rusticoImg.src = SPRITES_SRC.rustico;
+    pasticciottoImg.onload = done; pasticciottoImg.onerror = done; pasticciottoImg.src = SPRITES_SRC.pasticciotto;
     bgImg.onload = done;
     const webp = BTL_BG_SRC.replace(/\.png$/i, '.webp');
     bgImg.onerror = () => {
