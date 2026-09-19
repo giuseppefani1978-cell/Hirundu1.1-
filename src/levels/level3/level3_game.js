@@ -126,6 +126,22 @@ export function boot(options = {}){
   // Optional regional content reuses the established hunt and battle shell.
   const regional = options.region;
   const levelId = regional?.id || (regional ? 4 : 3);
+  const FLIGHT_HANDOFF_KEY = 'hirundu_flight_handoff_v1';
+  const flightHandoff = (() => {
+    if (!options.testBattle || !regional) return null;
+    try {
+      const raw = localStorage.getItem(FLIGHT_HANDOFF_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || Number(parsed.level) !== Number(levelId)) return null;
+      const age = Date.now() - Number(parsed.createdAt || 0);
+      if (!Number.isFinite(age) || age < 0 || age > 10 * 60 * 1000) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  })();
+  const flightReturnUrl = typeof flightHandoff?.returnUrl === 'string' ? flightHandoff.returnUrl : null;
   const collectibleIcon = regional?.token || '🐚';
   const places = regional?.pois || POIS;
   const inventoryLabel = regional?.inventoryLabel || INVENTORY_LABEL;
@@ -319,6 +335,7 @@ export function boot(options = {}){
   let playerName = null;
   let country = getCountry();
 
+  let flightHandoffApplied = false;
   function scoreReset(){
     score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; leavesPicked = 0;
     pickedCounts = { pasticciotto: 0, rustico: 0, caffe: 0 };
@@ -328,6 +345,23 @@ export function boot(options = {}){
     questionReady = false;
     targetEntryReady = true;
     updateScoreLive();
+  }
+
+  function applyFlightHandoff(){
+    if (!flightHandoff || flightHandoffApplied) return;
+    flightHandoffApplied = true;
+    const ammo = flightHandoff.ammo || {};
+    pickedCounts = {
+      pasticciotto: Math.max(0, Number(ammo.pasticciotto) | 0),
+      rustico: Math.max(0, Number(ammo.rustico) | 0),
+      caffe: Math.max(0, Number(ammo.caffe) | 0),
+    };
+    leavesPicked = Math.max(0, Math.min(LEAVES_TARGET, Number(ammo.stars) | 0));
+    bonusesPicked = pickedCounts.pasticciotto + pickedCounts.rustico + pickedCounts.caffe;
+    ui.updateScore(leavesPicked, LEAVES_TARGET);
+    renderInventory(leavesPicked, LEAVES_TARGET);
+    updateScoreLive();
+    try { localStorage.removeItem(FLIGHT_HANDOFF_KEY); } catch {}
   }
 
   // Win animation state
@@ -835,6 +869,12 @@ export function boot(options = {}){
     mode = 'dead';
     running = false;
     finalizeRun({won:false});
+    if (flightReturnUrl) {
+      ui.onClickReplay(() => {
+        try { stopMusic(); } catch {}
+        window.location.assign(flightReturnUrl);
+      });
+    }
   }
 
   // ---------- controls ----------
@@ -848,6 +888,7 @@ export function boot(options = {}){
       if (!isMusicOn()) void startMusic().then(() => { if (session.active) ui.setMusicLabel(isMusicOn()); });
       ui.setMusicLabel(isMusicOn());
       resetGame();
+      if (options.testBattle && regional) applyFlightHandoff();
       gameStartAt = performance.now();
       mode = 'play';
       running = true;
