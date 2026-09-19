@@ -1,5 +1,6 @@
 import { copy } from './ui/copy.js';
 import { createLevelSession, setupHuntControls, drawAnimatedBird } from './legacy/levelSession.js';
+import { canCollectTarget, computeTargetHitRadiusPx } from './legacy/huntValidation.js';
 // src/game.js
 // =====================================================
 // CHASSE UNIQUEMENT + LANCEMENT DE battle_intro
@@ -270,14 +271,19 @@ export function boot(options = {}){
 
   // timers/questions
   let askTimer = 0;
+  let questionReady = false;
+  let targetEntryReady = true;
   function askQuestionAt(idx){
     if (idx >= 0 && idx < QUEST.length) {
       const key = QUEST[idx].key;
       ui.showAsk(t.ask?.(poiInfo(key)) || `Où est ${poiInfo(key)} ?`);
+      questionReady = true;
     }
   }
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    questionReady = false;
+    targetEntryReady = false;
     askTimer = setTimeout(() => {
       if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
     }, delayMs);
@@ -315,6 +321,8 @@ export function boot(options = {}){
     gameStartAt = performance.now();
     finalized = false;
     collectLockUntil = 0;
+    questionReady = false;
+    targetEntryReady = true;
     updateScoreLive();
   }
 
@@ -544,9 +552,31 @@ export function boot(options = {}){
       if (now >= collectLockUntil){
         const p = QUEST[currentIdx];
         const px = ox + p.x*dw, py = oy + p.y*dh;
-        const onTarget = Math.hypot(bx - px, by - py) < 44;
+        const targetRadiusPx = computeTargetHitRadiusPx(p, POIS, dw, dh);
+        const distanceToTarget = Math.hypot(bx - px, by - py);
+
+        // A newly displayed clue must require a fresh approach to its X.
+        // This prevents compact Android layouts from validating a nearby/next POI
+        // while the bird is already sitting inside its hit zone.
+        if (questionReady && !targetEntryReady && distanceToTarget > targetRadiusPx * 1.35) {
+          targetEntryReady = true;
+        }
+
+        const onTarget = canCollectTarget({
+          questionReady,
+          targetEntryReady,
+          now,
+          collectLockUntil,
+          playerX: bx,
+          playerY: by,
+          targetX: px,
+          targetY: py,
+          radiusPx: targetRadiusPx,
+        });
         if (onTarget){
           collectLockUntil = now + 900;
+          questionReady = false;
+          targetEntryReady = false;
           collected.add(p.key);
           ui.updateScore(collected.size, STARS_TARGET);
           ui.renderStars(collected.size, STARS_TARGET);
@@ -845,6 +875,7 @@ cleanupIntro = startBattleIntro({
     resetAudioForNewGame();
 
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
+    targetEntryReady = true;
     askQuestionAt(0);
   }
 
