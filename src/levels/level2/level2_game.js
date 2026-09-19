@@ -49,16 +49,22 @@ const ASSETS = {
   BONUS_CAFFE:   asset('assets/caffeleccese .PNG'),
 };
 
-// UI carte
-const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.30 };
+// UI carte — cadrage commun aux chasses : presque plein écran, jamais rogné à droite/gauche.
+const UI_CONST = { TOP: 120, BOTTOM: 160, MAP_ZOOM: 1.04, MAP_SIDE_MARGIN: 12 };
+
 function computeMapViewport(canvasW, canvasH, mapW, mapH){
-  const availW = canvasW;
-  const availH = Math.max(200, canvasH - UI_CONST.BOTTOM - UI_CONST.TOP);
+  const side = Math.min(UI_CONST.MAP_SIDE_MARGIN, canvasW * 0.035);
+  const availW = Math.max(1, canvasW - side * 2);
+  const top = Math.min(UI_CONST.TOP, canvasH * 0.2);
+  const bottom = Math.min(UI_CONST.BOTTOM, canvasH * 0.25);
+  const availH = Math.max(1, canvasH - bottom - top);
   const baseScale = Math.min(availW / mapW, availH / mapH);
-  const scale = baseScale * UI_CONST.MAP_ZOOM;
+  // Un très léger zoom garde l'effet immersif, mais le cap horizontal empêche
+  // la côte est / le bord droit du Salento de sortir de l'écran.
+  const scale = Math.min(baseScale * UI_CONST.MAP_ZOOM, availW / mapW);
   const dw = mapW * scale, dh = mapH * scale;
   const ox = (canvasW - dw) / 2;
-  const oy = UI_CONST.TOP + (availH - dh) / 2;
+  const oy = top + (availH - dh) / 2;
   return { ox, oy, dw, dh, scale };
 }
 
