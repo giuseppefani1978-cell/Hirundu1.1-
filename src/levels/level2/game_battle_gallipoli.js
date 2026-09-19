@@ -22,10 +22,13 @@ const BTL_BG_SRC = withBase('assets/battle_bg_gallipoli.webp');  // 🖼 ton fon
 // ---------------------------
 // NB : structure identique à Otranto, seul le boss et le fond changent
 const SPRITES_SRC = {
-  bird:   withBase('assets/aracne .PNG'),      // même sprites du héros
-  spider: withBase('assets/tarantula .PNG'),
-  crow:   withBase('assets/crow.PNG'),         // corbeaux 🪶
-  jelly:  withBase('assets/jellyfish_boss.PNG')
+  bird:         withBase('assets/aracne .PNG'),
+  spider:       withBase('assets/tarantula .PNG'),
+  crow:         withBase('assets/crow.PNG'),
+  jelly:        withBase('assets/jellyfish_boss.PNG'),
+  caffe:        withBase('assets/caffeleccese .PNG'),
+  rustico:      withBase('assets/rustico.PNG'),
+  pasticciotto: withBase('assets/bonus-pasticciotto.PNG')
 };
 
 // --- Taille logique (aspect)
@@ -104,19 +107,30 @@ function _onResize() {
 // ---------------------------
 function _loadSprites() {
   return new Promise((resolve) => {
-    const birdImg   = new Image();
-    const spiderImg = new Image();
-    const crowImg   = new Image();
-    const jellyImg  = new Image();
-    const bgImg     = new Image();
+    const birdImg         = new Image();
+    const spiderImg       = new Image();
+    const crowImg         = new Image();
+    const jellyImg        = new Image();
+    const caffeImg        = new Image();
+    const rusticoImg      = new Image();
+    const pasticciottoImg = new Image();
+    const bgImg           = new Image();
 
-    let left = 5;
-    const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg, bgImg }); };
+    let left = 8;
+    const done = () => {
+      if(--left===0) resolve({
+        birdImg, spiderImg, crowImg, jellyImg, bgImg,
+        caffeImg, rusticoImg, pasticciottoImg
+      });
+    };
 
-    birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
-    spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
-    crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
-    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = SPRITES_SRC.jelly;
+    birdImg.onload = done;         birdImg.onerror = done;         birdImg.src = SPRITES_SRC.bird;
+    spiderImg.onload = done;       spiderImg.onerror = done;       spiderImg.src = SPRITES_SRC.spider;
+    crowImg.onload = done;         crowImg.onerror = done;         crowImg.src = SPRITES_SRC.crow;
+    jellyImg.onload = done;        jellyImg.onerror = done;        jellyImg.src = SPRITES_SRC.jelly;
+    caffeImg.onload = done;        caffeImg.onerror = done;        caffeImg.src = SPRITES_SRC.caffe;
+    rusticoImg.onload = done;      rusticoImg.onerror = done;      rusticoImg.src = SPRITES_SRC.rustico;
+    pasticciottoImg.onload = done; pasticciottoImg.onerror = done; pasticciottoImg.src = SPRITES_SRC.pasticciotto;
     bgImg.onload = done;
     const webp = BTL_BG_SRC.replace(/\.png$/i, '.webp');
     bgImg.onerror = () => {
