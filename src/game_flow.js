@@ -3,6 +3,7 @@ import { copy } from './ui/copy.js';
 export const FLOW_EVENT = 'hirundu:flow';
 export const PAUSE_EVENT = 'hirundu:pause';
 export const PERF_EVENT = 'hirundu:perf';
+export const LANGUAGE_EVENT = 'hirundu:language';
 
 export const FLOW_PHASES = Object.freeze({
   IDLE: 'idle',
