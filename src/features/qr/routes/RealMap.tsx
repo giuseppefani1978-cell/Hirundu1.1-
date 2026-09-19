@@ -272,7 +272,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
 }
 
 function filterPoisForMap(ids: string[] | undefined, pois: EnrichedPoi[]): EnrichedPoi[] {
-  if (!ids?.length) return pois.filter(poi => !/^poi_(giurdignano|leuca|copertino|nardo|ostuni|manduria)_/.test(poi.id));
+  if (!ids?.length) return [];
   const set = new Set(ids);
   return pois.filter((poi) => set.has(poi.id));
 }
