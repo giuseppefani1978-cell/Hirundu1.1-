@@ -664,5 +664,161 @@
     "it": "Prova la gestione dei QR non supportati.",
     "en": "Test how unsupported QR codes are handled.",
     "es": "Prueba cómo se gestionan los QR no compatibles."
+  },
+  "[DÉMO] Accès direct à la carte d’Otranto": {
+    "fr": "[DÉMO] Accès direct à la carte d’Otranto",
+    "it": "[DEMO] Accesso diretto alla mappa di Otranto",
+    "en": "[DEMO] Direct access to the Otranto map",
+    "es": "[DEMO] Acceso directo al mapa de Otranto"
+  },
+  "Démonstration : Ouvre la carte Leaflet centrée sur les POI d’Otranto. Aucun tampon réel n’est attribué.": {
+    "fr": "Démonstration : Ouvre la carte Leaflet centrée sur les POI d’Otranto. Aucun tampon réel n’est attribué.",
+    "it": "Dimostrazione: apre la mappa Leaflet centrata sui POI di Otranto. Non viene assegnato alcun timbro reale.",
+    "en": "Demo: opens the Leaflet map centered on Otranto POIs. No real stamp is awarded.",
+    "es": "Demostración: abre el mapa Leaflet centrado en los POI de Otranto. No se concede ningún sello real."
+  },
+  "[DÉMO] Accès direct au marché": {
+    "fr": "[DÉMO] Accès direct au marché",
+    "it": "[DEMO] Accesso diretto al mercato",
+    "en": "[DEMO] Direct market access",
+    "es": "[DEMO] Acceso directo al mercado"
+  },
+  "Démonstration : ouvre le catalogue de test. Aucun partenaire ni avantage réel n’est confirmé.": {
+    "fr": "Démonstration : ouvre le catalogue de test. Aucun partenaire ni avantage réel n’est confirmé.",
+    "it": "Dimostrazione: apre il catalogo di test. Nessun partner o vantaggio reale è confermato.",
+    "en": "Demo: opens the test catalogue. No real partner or benefit is confirmed.",
+    "es": "Demostración: abre el catálogo de prueba. No se confirma ningún socio ni ventaja real."
+  },
+  "[DÉMO] Badge du Castello Aragonese": {
+    "fr": "[DÉMO] Badge du Castello Aragonese",
+    "it": "[DEMO] Badge del Castello Aragonese",
+    "en": "[DEMO] Castello Aragonese badge",
+    "es": "[DEMO] Insignia del Castello Aragonese"
+  },
+  "Démonstration : teste l’interprétation d’un badge. Ne valide aucune présence réelle.": {
+    "fr": "Démonstration : teste l’interprétation d’un badge. Ne valide aucune présence réelle.",
+    "it": "Dimostrazione: testa l’interpretazione di un badge. Non convalida alcuna presenza reale.",
+    "en": "Demo: tests badge interpretation. It does not validate real presence.",
+    "es": "Demostración: prueba la interpretación de una insignia. No valida presencia real."
+  },
+  "[DÉMO] Ouverture générique du marché bonus": {
+    "fr": "[DÉMO] Ouverture générique du marché bonus",
+    "it": "[DEMO] Apertura generica del mercato bonus",
+    "en": "[DEMO] Generic bonus-market opening",
+    "es": "[DEMO] Apertura genérica del mercado de bonus"
+  },
+  "Démonstration : Utilise la route open:// pour tester la navigation libre. Aucun tampon réel n’est attribué.": {
+    "fr": "Démonstration : Utilise la route open:// pour tester la navigation libre. Aucun tampon réel n’est attribué.",
+    "it": "Dimostrazione: usa il percorso open:// per testare la navigazione libera. Non viene assegnato alcun timbro reale.",
+    "en": "Demo: uses the open:// route to test free navigation. No real stamp is awarded.",
+    "es": "Demostración: usa la ruta open:// para probar la navegación libre. No se concede ningún sello real."
+  },
+  "[DÉMO] Partenaire Caffè Mengoli": {
+    "fr": "[DÉMO] Partenaire Caffè Mengoli",
+    "it": "[DEMO] Partner Caffè Mengoli",
+    "en": "[DEMO] Caffè Mengoli partner",
+    "es": "[DEMO] Socio Caffè Mengoli"
+  },
+  "Démonstration : teste un identifiant QR fictif. Ne valide aucun partenariat, visite ou avantage réel.": {
+    "fr": "Démonstration : teste un identifiant QR fictif. Ne valide aucun partenariat, visite ou avantage réel.",
+    "it": "Dimostrazione: testa un identificatore QR fittizio. Non convalida alcun partner, visita o vantaggio reale.",
+    "en": "Demo: tests a fictional QR identifier. It validates no real partnership, visit or benefit.",
+    "es": "Demostración: prueba un identificador QR ficticio. No valida ningún socio, visita ni ventaja real."
+  },
+  "[DÉMO] QR inconnu pour tests d’erreur": {
+    "fr": "[DÉMO] QR inconnu pour tests d’erreur",
+    "it": "[DEMO] QR sconosciuto per test di errore",
+    "en": "[DEMO] Unknown QR for error testing",
+    "es": "[DEMO] QR desconocido para pruebas de error"
+  },
+  "Démonstration : valide la gestion d’un QR inconnu et l’affichage d’une erreur compréhensible.": {
+    "fr": "Démonstration : valide la gestion d’un QR inconnu et l’affichage d’une erreur compréhensible.",
+    "it": "Dimostrazione: verifica la gestione di un QR sconosciuto e la visualizzazione di un errore comprensibile.",
+    "en": "Demo: validates handling of an unknown QR and a clear error message.",
+    "es": "Demostración: valida la gestión de un QR desconocido y un mensaje de error comprensible."
+  },
+  "Scanne un QR HIRUNDU. Dans cette bêta, les QR fournis sont des scénarios de démonstration et ne prouvent ni partenariat ni avantage réel.": {
+    "fr": "Scanne un QR HIRUNDU. Dans cette bêta, les QR fournis sont des scénarios de démonstration et ne prouvent ni partenariat ni avantage réel.",
+    "it": "Scansiona un QR HIRUNDU. In questa beta i QR forniti sono scenari dimostrativi e non provano alcun partner o vantaggio reale.",
+    "en": "Scan a HIRUNDU QR. In this beta, the provided QR codes are demo scenarios and prove no real partnership or benefit.",
+    "es": "Escanea un QR HIRUNDU. En esta beta, los QR incluidos son escenarios de demostración y no prueban ningún socio ni ventaja real."
+  },
+  "QR de démonstration reconnu": {
+    "fr": "QR de démonstration reconnu",
+    "it": "QR dimostrativo riconosciuto",
+    "en": "Demo QR recognized",
+    "es": "QR de demostración reconocido"
+  },
+  "Démonstration": {
+    "fr": "Démonstration",
+    "it": "Dimostrazione",
+    "en": "Demo",
+    "es": "Demostración"
+  },
+  "Ce QR est un scénario de démonstration ; il ne confirme aucun partenariat, avantage ou présence réelle.": {
+    "fr": "Ce QR est un scénario de démonstration ; il ne confirme aucun partenariat, avantage ou présence réelle.",
+    "it": "Questo QR è uno scenario dimostrativo; non conferma alcun partner, vantaggio o presenza reale.",
+    "en": "This QR is a demo scenario; it confirms no real partnership, benefit, or presence.",
+    "es": "Este QR es un escenario de demostración; no confirma ningún socio, ventaja ni presencia real."
+  },
+  "Aucune récompense réelle attribuée": {
+    "fr": "Aucune récompense réelle attribuée",
+    "it": "Nessuna ricompensa reale assegnata",
+    "en": "No real reward awarded",
+    "es": "No se concede ninguna recompensa real"
+  },
+  "Catalogue de démonstration : aucun commerce, partenariat ni avantage réel n’est confirmé dans cette bêta.": {
+    "fr": "Catalogue de démonstration : aucun commerce, partenariat ni avantage réel n’est confirmé dans cette bêta.",
+    "it": "Catalogo dimostrativo: nessun esercizio, partner o vantaggio reale è confermato in questa beta.",
+    "en": "Demo catalogue: no real business, partnership, or benefit is confirmed in this beta.",
+    "es": "Catálogo de demostración: no se confirma ningún comercio, socio ni ventaja real en esta beta."
+  },
+  "Commerce référencé ; aucun partenariat ni avantage n’est confirmé.": {
+    "fr": "Commerce référencé ; aucun partenariat ni avantage n’est confirmé.",
+    "it": "Esercizio referenziato; nessun partner o vantaggio è confermato.",
+    "en": "Listed business; no partnership or benefit is confirmed.",
+    "es": "Comercio referenciado; no se confirma ningún socio ni ventaja."
+  },
+  "Scénario de démonstration uniquement ; ce contenu ne constitue ni un partenariat ni une offre réelle.": {
+    "fr": "Scénario de démonstration uniquement ; ce contenu ne constitue ni un partenariat ni une offre réelle.",
+    "it": "Solo scenario dimostrativo; questo contenuto non costituisce un partner né un’offerta reale.",
+    "en": "Demo scenario only; this content is neither a partnership nor a real offer.",
+    "es": "Solo escenario de demostración; este contenido no constituye un socio ni una oferta real."
+  },
+  "Non disponible — partenariat non confirmé": {
+    "fr": "Non disponible — partenariat non confirmé",
+    "it": "Non disponibile — partner non confermato",
+    "en": "Unavailable — partnership not confirmed",
+    "es": "No disponible — socio no confirmado"
+  },
+  "Code de démonstration": {
+    "fr": "Code de démonstration",
+    "it": "Codice dimostrativo",
+    "en": "Demo code",
+    "es": "Código de demostración"
+  },
+  "Itinéraire": {
+    "fr": "Itinéraire",
+    "it": "Itinerario",
+    "en": "Directions",
+    "es": "Itinerario"
+  },
+  "Carte indisponible": {
+    "fr": "Carte indisponible",
+    "it": "Mappa non disponibile",
+    "en": "Map unavailable",
+    "es": "Mapa no disponible"
+  },
+  "La carte en ligne nécessite une connexion. Ta progression locale est conservée.": {
+    "fr": "La carte en ligne nécessite une connexion. Ta progression locale est conservée.",
+    "it": "La mappa online richiede una connessione. I progressi locali sono conservati.",
+    "en": "The online map requires a connection. Your local progress is preserved.",
+    "es": "El mapa en línea requiere conexión. Tu progreso local se conserva."
+  },
+  "Retour aux découvertes": {
+    "fr": "Retour aux découvertes",
+    "it": "Torna alle scoperte",
+    "en": "Back to discoveries",
+    "es": "Volver a los descubrimientos"
   }
 }
