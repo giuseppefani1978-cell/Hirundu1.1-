@@ -6,7 +6,7 @@
   "scope": "./",
   "background_color": "#a9d6f5",
   "theme_color": "#a9d6f5",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     {
       "src": "android-chrome-192x192.png",
