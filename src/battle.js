@@ -833,10 +833,46 @@ export function renderBattle(ctx, _view, sprites){
         ctx.fill();
         ctx.restore();
       } else {
-        ctx.beginPath();
-        ctx.arc(cx, cy, 8, 0, Math.PI*2);
-        ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
-        ctx.fill();
+        const foodSprite =
+          s.kind === 'caffe' ? sprites?.caffeImg :
+          s.kind === 'rustico' ? sprites?.rusticoImg :
+          s.kind === 'pasticciotto' ? sprites?.pasticciottoImg :
+          null;
+        const isSupplyShot = s.from === 'player' && ['caffe','rustico','pasticciotto','stars'].includes(s.kind);
+
+        ctx.save();
+        if (isSupplyShot) {
+          const dir = Math.sign(s.vx || 1);
+          ctx.strokeStyle = 'rgba(255,245,182,.92)';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(255,210,90,.72)';
+          ctx.shadowBlur = 11;
+          ctx.beginPath();
+          ctx.moveTo(cx - dir * 25, cy);
+          ctx.lineTo(cx, cy);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, 14, 9, Math.atan2(s.vy, s.vx), 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,221,114,.92)';
+          ctx.fill();
+
+          if (foodSprite?.naturalWidth) {
+            const size = s.kind === 'rustico' ? 34 : 32;
+            ctx.drawImage(foodSprite, cx - size/2, cy - size/2, size, size);
+          } else if (s.kind === 'stars') {
+            ctx.font = '700 24px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('★', cx, cy);
+          }
+        } else {
+          ctx.beginPath();
+          ctx.arc(cx, cy, 8, 0, Math.PI*2);
+          ctx.fillStyle = (s.from === 'player') ? '#ffd166' : '#06d6a0';
+          ctx.fill();
+        }
+        ctx.restore();
       }
     }
   } // ← ferme bien la boucle des tirs
@@ -896,22 +932,46 @@ export function renderBattle(ctx, _view, sprites){
   drawEnergyBar(14, energyTop, energyBarW, 'Aracne', state.player.hp, BTL.PLAYER_HP);
   drawEnergyBar(w - energyBarW - 14, energyTop, energyBarW, bossName, state.foe.hp, state.foeMaxHp || BTL.FOE_HP);
 
-  // Keep only the useful collectible count as a discreet center chip.
+  // Shared HIRUNDU battle inventory: the hunt supplies become visible ammunition.
   const token = REGIONAL_BOSSES[state.foeType]?.token
     ?? (state.foeType==='resino'?'🌲':state.foeType==='scirocco'?'💧':state.foeType==='nacra'?'🐚':'★');
+  const supplyItems = [
+    { key:'stars', count:state.ammo.stars|0, emoji:token, img:null },
+    { key:'caffe', count:state.ammo.caffe|0, emoji:'☕', img:sprites?.caffeImg },
+    { key:'rustico', count:state.ammo.rustico|0, emoji:'🥟', img:sprites?.rusticoImg },
+    { key:'pasticciotto', count:state.ammo.pasticciotto|0, emoji:'🍰', img:sprites?.pasticciottoImg },
+  ];
   ctx.save();
-  ctx.font = '800 13px system-ui';
-  const tokenText = `${token} ${state.ammo.stars}`;
-  const tokenW = Math.max(54, ctx.measureText(tokenText).width + 22);
-  const tokenX = (w - tokenW) / 2;
-  ctx.beginPath();
-  ctx.roundRect(tokenX, 17, tokenW, 30, 15);
-  ctx.fillStyle = 'rgba(255,253,245,.86)';
-  ctx.fill();
-  ctx.textAlign = 'center';
+  ctx.font = '800 12px system-ui';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#0e2b4a';
-  ctx.fillText(tokenText, w / 2, 32);
+  const chipW = 58, chipH = 30, gap = 5;
+  const stripW = supplyItems.length * chipW + (supplyItems.length - 1) * gap;
+  let chipX = Math.max(10, (w - stripW) / 2);
+  const chipY = 17;
+  for (const item of supplyItems) {
+    ctx.beginPath();
+    ctx.roundRect(chipX, chipY, chipW, chipH, 12);
+    ctx.fillStyle = 'rgba(255,248,220,.94)';
+    ctx.fill();
+    ctx.strokeStyle = item.count > 0 ? 'rgba(176,138,60,.88)' : 'rgba(14,43,74,.14)';
+    ctx.lineWidth = item.count > 0 ? 1.5 : 1;
+    ctx.stroke();
+
+    if (item.img?.naturalWidth) {
+      ctx.drawImage(item.img, chipX + 6, chipY + 5, 20, 20);
+    } else {
+      ctx.font = '17px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0e2b4a';
+      ctx.fillText(item.emoji, chipX + 16, chipY + chipH/2 + 1);
+    }
+    ctx.font = '800 12px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = item.count > 0 ? '#0e2b4a' : '#7a8794';
+    ctx.fillText(String(item.count), chipX + chipW - 8, chipY + chipH/2 + 1);
+    chipX += chipW + gap;
+  }
   ctx.restore();
 
   // Short dialogue bubble, shared by every battle (same readable language as L3).
@@ -1087,6 +1147,7 @@ function _fireSpecial(){
     vx: BTL.SHOT * state.player.facing,
     vy: 0,
     from: 'player',
+    kind,
     dmg: spec.dmg
   });
 
