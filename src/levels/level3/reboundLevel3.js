@@ -1,5 +1,5 @@
 import { withBase } from '../../paths';
-import { LANG } from '../../i18n.js';
+import { LANG, setLang } from '../../i18n.js';
 import { markLevelWin, unlockBonus } from '../../features/bonus/bonusStorage';
 import { addHallOfFameEntry } from '../../hof/storage.js';
 import { FLOW_PHASES, LANGUAGE_EVENT, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../../game_flow.js';
@@ -29,6 +29,7 @@ export function bootReboundLevel3(options = {}) {
     const data = event.data;
     if (!data || data.source !== 'hirundu-level3') return;
     if (data.type === 'ready') { installState(); musicState(); }
+    if (data.type === 'language' && data.lang) setLang(data.lang);
     if (data.type === 'phase') {
       const phase = phaseMap[data.mode === 'paused' ? data.previous : data.mode];
       if (phase) setGameFlowPhase(phase, {level:3});
