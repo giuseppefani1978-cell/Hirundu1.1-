@@ -111,6 +111,9 @@ function FitAndRestrict({ lat, lng, radiusKm }: { lat: number; lng: number; radi
 export default function RealMap({ passportOnly = false }: { passportOnly?: boolean }) {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [mapUnavailable, setMapUnavailable] = useState(
+    () => typeof navigator !== "undefined" && navigator.onLine === false
+  );
   const key = (id?.toLowerCase() as BonusKey) || "otranto";
   const cfg: BonusMapConfig = BONUS_MAPS[key] ?? BONUS_MAPS.otranto;
 
@@ -149,6 +152,17 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
   useEffect(() => {
     if (!passportOnly) markMapConsulted(key);
   }, [key, passportOnly]);
+
+  useEffect(() => {
+    const online = () => setMapUnavailable(false);
+    const offline = () => setMapUnavailable(true);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
 
   const goToBonusHub = useCallback(() => {
     navigate("/bonus");
@@ -233,6 +247,15 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           onClick={goToMarket}
         >🛒 {bt("Marché & Souvenirs")}</button>
       </nav>
+      {mapUnavailable ? (
+        <div className="surface-card real-map__network-warning" role="status">
+          <strong>{bt("Carte indisponible")}</strong>
+          <p>{bt("La carte en ligne nécessite une connexion. Ta progression locale est conservée.")}</p>
+          <button type="button" className="app-button app-button--ghost" onClick={goToBonusHub}>
+            ← {bt("Retour aux découvertes")}
+          </button>
+        </div>
+      ) : null}
       <MapContainer
         key={key}
         center={center}
@@ -244,6 +267,12 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: () => setMapUnavailable(true),
+            tileload: () => {
+              if (navigator.onLine !== false) setMapUnavailable(false);
+            },
+          }}
         />
 
         <Marker position={center}>
