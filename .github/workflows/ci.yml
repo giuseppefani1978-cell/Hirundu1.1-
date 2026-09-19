@@ -1,8 +1,16 @@
-name: Legacy version validation
+name: HIRUNDU beta validation
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ version-1.0 ]
+    branches:
+      - version-1.0
+      - main
+      - 'work/**'
+  pull_request:
+    branches:
+      - version-1.0
+      - main
 
 permissions:
   contents: read
@@ -16,7 +24,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
-      - run: npm test -- --runInBand || npm test
-      - run: npm run typecheck
-      - run: npm run build
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Regression tests
+        run: npm test
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Production build
+        run: npm run build
