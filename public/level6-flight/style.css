@@ -85,3 +85,9 @@ footer span{white-space:nowrap}
   h1{font-size:20px}
   #microPad{transform:translateX(-50%) scale(.78);transform-origin:bottom center}
 }
+
+.pause-options{display:grid;gap:8px;margin-top:10px}
+.pause-options label{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;border:1px solid #0e2b4a22;border-radius:12px;background:#ffffffb8}
+.pause-options select,.pause-options button{width:100%;min-height:42px}
+.pause-options label select{width:auto;min-width:92px}
+#musicToggle{background:#fffdf5;color:#0e2b4a;border:1px solid #c8b37a}
