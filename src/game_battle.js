@@ -19,10 +19,13 @@ const BTL_BG_SRC = withBase('assets/battle_bg_salento.webp');
 // NB: on duplique ici les chemins pour rendre game_battle.js autonome.
 // Si tu veux garder le cache-busting, tu peux ajouter ?v=... à la fin.
 const SPRITES_SRC = {
-  bird:   withBase('assets/aracne .PNG'),      // (oui, il y a un espace dans le nom)
-  spider: withBase('assets/tarantula .PNG'),
-  crow:   withBase('assets/crow.PNG'),
-  jelly:  withBase('assets/jellyfish_boss.PNG')
+  bird:         withBase('assets/aracne .PNG'),      // (oui, il y a un espace dans le nom)
+  spider:       withBase('assets/tarantula .PNG'),
+  crow:         withBase('assets/crow.PNG'),
+  jelly:        withBase('assets/jellyfish_boss.PNG'),
+  caffe:        withBase('assets/caffeleccese .PNG'),
+  rustico:      withBase('assets/rustico.PNG'),
+  pasticciotto: withBase('assets/bonus-pasticciotto.PNG')
 };
 
 // --- Taille logique (aspect) utilisée par battle.js (16:9 conseillé)
@@ -116,10 +119,13 @@ function _loadSprites({ bossSprite, backdrop } = {}) {
     let left = 5;  // était 4 → maintenant 5 images à charger
     const done = () => { if(--left===0) resolve({ birdImg, spiderImg, crowImg, jellyImg, bgImg }); };
 
-    birdImg.onload = done;   birdImg.onerror = done;   birdImg.src = SPRITES_SRC.bird;
-    spiderImg.onload = done; spiderImg.onerror = done; spiderImg.src = SPRITES_SRC.spider;
-    crowImg.onload = done;   crowImg.onerror = done;   crowImg.src = SPRITES_SRC.crow;
-    jellyImg.onload = done;  jellyImg.onerror = done;  jellyImg.src = bossSrc;
+    birdImg.onload = done;         birdImg.onerror = done;         birdImg.src = SPRITES_SRC.bird;
+    spiderImg.onload = done;       spiderImg.onerror = done;       spiderImg.src = SPRITES_SRC.spider;
+    crowImg.onload = done;         crowImg.onerror = done;         crowImg.src = SPRITES_SRC.crow;
+    jellyImg.onload = done;        jellyImg.onerror = done;        jellyImg.src = bossSrc;
+    caffeImg.onload = done;        caffeImg.onerror = done;        caffeImg.src = SPRITES_SRC.caffe;
+    rusticoImg.onload = done;      rusticoImg.onerror = done;      rusticoImg.src = SPRITES_SRC.rustico;
+    pasticciottoImg.onload = done; pasticciottoImg.onerror = done; pasticciottoImg.src = SPRITES_SRC.pasticciotto;
     bgImg.onload = done;
     bgImg.onerror = () => {
       if (bgImg.src !== backdropSrc) {
