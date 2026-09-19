@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useState } from "react";
-import { t } from "../i18n.js";
+import { setLang, t } from "../i18n.js";
 import { copy } from "../ui/copy.js";
-import { FLOW_PHASES, LANGUAGE_EVENT, PERF_EVENT, PAUSE_EVENT, getGameFlowState, setGamePaused, toggleGamePaused } from "../game_flow.js";
+import { PERF_EVENT, PAUSE_EVENT, setGamePaused, toggleGamePaused } from "../game_flow.js";
 import { AUDIO_STATE_EVENT, isMusicOn } from "../audio.js";
 
 const GENERIC_PLAYER_NAMES = new Set(["joueur", "giocatore", "player", "jugador"]);
@@ -163,26 +163,9 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
     if (!GAME_LANGUAGES.some((item) => item.value === nextLanguage)) return;
     setLanguage(nextLanguage);
     try {
-      window.localStorage.setItem("__lang__", nextLanguage);
       window.localStorage.setItem("hirundu_arcade_language", nextLanguage);
     } catch {}
-
-    const phase = getGameFlowState().phase;
-    const keepBattleState = [
-      FLOW_PHASES.BATTLE_INTRO,
-      FLOW_PHASES.BATTLE,
-      FLOW_PHASES.VICTORY,
-      FLOW_PHASES.DEFEAT,
-    ].includes(phase);
-
-    try {
-      window.dispatchEvent(new CustomEvent(LANGUAGE_EVENT, { detail: { lang: nextLanguage } }));
-    } catch {}
-
-    // During battle, language is now hot-swapped so HP, position, ammo and boss state
-    // remain untouched. Classic hunt copy is still module-level and therefore keeps
-    // the legacy reload behaviour outside battle.
-    if (!keepBattleState) window.location.reload();
+    setLang(nextLanguage);
   };
 
   return (
