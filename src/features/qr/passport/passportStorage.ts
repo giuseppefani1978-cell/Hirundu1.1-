@@ -1,4 +1,5 @@
 import type { BonusKey } from "../../bonus/bonusData";
+import { syncDurableProgress } from "../../../progressStorage.js";
 
 export const PASSPORT_STORAGE_KEY = "salentino_passport_v1";
 export const PASSPORT_EVENT = "passport:updated";
@@ -55,6 +56,7 @@ export function writePassportStorage(record: PassportStorage): void {
 
   try {
     window.localStorage.setItem(PASSPORT_STORAGE_KEY, JSON.stringify(record));
+    syncDurableProgress();
     window.dispatchEvent(new CustomEvent(PASSPORT_EVENT));
   } catch (error) {
     console.warn("Impossible d’enregistrer le passeport Salentino", error);
