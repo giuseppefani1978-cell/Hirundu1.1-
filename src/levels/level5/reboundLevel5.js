@@ -2,7 +2,7 @@ import { withBase } from '../../paths';
 import { LANG } from '../../i18n.js';
 import { markLevelWin, unlockBonus } from '../../features/bonus/bonusStorage';
 import { addHallOfFameEntry } from '../../hof/storage.js';
-import { FLOW_PHASES, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../../game_flow.js';
+import { FLOW_PHASES, LANGUAGE_EVENT, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../../game_flow.js';
 import { AUDIO_STATE_EVENT, isMusicOn } from '../../audio.js';
 
 // Level 5 deliberately reuses the validated Level 3 rebound shell in an isolated iframe.
@@ -95,9 +95,14 @@ export function bootReboundLevel5(options = {}) {
   const onPause = event => {
     if (event.detail?.paused) send({ type:'pause' });
   };
+  const onLanguage = event => {
+    const next = String(event.detail?.lang || '').slice(0,2).toLowerCase();
+    if (next) send({ type:'language', lang:next });
+  };
 
   window.addEventListener('message', onMessage);
   window.addEventListener(PAUSE_EVENT, onPause);
+  window.addEventListener(LANGUAGE_EVENT, onLanguage);
   window.addEventListener('hirundu:pwa-install-state', installState);
   window.addEventListener(AUDIO_STATE_EVENT, musicState);
 
@@ -108,6 +113,7 @@ export function bootReboundLevel5(options = {}) {
     active = false;
     window.removeEventListener('message', onMessage);
     window.removeEventListener(PAUSE_EVENT, onPause);
+    window.removeEventListener(LANGUAGE_EVENT, onLanguage);
     window.removeEventListener('hirundu:pwa-install-state', installState);
     window.removeEventListener(AUDIO_STATE_EVENT, musicState);
     frame.remove();
