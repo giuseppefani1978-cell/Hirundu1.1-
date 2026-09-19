@@ -17,6 +17,7 @@ import {
 import {
   findPartnerById,
   findPartnerByName,
+  getPartnerVerificationStatus,
   getAllPartners,
   type PartnerReward,
 } from "../services/partners";
@@ -209,7 +210,7 @@ export default function QrHub() {
       <header className="qr-hub__header">
         <div className="qr-hub__header-copy">
           <h1 className="qr-hub__title">🔍 {bt("Scanner un QR")}</h1>
-          <p className="qr-hub__subtitle">{bt("Scanne un QR partenaire pour valider une visite ou découvrir une récompense.")}</p>
+          <p className="qr-hub__subtitle">{bt("Scanne un QR HIRUNDU. Dans cette bêta, les QR fournis sont des scénarios de démonstration et ne prouvent ni partenariat ni avantage réel.")}</p>
         </div>
         <div className="qr-hub__header-actions">
           <button type="button" className="app-button app-button--dark" onClick={openScanner}>📷 {bt("Lancer le scanner")}</button>
@@ -401,11 +402,15 @@ function describeAction(
       const poi = pois.find((entry) => entry.partner?.id === partner?.id);
       return {
         icon: "🤝",
-        title: partner ? `${partner.name} · ${bt("Scanné")} !` : "Partenaire reconnu",
-        subtitle:
-          (partner ? bt(partner.description) : "") ||
-          bt("Le QR correspond à un partenaire fictif. Vérifie la carte pour valider l’emplacement."),
-        meta: partner ? rewardLabel(partner.reward) : undefined,
+        title: partner
+          ? `${partner.name} · ${getPartnerVerificationStatus(partner) === "confirmed" ? bt("Scanné") : bt("Démonstration")}`
+          : bt("QR de démonstration reconnu"),
+        subtitle: partner && getPartnerVerificationStatus(partner) === "confirmed"
+          ? bt(partner.description)
+          : bt("Ce QR est un scénario de démonstration ; il ne confirme aucun partenariat, avantage ou présence réelle."),
+        meta: partner && getPartnerVerificationStatus(partner) === "confirmed"
+          ? rewardLabel(partner.reward)
+          : bt("Aucune récompense réelle attribuée"),
         tone: "success",
         actionLabel: bt("Voir sur la carte"),
         onAction: () => navigate(`/poi/${encodeURIComponent(resolveBonusKey(poi))}/realmap`),
