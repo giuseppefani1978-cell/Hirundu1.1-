@@ -1,6 +1,6 @@
 // src/features/bonus/bonusNavigation.ts
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
-import { getUnlockedKeys, unlockBonus } from "./bonusStorage";
+import { getUnlockedKeys } from "./bonusStorage";
 import { withBase } from "../../paths";
 
 const ORDERED_KEYS = Object.keys(BONUS_MAPS) as BonusKey[];
@@ -14,10 +14,16 @@ export function openBonusMap(key: BonusKey): void {
     return;
   }
 
-  unlockBonus(key);
+  const unlocked = getUnlockedKeys();
+  if (!unlocked.includes(key)) {
+    if (typeof window !== "undefined") {
+      window.alert?.("Cette découverte n’est pas encore débloquée.");
+    }
+    return;
+  }
   if (typeof window === "undefined") return;
 
-  // ✅ URL préfixée par la base GitHub Pages + paramètre embed
+  // URL préfixée par la base GitHub Pages + paramètre embed
   const url = withBase(`index.html?embed=1#/poi/${encodeURIComponent(key)}/realmap`);
   window.location.assign(url);
 }
