@@ -12,12 +12,6 @@
   <header>
     <strong>HIRUNDU <small>08 · MESSAPIA</small></strong>
     <div>
-      <select id="lang" aria-label="Langue">
-        <option value="fr">FR</option>
-        <option value="it">IT</option>
-        <option value="en">EN</option>
-        <option value="es">ES</option>
-      </select>
       <button id="pause" aria-label="Pause">Ⅱ</button>
     </div>
   </header>
@@ -47,6 +41,18 @@
         <h1 id="title"></h1>
         <p id="help"></p>
         <p id="detail"></p>
+        <div id="pauseOptions" class="pause-options">
+          <label id="pauseLangRow" hidden>
+            <span>🌐</span>
+            <select id="lang" aria-label="Langue">
+              <option value="fr">FR</option>
+              <option value="it">IT</option>
+              <option value="en">EN</option>
+              <option value="es">ES</option>
+            </select>
+          </label>
+          <button id="musicToggle" type="button" hidden></button>
+        </div>
         <button id="start"></button>
         <button id="again" hidden></button>
       </article>
