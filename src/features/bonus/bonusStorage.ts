@@ -1,5 +1,6 @@
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
 import { PASSPORT_EVENT, PASSPORT_STORAGE_KEY } from "../qr/passport/passportStorage";
+import { replaceDurableProgressSnapshot, syncDurableProgress } from "../../progressStorage.js";
 
 const STORAGE_KEY = "bonus_unlocked_v1";
 export const BONUS_PROGRESS_EVENT = "bonus:updated";
@@ -107,6 +108,7 @@ function saveUnlocked(record: BonusUnlockedRecord): void {
   if (!storage) return;
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(record));
+    syncDurableProgress();
     broadcastBonusUpdate();
   } catch {
     // ignore write failure
@@ -143,6 +145,7 @@ export function markLevelWin(levelId: number): void {
     storage.setItem(`level${levelId}_won_at`, String(Date.now()));
     if (levelId === 1) storage.setItem("bonus_gallipoli_unlocked", "true");
     if (levelId === 2) storage.setItem("bonus_lecce_unlocked", "true");
+    syncDurableProgress();
     broadcastBonusUpdate();
   } catch (error) {
     console.warn("markLevelWin failed", error);
@@ -362,5 +365,6 @@ export function resetBonusProgress(): void {
     // ignore
   }
 
+  replaceDurableProgressSnapshot();
   broadcastBonusUpdate();
 }
