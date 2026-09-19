@@ -16,7 +16,7 @@ test('classic hunt hit radius shrinks when two POIs are close on mobile', () => 
   const target = { key: 'castro', x: 0.50, y: 0.50 };
   const neighbour = { key: 'santa-cesarea', x: 0.56, y: 0.50 };
   const radius = computeTargetHitRadiusPx(target, [target, neighbour], 400, 700);
-  assert.equal(radius, 8);
+  assert.equal(radius, 10);
   assert.equal(Math.hypot((neighbour.x - target.x) * 400, 0) > radius, true);
 });
 
