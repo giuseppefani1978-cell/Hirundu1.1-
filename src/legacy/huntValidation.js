@@ -3,9 +3,9 @@
 // The visible X is small, so collection must happen near its centre. On compact
 // mobile viewports, nearby POIs can otherwise share a large hit zone.
 export const TARGET_HIT_DEFAULTS = Object.freeze({
-  minRadiusPx: 8,
+  minRadiusPx: 10,
   maxRadiusPx: 18,
-  separationFactor: 0.33,
+  separationFactor: 0.40,
 });
 
 export function computeTargetHitRadiusPx(target, points, dw, dh, options = {}) {
