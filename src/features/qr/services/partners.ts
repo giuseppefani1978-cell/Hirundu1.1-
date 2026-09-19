@@ -13,6 +13,8 @@ export type PartnerReward =
   | { type: "score"; value: number }
   | { type: "bonus"; item: string; value: number };
 
+export type PartnerVerificationStatus = "demo" | "listed" | "confirmed";
+
 export interface Partner {
   id: string;
   name: string;
@@ -22,6 +24,7 @@ export interface Partner {
   reward: PartnerReward;
   qr_id: string;
   description: string;
+  verificationStatus?: PartnerVerificationStatus;
 }
 
 const PARTNERS: Partner[] = partnersData as Partner[];
@@ -49,4 +52,9 @@ export function listPartnersByCategory(category: PartnerCategory): Partner[] {
 
 export function getPartnerCategories(): PartnerCategory[] {
   return Array.from(new Set(PARTNERS.map((partner) => partner.type)));
+}
+
+
+export function getPartnerVerificationStatus(partner: Partner): PartnerVerificationStatus {
+  return partner.verificationStatus ?? "demo";
 }
