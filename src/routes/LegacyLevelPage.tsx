@@ -134,15 +134,9 @@ function LegacyLevelPage() {
       document.body.classList.add("game-level-exit");
       window.setTimeout(() => {
         document.body.classList.remove("game-level-exit");
-        if (next) {
-          navigate(`/level/${next}`, {
-            state: { fromLevel: level, unlockedKey: bonusKey },
-          });
-        } else {
-          navigate(`/bonus/${bonusKey}`, {
-            state: { fromLevel: level, nextLevel: null, unlockedKey: bonusKey },
-          });
-        }
+        navigate(`/bonus/${bonusKey}`, {
+          state: { fromLevel: level, nextLevel: next ?? null, unlockedKey: bonusKey },
+        });
       }, 180);
     };
 
