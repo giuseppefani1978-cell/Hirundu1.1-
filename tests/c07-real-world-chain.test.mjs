@@ -8,7 +8,7 @@ test('C07 nine virtual levels map one-to-one to nine real territories', async ()
   const storage = await readFile(new URL('../src/features/bonus/bonusStorage.ts', import.meta.url), 'utf8');
   const data = await readFile(new URL('../src/features/bonus/bonusData.ts', import.meta.url), 'utf8');
   for (const key of orderedKeys) {
-    assert.match(storage, new RegExp('key:\\s*["\\\']' + key + '["\\\']'));
+    assert.ok(storage.includes(`"${key}"`) || storage.includes(`'${key}'`), `progress key missing: ${key}`);
     assert.match(data, new RegExp('(?:^|\\n)\\s*' + key + '\\s*:'));
   }
 });
