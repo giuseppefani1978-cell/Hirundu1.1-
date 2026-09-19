@@ -1,66 +1,13 @@
-name: Pages • Level 3 comparison
+name: Pages deployment disabled on Level 4 test branch
 
 on:
-  push:
-    branches: [test/niveau3-arkanoid-2026-09-17]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages-main-test
-  cancel-in-progress: false
 
 jobs:
-  build:
+  locked:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: candidate
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          path: stable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: |
-            candidate/package-lock.json
-            stable/package-lock.json
-      - uses: actions/configure-pages@v5
-      - name: Validate the candidate
-        working-directory: candidate
-        run: |
-          npm ci
-          npm test
-          npm run typecheck
-          npm run build -- --base=/Hirundu1.1-/test-niveau3/
-      - name: Keep the current main version at the usual address
-        working-directory: stable
-        run: |
-          npm ci
-          npm run build
-          cp dist/index.html dist/404.html
-      - name: Add the independent level 3 test version
-        run: |
-          mkdir -p stable/dist/test-niveau3
-          cp -R candidate/dist/. stable/dist/test-niveau3/
-          cp candidate/dist/index.html stable/dist/test-niveau3/404.html
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: stable/dist
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Publish both versions
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: echo "No GitHub Pages deployment is allowed from this branch."
