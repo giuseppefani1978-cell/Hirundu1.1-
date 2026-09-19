@@ -24,6 +24,7 @@ let state = {
 };
 
 let orientationWatchInstalled = false;
+let interruptionWatchInstalled = false;
 let perfHandle = 0;
 let perfRunning = false;
 let perfLast = 0;
@@ -117,6 +118,19 @@ function installOrientationWatch() {
   try { window.visualViewport?.addEventListener('resize', syncOrientationUI, { passive: true }); } catch {}
 }
 
+function installInterruptionWatch() {
+  if (interruptionWatchInstalled || typeof window === 'undefined' || typeof document === 'undefined') return;
+  interruptionWatchInstalled = true;
+  const pauseForInterruption = () => {
+    if (![FLOW_PHASES.HUNT, FLOW_PHASES.BATTLE].includes(state.phase)) return;
+    if (!state.paused) setGamePaused(true);
+  };
+  window.addEventListener('blur', pauseForInterruption);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseForInterruption();
+  });
+}
+
 function pulsePhaseTransition(phase) {
   if (typeof document === 'undefined') return;
   document.body.classList.remove('game-phase-transition');
@@ -143,6 +157,7 @@ export function setGameFlowPhase(phase, detail = {}) {
   }
 
   installOrientationWatch();
+  installInterruptionWatch();
   syncOrientationUI();
 
   if (typeof window !== 'undefined') {
