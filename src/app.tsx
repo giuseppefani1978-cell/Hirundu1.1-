@@ -15,6 +15,54 @@ const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
 const RegionDiscoveries = lazy(() => import("./levels/RegionDiscoveries"));
 
+type AppErrorBoundaryProps = { children: React.ReactNode };
+type AppErrorBoundaryState = { failed: boolean };
+
+class AppErrorBoundary extends React.Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
+  state: AppErrorBoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): AppErrorBoundaryState {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("HIRUNDU application recovery", error);
+    syncDurableProgress();
+  }
+
+  private retry = () => {
+    syncDurableProgress();
+    const url = new URL(window.location.href);
+    url.searchParams.set("fresh", Date.now().toString());
+    window.location.replace(url.toString());
+  };
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    return (
+      <main style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
+        fontFamily: "system-ui, sans-serif",
+        textAlign: "center",
+      }}>
+        <section style={{ maxWidth: 520 }}>
+          <h1>HIRUNDU</h1>
+          <p>{copy.reloadRequired}</p>
+          {offline ? <p>{copy.offlineNotGuaranteed}</p> : null}
+          <p>{copy.localSaveSafe}</p>
+          <button type="button" className="app-button app-button--dark" onClick={this.retry}>
+            {copy.retry}
+          </button>
+        </section>
+      </main>
+    );
+  }
+}
+
 // ---- Small helper: scroll to top on route change
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -59,10 +107,11 @@ export default function App() {
   }, []);
 
   return (
-    <HashRouter /* hash routing = compatible GitHub Pages */>
-      <ScrollToTop />
-      <Suspense fallback={<Loading />}>
-        <Routes>
+    <AppErrorBoundary>
+      <HashRouter /* hash routing = compatible GitHub Pages */>
+        <ScrollToTop />
+        <Suspense fallback={<Loading />}>
+          <Routes>
           {/* Accueil */}
           <Route path="/" element={<StartPage />} />
 
@@ -87,8 +136,9 @@ export default function App() {
 
           {/* Catch-all → retour accueil */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </HashRouter>
+          </Routes>
+        </Suspense>
+      </HashRouter>
+    </AppErrorBoundary>
   );
 }
