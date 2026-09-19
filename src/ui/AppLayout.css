@@ -100,59 +100,17 @@
   }
 }
 
-/* =========================================================
-   PATCH CODEX — Scroll, Layout & UI Layer Fix
-   ========================================================= */
 
-/* ✅ Autoriser le scroll global sur les pages React */
-html,
-body,
-#root,
-.app-shell {
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-  height: auto;
-  min-height: 100dvh;
-}
-
-/* ✅ Éviter que les wrappers hérités (wrap/game) bloquent le scroll */
-.app-shell,
-.app-shell__content {
-  position: relative;
-  z-index: 10;
-}
-
-/* ✅ HUD et pads au-dessus du canvas */
-.hud {
-  z-index: 60 !important;
-}
-.touch {
-  z-index: 70 !important;
-}
-
-/* ✅ Canvas toujours sous les éléments interactifs */
-canvas#c {
-  z-index: 1 !important;
-  pointer-events: none;
-}
-
-/* ✅ Meilleure lisibilité sur mobile (évite le "vh" fixe) */
-@supports (height: 100svh) {
-  html,
-  body,
-  .app-shell {
-    min-height: 100svh;
-  }
-}
-
-/* ✅ Ajustement esthétique des scrollbars modernes */
-body::-webkit-scrollbar {
-  width: 8px;
-}
-body::-webkit-scrollbar-thumb {
-  background: rgba(37, 99, 235, 0.25);
-  border-radius: 8px;
-}
-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(37, 99, 235, 0.45);
+.app-shell { height:100dvh; min-height:0; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; padding:12px 12px max(110px, env(safe-area-inset-bottom)); }
+.app-shell__inner { display:block; min-width:0; }
+.app-shell__header { position:sticky; top:0; z-index:1400; padding:12px; gap:10px; margin-bottom:20px; background:#f8fafcf5; }
+.app-shell__topbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; justify-content:space-between; }
+.app-shell__nav { gap:6px; }
+.app-nav__link { min-height:44px; padding:8px 12px; font-size:14px; white-space:normal; overflow-wrap:anywhere; }
+.app-shell__content, .app-shell__content > * { min-width:0; }
+.app-shell .app-button { min-height:44px; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+@media(max-width:480px) {
+ .app-shell__topbar > .app-button { flex:1 1 100%; }
+ .app-shell__nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .app-nav__link:last-child { grid-column:1 / -1; }
 }

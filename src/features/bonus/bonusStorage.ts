@@ -150,7 +150,7 @@ export function markLevelWin(levelId: number): void {
 }
 
 function readBooleanFlag(key: string): boolean {
-  return readRaw(key) === "true";
+  return ["true", "1"].includes(readRaw(key) ?? "");
 }
 
 export function getProgressList(): BonusProgressEntry[] {
@@ -168,7 +168,7 @@ export function getProgressList(): BonusProgressEntry[] {
       name: "Gallipoli",
       key: "gallipoli",
       done: readBooleanFlag("level2_won"),
-      unlocked: readBooleanFlag("bonus_gallipoli_unlocked"),
+      unlocked: readBooleanFlag("level1_won") || readBooleanFlag("level2_unlocked") || readBooleanFlag("bonus_gallipoli_unlocked"),
       href: "/index.html#gallipoli",
     },
     {
@@ -176,13 +176,18 @@ export function getProgressList(): BonusProgressEntry[] {
       name: "Lecce",
       key: "lecce",
       done: readBooleanFlag("level3_won"),
-      unlocked: readBooleanFlag("bonus_lecce_unlocked"),
+      unlocked: readBooleanFlag("level2_won") || readBooleanFlag("level3_unlocked") || readBooleanFlag("bonus_lecce_unlocked"),
       href: "/index.html#lecce",
     },
+    ...(["adriatico","capo","arneo"] as const).map((key,i)=>({id:i+4,name:BONUS_MAPS[key].title,key,done:readBooleanFlag(`level${i+4}_won`),unlocked:readBooleanFlag(`level${i+3}_won`),href:`/level/${i+4}`})),
   ];
 }
 
 export function getItineraryState(): ItineraryStep[] {
+  return getProgressList().map(p=>({id:p.id,name:p.name,key:p.key,completed:p.done,available:p.unlocked}));
+}
+
+function legacyItineraryState(): ItineraryStep[] {
   const level2Available = readLegacyTruth(["level2_unlocked", "bonus_gallipoli_unlocked"]);
   const level2Completed = readLegacyTruth(["level2_unlocked", "level2_won", "bonus_gallipoli_unlocked"]);
   const level3Available = readLegacyTruth(["level3_unlocked", "bonus_lecce_unlocked"]);
@@ -291,6 +296,7 @@ export function resetBonusProgress(): void {
   if (!storage) return;
 
   const keys = new Set(PROGRESS_STORAGE_KEYS);
+  for(const id of [4,5,6]){keys.add(`level${id}_won`);keys.add(`level${id}_won_at`);keys.add(`region${id}_hunt`);}
   keys.add(PASSPORT_STORAGE_KEY);
 
   keys.forEach((key) => {

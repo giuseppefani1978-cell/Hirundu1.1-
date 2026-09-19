@@ -53,17 +53,6 @@ function consumeLevelTransition(level) {
   return entry;
 }
 
-function mergeHighlight(baseHighlight, queuedHighlight) {
-  if (queuedHighlight == null) return baseHighlight;
-  if (baseHighlight == null) return queuedHighlight;
-  if (typeof queuedHighlight === 'string') return queuedHighlight;
-  if (typeof baseHighlight === 'string') return queuedHighlight;
-  return {
-    title: queuedHighlight.title ?? baseHighlight.title,
-    body: queuedHighlight.body ?? baseHighlight.body,
-  };
-}
-
 function renderHighlight(element, highlight) {
   if (!element) return;
   if (!highlight) {
@@ -133,13 +122,13 @@ export function prepareLevelIntro(config) {
 
   const queued = consumeLevelTransition(level);
   const finalTheme = queued?.theme ?? theme ?? null;
-  const finalBadge = queued?.badge ?? badge ?? (level ? `Niveau ${level}` : '');
-  const finalSubtitle = queued?.subtitle ?? subtitle ?? '';
-  const finalDescription = queued?.description ?? description ?? '';
-  const finalFootnote = queued?.footnote ?? footnote ?? '';
-  const finalStartLabel = queued?.startLabel ?? startLabel ?? '▶︎ Lancer la chasse';
+  const finalBadge = badge ?? (level ? `Niveau ${level}` : '');
+  const finalSubtitle = subtitle ?? '';
+  const finalDescription = description ?? '';
+  const finalFootnote = footnote ?? '';
+  const finalStartLabel = startLabel ?? '▶︎ Lancer la chasse';
   const finalAccent = queued?.accentColor ?? accentColor ?? null;
-  const finalHighlight = mergeHighlight(highlight, queued?.highlight);
+  const finalHighlight = highlight;
 
   const titleEl = document.getElementById('titleH1');
   const subtitleEl = document.getElementById('subtitleP');

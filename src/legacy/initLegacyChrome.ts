@@ -15,18 +15,6 @@ async function handleServiceWorker() {
     return;
   }
 
-  const isProd = Boolean(import.meta?.env?.PROD);
-  if (isProd) {
-    try {
-      const base = import.meta?.env?.BASE_URL ?? new URL(".", document.baseURI).pathname;
-      const swUrl = `${base.replace(/\/?$/, "/")}sw.js`;
-      await navigator.serviceWorker.register(swUrl);
-    } catch (error) {
-      console.warn("Service worker registration failed", error);
-    }
-    return;
-  }
-
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map((registration) => registration.unregister()));

@@ -137,3 +137,10 @@
     justify-content: flex-start;
   }
 }
+
+@media(max-width:720px) {
+ .poi-market__header-copy { flex-basis:auto; min-width:0; }
+ .poi-market__grid { grid-template-columns:minmax(0,1fr); }
+ .poi-market__card-header { flex-direction:column; }
+}
+.poi-market__qr-id, .poi-market__details dd { overflow-wrap:anywhere; }

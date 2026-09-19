@@ -12,6 +12,9 @@ export type BonusMapConfig = {
 };
 
 export const BONUS_MAPS = {
+  adriatico: { title: "Adriatico", lat:40.15,lng:18.4,zoom:10, markerText: "Adriatico",partnerIds:[],poiIds:[] },
+  capo: { title: "Capo di Leuca", lat:39.9,lng:18.3,zoom:10, markerText:"Capo di Leuca",partnerIds:[],poiIds:[] },
+  arneo: { title: "Arneo", lat:40.35,lng:17.95,zoom:10, markerText:"Arneo",partnerIds:[],poiIds:[] },
   otranto: {
     title: "Otranto",
     lat: 40.1489,
