@@ -1,4 +1,5 @@
 import { withBase } from '../utils/basePath.js';
+import { syncDurableProgress } from '../progressStorage.js';
 
 const HOF_KEYS = ['salento_hof_v1', 'salento_hof_v2', 'salento_hof_v3'];
 const DEFAULT_KEY = HOF_KEYS[0];
@@ -237,6 +238,7 @@ function writeRawList(list, key = DEFAULT_KEY) {
   }
   try {
     window.localStorage.setItem(key, JSON.stringify(list));
+    syncDurableProgress();
   } catch (error) {
     console.warn('[hof] unable to persist hall of fame entries', error);
   } finally {
@@ -368,6 +370,7 @@ function writeSummaryRecord(summary) {
         version: SUMMARY_VERSION,
       })
     );
+    syncDurableProgress();
   } catch (error) {
     console.warn('[hof] unable to persist hall of fame summary', error);
   }
