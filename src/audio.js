@@ -1,4 +1,5 @@
 import { withBase } from './utils/basePath.js';
+import { syncDurableProgress } from './progressStorage.js';
 // src/audio.js
 // ========================================================
 // Audio minimaliste : musique, sfx, finale (sans accès DOM)
@@ -7,7 +8,19 @@ import { withBase } from './utils/basePath.js';
 let audioCtx = null;
 let masterGain = null;
 
+const MUSIC_PREF_KEY = 'hirundu_music_v1';
 let musicOn = false;
+
+function isMusicPreferenceEnabled() {
+  try { return localStorage.getItem(MUSIC_PREF_KEY) !== 'off'; } catch { return true; }
+}
+
+function setMusicPreference(enabled) {
+  try {
+    localStorage.setItem(MUSIC_PREF_KEY, enabled ? 'on' : 'off');
+    syncDurableProgress();
+  } catch {}
+}
 let huntTrack = null;
 let loopTimer = null;
 let finaleLoopTimer = null;
@@ -174,7 +187,8 @@ function playPhrase() {
   loopTimer = setTimeout(playPhrase, 2800);
 }
 
-export async function startMusic({ fadeInMs = 0 } = {}) {
+export async function startMusic({ fadeInMs = 0, force = false } = {}) {
+  if (!force && !isMusicPreferenceEnabled()) { notifyAudioState(); return; }
   if (isMusicOn()) return;
   const request = ++musicRequest;
   try {
@@ -208,13 +222,20 @@ export function stopMusic() {
 }
 
 export async function toggleMusic() {
-  if (isMusicOn()) stopMusic(); else await startMusic();
+  if (isMusicOn()) {
+    setMusicPreference(false);
+    stopMusic();
+  } else {
+    setMusicPreference(true);
+    await startMusic({ force: true });
+  }
 }
 
 export function isMusicOn() { return musicOn && !!huntTrack && !huntTrack.paused && !huntTrack.error; }
 
 // ---------- Finale longue ----------
 export function playFinaleLong() {
+  if (!isMusicPreferenceEnabled()) { stopMusic(); return; }
   stopMusic();
   if (!ensureCtxActive() || !audioCtx || !masterGain) return;
 
