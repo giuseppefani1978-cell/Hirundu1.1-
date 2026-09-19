@@ -18,7 +18,7 @@ import { startBattleIntro } from '../../battle_intro.js';
 import { addHallOfFameEntry, getHallOfFameBonusUrl } from '../../hof/storage.js';
 import { setupVictoryCTAHandlers, removeVictoryCTA } from '../../bonus_transition.js';
 import { prepareLevelIntro, queueLevelTransition } from '../../level_transition.js';
-import { FLOW_PHASES, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
+import { FLOW_PHASES, LANGUAGE_EVENT, clearGameFlow, isGamePaused, setGameFlowPhase } from '../../game_flow.js';
 
 const DEBUG = false;
 function dbg(...a){ if (DEBUG) console.log('[L2]', ...a); }
@@ -203,13 +203,14 @@ export function boot(options = {}){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
-  prepareLevelIntro({
+  const renderIntroCopy = () => prepareLevelIntro({
     level: 2, theme: 'gallipoli', badge: `${copy.level} 2`,
     title: t.level2.title, subtitle: t.level2.subtitle, description: copy.mission,
     footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
     highlight: { title: copy.briefing, body: copy.mission },
     accentColor: '#facc15',
   });
+  renderIntroCopy();
 
   // Charge assets
   mapImg.src    = ASSETS.MAP_URL;
@@ -268,6 +269,15 @@ export function boot(options = {}){
       questionReady = true;
     }
   }
+  const refreshLanguageUI = () => {
+    const hudLabel = document.getElementById('hudLabel');
+    if (hudLabel) hudLabel.textContent = t.level2.hudLabel;
+    ui.setMusicLabel(isMusicOn());
+    if (mode === 'splash') renderIntroCopy();
+    if (mode === 'play' && currentIdx < QUEST.length) askQuestionAt(currentIdx);
+  };
+  session.listen(window, LANGUAGE_EVENT, refreshLanguageUI);
+
   function queueNextAsk(delayMs = 1200){
     if (askTimer) { clearTimeout(askTimer); askTimer = 0; }
     questionReady = false;
