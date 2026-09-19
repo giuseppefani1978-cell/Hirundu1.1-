@@ -1,3 +1,4 @@
+import { syncDurableProgress } from './progressStorage.js';
 // src/i18n.js
 // ========================================================
 // i18n : dictionnaires UI, textes POI, détection langue
@@ -354,7 +355,7 @@ export function setLang(langCode){
   const lc = String(langCode||"").trim().toLowerCase();
   const alias = LOCALE_ALIASES[lc] || lc.split("-")[0];
   const final = SUPPORTED.includes(alias) ? alias : "en";
-  try { localStorage.setItem("__lang__", final); } catch {}
+  try { localStorage.setItem("__lang__", final); syncDurableProgress(); } catch {}
   const url = new URL(location.href);
   url.searchParams.set("lang", final);
   location.assign(url.toString());
