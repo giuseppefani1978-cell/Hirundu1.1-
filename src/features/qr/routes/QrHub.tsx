@@ -23,7 +23,7 @@ import {
 } from "../services/partners";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
 import { getEnrichedPois } from "../services/pois";
-import { setPoiVisited } from "../passport/passportStorage";
+import { setPoiQrValidated } from "../passport/passportStorage";
 import { useAppDispatch, useAppSelector } from "../../../store";
 import "./QrHub.css";
 
@@ -462,7 +462,7 @@ function applyPassportVisits(targets: ReturnType<typeof getEnrichedPois>): void 
     const identifier = `${bonusKey}:${poi.id}`;
     if (seen.has(identifier)) return;
     seen.add(identifier);
-    setPoiVisited(bonusKey, poi.id, true, config.poiIds);
+    setPoiQrValidated(bonusKey, poi.id, true, config.poiIds);
   });
 }
 
