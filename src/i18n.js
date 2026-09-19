@@ -351,18 +351,27 @@ export function detectLang() {
   return "en";
 }
 
+export let LANG = detectLang();
+
 export function setLang(langCode){
   const lc = String(langCode||"").trim().toLowerCase();
   const alias = LOCALE_ALIASES[lc] || lc.split("-")[0];
   const final = SUPPORTED.includes(alias) ? alias : "en";
+  LANG = final;
   try { localStorage.setItem("__lang__", final); syncDurableProgress(); } catch {}
-  const url = new URL(location.href);
-  url.searchParams.set("lang", final);
-  location.assign(url.toString());
+  if (typeof document !== "undefined") document.documentElement.lang = final;
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set("lang", final);
+    history.replaceState(history.state, "", url.toString());
+  } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent("hirundu:language", { detail: { lang: final } }));
+  } catch {}
+  return final;
 }
 
 // ---------- Helpers d’accès ----------
-export const LANG = detectLang();
 if (typeof document !== "undefined") document.documentElement.lang = LANG;
 
 // t = fonction **et** objet (compat descendante)
@@ -378,8 +387,18 @@ function tFn(path, fallback, ...args){
   return (fallback !== undefined ? fallback : String(path||''));
 }
 
-// expose properties (t.title, t.level3.hudLabel, …)
-export const t = Object.assign(tFn, I18N[LANG] || I18N.en);
+for (const key of new Set(Object.values(I18N).flatMap((dict) => Object.keys(dict)))) {
+  Object.defineProperty(tFn, key, {
+    enumerable: true,
+    configurable: true,
+    get() {
+      const dict = I18N[LANG] || I18N.en;
+      return dict[key] ?? I18N.en[key];
+    },
+  });
+}
+
+export const t = tFn;
 
 // POI helpers
 export function poiPack(key, lang = LANG){
