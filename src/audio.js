@@ -160,21 +160,6 @@ export function birdChirp(mode = 'soft') {
   makeSweep(t + 0.075, 2200, 1350, 0.11, 0.7);
 }
 
-function fadeMediaVolume(media, to, duration = 420, onDone) {
-  if (!media) { onDone?.(); return; }
-  const token = ++fadeToken;
-  const from = Number.isFinite(media.volume) ? media.volume : 0;
-  const started = performance.now();
-  const step = (now) => {
-    if (token !== fadeToken || !media) return;
-    const p = Math.min(1, Math.max(0, (now - started) / Math.max(1, duration)));
-    media.volume = Math.max(0, Math.min(1, from + (to - from) * p));
-    if (p < 1) requestAnimationFrame(step);
-    else onDone?.();
-  };
-  requestAnimationFrame(step);
-}
-
 // ---------- Musique (boucle courte) ----------
 function playPhrase() {
   if (!musicOn || !audioCtx) return;
