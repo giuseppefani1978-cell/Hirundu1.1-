@@ -16,7 +16,7 @@ export function bootReboundLevel3(options = {}) {
   frame.id = 'hirundu-level3-rebound';
   frame.title = 'HIRUNDU · Niveau 3 · Lecce';
   frame.allow = 'fullscreen';
-  frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100dvh;border:0;z-index:20000;background:#bfe2f8;';
+  frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:20000;background:#bfe2f8;';
   frame.src = url.href;
   let active = true, won = false, handledWin = false;
   const finite = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
