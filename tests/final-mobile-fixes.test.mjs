@@ -18,6 +18,10 @@ test('L8 uses the validated L6 obstacle cadence and movement model', async () =>
   assert.match(l8, /if\(S\.spawn>1\.65\)/);
   assert.match(l8, /Math\.random\(\)<\.36/);
   assert.doesNotMatch(l8, /drawObstacleBackdrop/);
+  assert.doesNotMatch(l8, /drawTrashObstacle/);
+  assert.match(l8, /ctx\.globalAlpha=1/);
+  assert.match(l8, /ctx\.globalCompositeOperation='source-over'/);
+  assert.match(l8, /ctx\.fillText\(glyph,o\.x,o\.y\)/);
 });
 
 test('home stays minimal and resumes the current unlocked level', async () => {
