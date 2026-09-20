@@ -91,7 +91,7 @@ function spawnObstacleWave(){
     });
   });
 
-  if(S.timer>1.5&&(S.wave%2===0||Math.random()<.58)){
+  if(S.timer>1.5&&(S.wave%2===0||Math.random()<.36)){
     const kind=Math.random()<.5?'crow':'jelly';
     const lane=(openLane+1+(S.wave%2))%3;
     const size=Math.round(clamp(W*.176,66,78));
@@ -99,7 +99,6 @@ function spawnObstacleWave(){
       kind,
       x:laneW*(lane+.5)+(Math.random()-.5)*laneW*.30,
       y:-size*(2.9+Math.random()*.6),
-      vx:(Math.random()<.5?-1:1)*(20+Math.random()*22),
       size,
       w:size*.54,
       h:size*.54,
@@ -110,14 +109,9 @@ function spawnObstacleWave(){
 }
 function tick(dt){if(S.mode!=='playing')return;S.clock+=dt;S.timer+=dt;S.shield=Math.max(0,S.shield-dt);S.immune=Math.max(0,S.immune-dt);const scroll=S.phase==='answers'?H*.050:S.phase==='read'?H*.030:H*.085;S.offset+=scroll*dt;
 let dx=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0)+padDX,dy=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0)+padDY;if(dx||dy){const norm=Math.hypot(dx,dy);S.tx+=dx/norm*W*.62*dt;S.ty+=dy/norm*H*.52*dt;}S.tx=clamp(S.tx,24,W-24);S.ty=clamp(S.ty,35,H-112);const stiffness=17.2,damping=8.0;S.vx+=((S.tx-S.x)*stiffness-S.vx*damping)*dt;S.vy+=((S.ty-S.y)*stiffness-S.vy*damping)*dt;const maxV=Math.min(W*.80,H*.69);const v=Math.hypot(S.vx,S.vy);if(v>maxV){S.vx=S.vx/v*maxV;S.vy=S.vy/v*maxV;}S.x=clamp(S.x+S.vx*dt,24,W-24);S.y=clamp(S.y+S.vy*dt,35,H-112);
-if(S.phase==='free'){S.spawn+=dt;S.foodTimer+=dt;if(S.spawn>1.42){S.spawn=0;spawnObstacleWave();}if(S.foodTimer>4.2){S.foodTimer=0;S.foods.push({kind:Math.random()<.5?'coffee':'rustico',x:W*(.2+Math.random()*.6),y:-25});}if(S.timer>7){S.phase='read';S.timer=0;S.notice='';hud();}}
+if(S.phase==='free'){S.spawn+=dt;S.foodTimer+=dt;if(S.spawn>1.65){S.spawn=0;spawnObstacleWave();}if(S.foodTimer>4.2){S.foodTimer=0;S.foods.push({kind:Math.random()<.5?'coffee':'rustico',x:W*(.2+Math.random()*.6),y:-25});}if(S.timer>7){S.phase='read';S.timer=0;S.notice='';hud();}}
 else if(S.phase==='read'&&S.timer>3.5)targets();
-for(const o of S.obstacles){const mobile=o.kind==='crow'||o.kind==='jelly';o.y+=scroll*dt*(mobile?1.18:1);if(mobile){
-  o.x+=((o.vx||0)+Math.sin(S.clock*1.55+o.seed)*22)*dt;
-  const edge=(o.size||80)*.45;
-  if(o.x<edge){o.x=edge;o.vx=Math.abs(o.vx||28);}
-  if(o.x>W-edge){o.x=W-edge;o.vx=-Math.abs(o.vx||28);}
-}if(!o.hit&&Math.abs(o.x-S.x)<o.w/2+10&&Math.abs(o.y-S.y)<o.h/2+11){o.hit=true;damage();}}S.obstacles=S.obstacles.filter(o=>o.y-(o.size||80)/2<H+36);
+for(const o of S.obstacles){const mobile=o.kind==='crow'||o.kind==='jelly';o.y+=scroll*dt*(mobile?1.18:1);if(mobile)o.x=clamp(o.x+Math.sin(S.clock*1.35+o.seed)*dt*20,(o.size||80)*.45,W-(o.size||80)*.45);if(!o.hit&&Math.abs(o.x-S.x)<o.w/2+10&&Math.abs(o.y-S.y)<o.h/2+11){o.hit=true;damage();}}S.obstacles=S.obstacles.filter(o=>o.y-(o.size||80)/2<H+36);
 for(const f of S.foods){f.y+=scroll*dt;if(Math.hypot(f.x-S.x,f.y-S.y)<30){if(f.kind==='coffee'){S.energy=Math.min(100,S.energy+30);S.coffee++;say(T().coffee);}else{S.shield=8;S.rustico++;say(T().shield);}f.y=H+100;}}S.foods=S.foods.filter(f=>f.y<H+48);
 for(const o of [...S.targets]){o.y+=scroll*dt;if(Math.abs(o.x-S.x)<o.w/2-3&&Math.abs(o.y-S.y)<o.h/2+10){hit(o.id);break;}}
 if(S.phase==='answers'&&S.targets.length&&S.targets.every(o=>o.y>H+80)){say(T().miss);targets();}hud();}
@@ -165,24 +159,8 @@ function drawLevel8Coast(bg){
   ctx.fillStyle=haze;
   ctx.fillRect(0,0,W,H);
 }
-function drawObstacleBackdrop(o){
-  const r=(o.size||80)*.48;
-  ctx.save();
-  ctx.translate(o.x,o.y);
-  ctx.fillStyle='rgba(255,253,245,.82)';
-  ctx.strokeStyle='rgba(14,43,74,.42)';
-  ctx.lineWidth=2;
-  ctx.shadowColor='rgba(0,0,0,.18)';
-  ctx.shadowBlur=9;
-  ctx.beginPath();
-  ctx.arc(0,0,r,0,Math.PI*2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
 function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);
 for(const o of S.obstacles){
-  drawObstacleBackdrop(o);
   if(trashKinds.includes(o.kind)){
     const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
     ctx.save();
