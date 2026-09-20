@@ -2,7 +2,7 @@
 import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { initializeDurableProgress, syncDurableProgress } from "./progressStorage.js";
+import { syncDurableProgress } from "./progressStorage.js";
 
 // ---- Lazy load pages (code-splitting)
 const QrHub = lazy(() => import("./features/qr/routes/QrHub"));
@@ -93,7 +93,6 @@ export default function App() {
   const [, setLanguageRevision] = useState(0);
 
   useEffect(() => {
-    initializeDurableProgress();
     const sync = () => { syncDurableProgress(); };
     const refreshLanguage = () => setLanguageRevision((value) => value + 1);
     window.addEventListener("pagehide", sync);

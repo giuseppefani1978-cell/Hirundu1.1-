@@ -5,6 +5,7 @@ import { BONUS_MAPS } from '../features/bonus/bonusData';
 import LanguageSelect from '../ui/LanguageSelect';
 import { copy } from '../ui/copy.js';
 import './BonusHubPage.css';
+import { resetBonusProgress } from '../features/bonus/bonusStorage';
 const Rankings = lazy(() => import('../features/bonus/HallOfFameSection'));
 import '../features/bonus/BonusIndex.css';
 
@@ -13,6 +14,7 @@ export default function BonusHubPage() {
   const location = useLocation();
   const { progress, unlockedKeys } = useBonusProgress();
   const [more, setMore] = useState(location.search.includes('hof'));
+  const [confirmReset, setConfirmReset] = useState(false);
   const next = progress.find((level) => !level.done && level.unlocked);
   const completed = progress.filter((level) => level.done).length;
   const unlockedKey = (location.state as { unlockedKey?: string } | null)?.unlockedKey;
@@ -29,6 +31,29 @@ export default function BonusHubPage() {
         ▶ {copy.continue} · {copy.level} {next.id}
       </button> : <><p>{copy.complete}</p><button className="app-button" onClick={() => navigate('/level/1')}>{copy.replay}</button></>}
     </section>
+    <details className="discoveries__more">
+      <summary>{copy.replayLevel}</summary>
+      <div className="discoveries__maps">
+        {progress.filter((level) => level.unlocked || level.done).map((level) => (
+          <button key={level.id} type="button" className="app-button"
+            onClick={() => navigate(`/level/${level.id}`)}>
+            {copy.replay} · {copy.level} {level.id} · {level.name}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="app-button app-button--ghost" onClick={() => setConfirmReset(true)}>
+        {copy.newGame}
+      </button>
+      {confirmReset && <div role="group" aria-label={copy.newGame}>
+        <p role="alert">{copy.confirmNewGame}</p>
+        <button type="button" className="app-button" onClick={() => {
+          resetBonusProgress();
+          setConfirmReset(false);
+          navigate('/level/1');
+        }}>{copy.confirm}</button>
+        <button type="button" className="app-button app-button--ghost" onClick={() => setConfirmReset(false)}>{copy.cancel}</button>
+      </div>}
+    </details>
     <section aria-labelledby="maps-title">
       <h2 id="maps-title">{copy.maps}</h2><p>{copy.mapHint}</p>
       <div className="discoveries__maps">{progress.map((level) => {

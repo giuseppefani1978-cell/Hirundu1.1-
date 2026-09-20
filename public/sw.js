@@ -10,7 +10,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     try {
       const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
+      await Promise.all(keys.filter((key) => /hirundu|aracne/i.test(key)).map((key) => caches.delete(key)));
     } catch {}
 
     try {
@@ -19,7 +19,11 @@ self.addEventListener("activate", (event) => {
 
     try {
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      await Promise.all(clients.map((client) => client.navigate(client.url).catch(() => undefined)));
+      const scope = new URL(self.registration.scope);
+      await Promise.all(clients.filter((client) => {
+        const url = new URL(client.url);
+        return url.origin === scope.origin && url.pathname.startsWith(scope.pathname);
+      }).map((client) => client.navigate(client.url).catch(() => undefined)));
     } catch {}
   })());
 });

@@ -256,6 +256,9 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           </button>
         </div>
       ) : null}
+      {relevantPois.length === 0 && <p role="status" className="surface-card">
+        {bt("Les fiches de lieux de ce territoire sont en préparation. Tu peux continuer le jeu.")}
+      </p>}
       <MapContainer
         key={key}
         center={center}
@@ -300,10 +303,10 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
                 {poi.partner ? (
                   <div className="real-map__popup-meta">
                     {getPartnerVerificationStatus(poi.partner) === "confirmed"
-                      ? `Partenaire confirmé · QR : ${poi.partner.qr_id}`
+                      ? `${bt("Partenaire confirmé")} · QR : ${poi.partner.qr_id}`
                       : getPartnerVerificationStatus(poi.partner) === "listed"
-                        ? "Commerce référencé · partenariat non confirmé"
-                        : "Démonstration · aucun partenariat ni avantage réel confirmé"}
+                        ? bt("Commerce référencé · partenariat non confirmé")
+                        : bt("Démonstration · aucun partenariat ni avantage réel confirmé")}
                   </div>
                 ) : null}
                 <button
@@ -325,10 +328,10 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
                 <strong>{partner.name}</strong>
                 <div className="real-map__popup-meta">
                   {getPartnerVerificationStatus(partner) === "confirmed"
-                    ? `Partenaire confirmé · QR : ${partner.qr_id}`
+                    ? `${bt("Partenaire confirmé")} · QR : ${partner.qr_id}`
                     : getPartnerVerificationStatus(partner) === "listed"
-                      ? "Commerce référencé · partenariat non confirmé"
-                      : "Démonstration · aucun partenariat ni avantage réel confirmé"}
+                      ? bt("Commerce référencé · partenariat non confirmé")
+                      : bt("Démonstration · aucun partenariat ni avantage réel confirmé")}
                 </div>
                 <button
                   type="button"
@@ -535,7 +538,7 @@ function PassportSalentino({
       <header className="real-map__passport-header">
         <h2 className="real-map__passport-title">📔 Passport Salentino</h2>
         <p className="real-map__passport-level">
-          {pc.level} : <strong>{progress.level.name}</strong>
+          {pc.level} : <strong>{pc.tiers[PASSPORT_LEVELS.indexOf(progress.level)]}</strong>
         </p>
         <p className="real-map__passport-subtitle">
           {mapTitle} · {pc.points} : {progress.earnedPoints} / {progress.totalPoints}
@@ -549,11 +552,11 @@ function PassportSalentino({
             {completionPercent}% {pc.done}
           </div>
           <div className="real-map__passport-tiers" aria-hidden>
-            {PASSPORT_LEVELS.map((tier) => {
+            {PASSPORT_LEVELS.map((tier, index) => {
               const isActive = tier.name === progress.level.name;
               return (
                 <span
-                  key={tier.name}
+                  key={pc.tiers[index]}
                   className={[
                     "real-map__passport-tier",
                     isActive ? "real-map__passport-tier--active" : "",
@@ -561,13 +564,13 @@ function PassportSalentino({
                     .filter(Boolean)
                     .join(" ")}
                 >
-                  {tier.name}
+                  {pc.tiers[index]}
                 </span>
               );
             })}
           </div>
         </div>
-        {progress.nextLevel && <p className="real-map__passport-next">{pc.next} : {progress.nextLevel.name} ({progress.pointsToNext})</p>}
+        {progress.nextLevel && <p className="real-map__passport-next">{pc.next} : {pc.tiers[PASSPORT_LEVELS.indexOf(progress.nextLevel)]} ({progress.pointsToNext})</p>}
       </header>
 
       <section className="real-map__passport-section">

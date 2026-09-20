@@ -11,6 +11,10 @@ import "./ui/styles.css";
 
 import App from "./app"; // <- LOWERCASE to match src/app.tsx
 import { store } from "./store";
+import { initializeDurableProgress } from "./progressStorage.js";
+
+// Restore legacy keys before any page derives its initial resume target.
+initializeDurableProgress();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
