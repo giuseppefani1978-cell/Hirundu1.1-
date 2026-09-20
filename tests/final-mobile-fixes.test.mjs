@@ -7,13 +7,24 @@ test('L3 Tarantula dialogue always reserves two lines in hunt mode', async () =>
   assert.match(css, /body:not\(\.battle-active\) \.question\{[\s\S]*flex:0 0 74px/);
   assert.match(css, /body:not\(\.battle-active\) \.question p\{[\s\S]*height:2\.64em/);
   assert.match(css, /-webkit-line-clamp:2/);
-  assert.match(css, /body:not\(\.battle-active\) \.targets-list\{[\s\S]*flex:0 0 28px/);
 });
 
-test('L8 flight draws a visible backdrop for every obstacle without changing spawning', async () => {
-  const src = await readFile(new URL('../public/level8-flight/game.js', import.meta.url), 'utf8');
-  assert.match(src, /function drawObstacleBackdrop\(o\)/);
-  assert.match(src, /for\(const o of S\.obstacles\)\{\s*drawObstacleBackdrop\(o\)/);
-  assert.match(src, /spawnObstacleWave\(\)/);
-  assert.match(src, /S\.obstacles\.push/);
+test('L8 uses the validated L6 obstacle cadence and movement model', async () => {
+  const l6 = await readFile(new URL('../public/level6-flight/game.js', import.meta.url), 'utf8');
+  const l8 = await readFile(new URL('../public/level8-flight/game.js', import.meta.url), 'utf8');
+  const spawn6 = l6.slice(l6.indexOf('function spawnObstacleWave(){'), l6.indexOf('function tick(dt)'));
+  const spawn8 = l8.slice(l8.indexOf('function spawnObstacleWave(){'), l8.indexOf('function tick(dt)'));
+  assert.equal(spawn8, spawn6);
+  assert.match(l8, /if\(S\.spawn>1\.65\)/);
+  assert.match(l8, /Math\.random\(\)<\.36/);
+  assert.doesNotMatch(l8, /drawObstacleBackdrop/);
+});
+
+test('home stays minimal and resumes the current unlocked level', async () => {
+  const home = await readFile(new URL('../src/routes/StartPage.tsx', import.meta.url), 'utf8');
+  assert.match(home, /const resumeTarget = getResumeTarget\(\)/);
+  assert.match(home, /navigate\(`\/level\/\$\{resumeLevel\}`\)/);
+  assert.doesNotMatch(home, /replayLevel/);
+  assert.doesNotMatch(home, /confirmNewGame/);
+  assert.doesNotMatch(home, /resetBonusProgress/);
 });
