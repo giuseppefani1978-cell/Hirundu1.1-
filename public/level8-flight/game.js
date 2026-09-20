@@ -165,8 +165,24 @@ function drawLevel8Coast(bg){
   ctx.fillStyle=haze;
   ctx.fillRect(0,0,W,H);
 }
+function drawObstacleBackdrop(o){
+  const r=(o.size||80)*.48;
+  ctx.save();
+  ctx.translate(o.x,o.y);
+  ctx.fillStyle='rgba(255,253,245,.82)';
+  ctx.strokeStyle='rgba(14,43,74,.42)';
+  ctx.lineWidth=2;
+  ctx.shadowColor='rgba(0,0,0,.18)';
+  ctx.shadowBlur=9;
+  ctx.beginPath();
+  ctx.arc(0,0,r,0,Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
 function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);
 for(const o of S.obstacles){
+  drawObstacleBackdrop(o);
   if(trashKinds.includes(o.kind)){
     const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
     ctx.save();
