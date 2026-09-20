@@ -971,3 +971,57 @@ html,body{height:100%;overflow:hidden}
   .question>div{height:56px;min-height:56px;max-height:56px}
   .targets-list{height:24px;min-height:24px;max-height:24px}
 }
+
+
+/* 2026-09-20 — L3 dialogue geometry lock.
+   One-line and two-line Tarantula messages occupy the same vertical space,
+   so the Arkanoid canvas/map never shifts when dialogue changes. */
+body:not(.battle-active) .question{
+  flex:0 0 74px;
+  height:74px;
+  min-height:74px;
+  max-height:74px;
+  contain:layout size;
+}
+body:not(.battle-active) .question>div{
+  flex:1 1 auto;
+  height:68px;
+  min-height:68px;
+  max-height:68px;
+  overflow:hidden;
+}
+body:not(.battle-active) .question p{
+  height:2.64em;
+  min-height:2.64em;
+  max-height:2.64em;
+  margin:0;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+body:not(.battle-active) .targets-list{
+  flex:0 0 28px;
+  height:28px;
+  min-height:28px;
+  max-height:28px;
+}
+@media(max-height:550px){
+  body:not(.battle-active) .question{
+    flex-basis:62px;
+    height:62px;
+    min-height:62px;
+    max-height:62px;
+  }
+  body:not(.battle-active) .question>div{
+    height:56px;
+    min-height:56px;
+    max-height:56px;
+  }
+  body:not(.battle-active) .targets-list{
+    flex-basis:24px;
+    height:24px;
+    min-height:24px;
+    max-height:24px;
+  }
+}
