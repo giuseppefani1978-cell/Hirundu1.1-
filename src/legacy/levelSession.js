@@ -48,31 +48,55 @@ export function setupHuntControls(player, getSpeed, canMove, session) {
   let vy = 0;
   let nextChirpAt = 0;
 
-  document.querySelectorAll('.btn[data-dx]').forEach((el) => {
-    el.style.touchAction = 'none';
-    session.listen(el, 'pointerdown', (event) => {
-      if (!canMove()) return;
-      event.preventDefault();
-      el.setPointerCapture?.(event.pointerId);
-      held.set(event.pointerId, [Number(el.dataset.dx), Number(el.dataset.dy)]);
-    });
-    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-      session.listen(el, event, (e) => held.delete(e.pointerId));
-    }
-  });
-  session.listen(window, 'keydown', (e) => {
-    if (!keys[e.key] || !canMove() || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName)) return;
-    e.preventDefault();
-    held.set(e.key, keys[e.key]);
-  });
-  session.listen(window, 'keyup', (e) => held.delete(e.key));
-  const stopMotion = () => {
-    held.clear();
+  const zeroMotion = () => {
     vx = 0;
     vy = 0;
     player._motionX = 0;
     player._motionY = 0;
     player._motionSpeed = 0;
+  };
+  const releaseHeld = (id) => {
+    held.delete(id);
+    if (held.size === 0) zeroMotion();
+  };
+  const releaseAllPointers = () => {
+    for (const id of [...held.keys()]) {
+      if (typeof id === 'number') held.delete(id);
+    }
+    if (held.size === 0) zeroMotion();
+  };
+
+  document.querySelectorAll('.btn[data-dx]').forEach((el) => {
+    el.style.touchAction = 'none';
+    session.listen(el, 'pointerdown', (event) => {
+      if (!canMove()) return;
+      event.preventDefault();
+      // Do not rely on pointer capture on iOS Safari: global release listeners below
+      // are deliberately the source of truth so a missed button-level pointerup
+      // can never leave one direction latched.
+      held.set(event.pointerId, [Number(el.dataset.dx), Number(el.dataset.dy)]);
+    }, { passive: false });
+    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      session.listen(el, event, (e) => releaseHeld(e.pointerId), { passive: false });
+    }
+  });
+
+  // iOS/Safari can occasionally end a touch outside the original button. Release
+  // from the window as well, and keep touchend/touchcancel as a final fallback.
+  session.listen(window, 'pointerup', (e) => releaseHeld(e.pointerId), true);
+  session.listen(window, 'pointercancel', (e) => releaseHeld(e.pointerId), true);
+  session.listen(window, 'touchend', releaseAllPointers, { passive: true, capture: true });
+  session.listen(window, 'touchcancel', releaseAllPointers, { passive: true, capture: true });
+
+  session.listen(window, 'keydown', (e) => {
+    if (!keys[e.key] || !canMove() || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName)) return;
+    e.preventDefault();
+    held.set(e.key, keys[e.key]);
+  });
+  session.listen(window, 'keyup', (e) => releaseHeld(e.key));
+  const stopMotion = () => {
+    held.clear();
+    zeroMotion();
   };
   session.listen(window, 'blur', stopMotion);
   session.listen(document, 'visibilitychange', () => { if (document.hidden) stopMotion(); });
