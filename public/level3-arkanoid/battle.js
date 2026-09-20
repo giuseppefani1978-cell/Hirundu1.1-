@@ -9,7 +9,7 @@ const Battle={
   this.completed=false;if(state.mode==='battleIntro')this.snapshot={...state.food,stars:state.found.length};
   const ammo={...(this.snapshot||{coffee:0,rustico:0,pasticciotto:0,stars:10})};
   this.data={time:0,stage:'entry',stageTime:1.5,phase:1,player:{x:155,y:420,vx:0,vy:0,hp:120,facing:1,inv:0,flapCooldown:0,assist:0,targetVy:0,dodge:0,dodgeCooldown:0,dodgeDir:1},boss:{x:1040,y:420,hp:200,flash:0},ammo,shots:[],fx:[],cooldown:0,combo:0,comboTime:0,shake:0,finishTime:0,fireTimer:0};
-  state.mode='battle';keys.clear();state.message=0;$('cover').classList.add('hidden');$('message').classList.remove('visible');document.body.classList.add('battle-active');$('battleHUD').hidden=false;$('speaker').textContent=extra().battle;$('question').textContent=battleUI().help;$('targetsList').textContent='Aracne ✦ Sputacchina';$('tip').textContent=extra().orientation;resize();this.hud();canvas.focus({preventScroll:true});
+  state.mode='battle';window.__L3_START_BATTLE_MUSIC__?.();keys.clear();state.message=0;$('cover').classList.add('hidden');$('message').classList.remove('visible');document.body.classList.add('battle-active');$('battleHUD').hidden=false;$('speaker').textContent=extra().battle;$('question').textContent=battleUI().help;$('targetsList').textContent='Aracne ✦ Sputacchina';$('tip').textContent=extra().orientation;resize();this.hud();canvas.focus({preventScroll:true});
  },
  hud(){const d=this.data;if(!d)return;$('playerHP').textContent=Math.ceil(d.player.hp);$('bossHP').textContent=Math.ceil(d.boss.hp);$('playerMeter').value=d.player.hp;$('bossMeter').value=d.boss.hp;for(const k of ['coffee','rustico','pasticciotto'])$(k+'Count').textContent=d.ammo[k];$('leaves').textContent=d.ammo.stars;},
  action(kind){
@@ -64,7 +64,7 @@ const Battle={
   if(p.inv===0&&Math.abs(p.x-b.x)<65&&Math.abs(p.y-b.y)<70){p.hp=Math.max(0,p.hp-8);p.inv=1;p.x=Math.max(45,p.x-50);d.shake=.15;this.hud()}
   if(b.hp<=0){d.stage='finish';d.shots=[];this.burst(b.x,b.y-70,'#fff4bd',75);state.score+=200;$('score').textContent=state.score;notice(extra().victory,1.5)}else if(p.hp<=0)this.lose();
  },
- lose(){state.mode='battleLost';keys.clear();cover(extra().lost,extra().lostText,extra().battleHelp,extra().retry);syncBattleOrientation()},
+ lose(){window.__L3_STOP_BATTLE_MUSIC__?.();state.mode='battleLost';keys.clear();cover(extra().lost,extra().lostText,extra().battleHelp,extra().retry);syncBattleOrientation()},
  draw(bounds){
   const d=this.data;if(!d)return;ctx.clearRect(0,0,bounds.width,bounds.height);ctx.fillStyle='#a9d6f5';ctx.fillRect(0,0,bounds.width,bounds.height);const k=Math.max(bounds.width/960,bounds.height/540),x=(bounds.width-960*k)/2,y=(bounds.height-540*k)/2;
   ctx.save();ctx.translate(x,y);ctx.scale(k,k);ctx.beginPath();ctx.rect(0,0,960,540);ctx.clip();if(d.shake>0&&!matchReducedMotion()){ctx.translate(Math.sin(d.time*90)*3,Math.cos(d.time*80)*2)}
