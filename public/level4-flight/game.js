@@ -116,9 +116,10 @@ for(const f of S.foods){f.y+=scroll*dt;if(Math.hypot(f.x-S.x,f.y-S.y)<30){if(f.k
 for(const o of [...S.targets]){o.y+=scroll*dt;if(Math.abs(o.x-S.x)<o.w/2-3&&Math.abs(o.y-S.y)<o.h/2+10){hit(o.id);break;}}
 if(S.phase==='answers'&&S.targets.length&&S.targets.every(o=>o.y>H+80)){say(T().miss);targets();}hud();}
 function roundRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();}}
-function sprite(name,x,y,size,angle=0){const img=images[name];if(!img?.naturalWidth)return;ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(img,-size/2,-size/2,size,size);ctx.restore();}
+function sprite(name,x,y,size,angle=0){const img=images[name];if(!img?.naturalWidth||!img?.naturalHeight)return;const k=size/Math.max(img.naturalWidth,img.naturalHeight),dw=img.naturalWidth*k,dh=img.naturalHeight*k;ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.drawImage(img,-dw/2,-dh/2,dw,dh);ctx.restore();}
 function wrap(text,x,y,width){const words=text.split(' ');let line='',lines=[];for(const word of words){if(ctx.measureText(line+' '+word).width>width&&line){lines.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)lines.push(line);lines.slice(0,4).forEach((s,i)=>ctx.fillText(s,x,y+i*16));}
-function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth){const th=W*bg.naturalHeight/bg.naturalWidth;const off=S.offset%(th*2);for(let i=-2;i<3;i++){const y=off+i*th;ctx.save();if(Math.abs(i)%2){ctx.translate(0,y+th);ctx.scale(1,-1);ctx.drawImage(bg,0,0,W,th+1);}else ctx.drawImage(bg,0,y,W,th+1);ctx.restore();}}
+function drawScrollingCoast(bg){if(!bg?.naturalWidth||!bg?.naturalHeight)return;const k=Math.max(W/bg.naturalWidth,(H*1.18)/bg.naturalHeight),dw=bg.naturalWidth*k,dh=bg.naturalHeight*k,x=(W-dw)/2,off=S.offset%dh;for(let y=off-dh;y<H;y+=dh)ctx.drawImage(bg,x,y,dw,dh+1);}
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawScrollingCoast(bg);
 for(const o of S.obstacles){
   if(trashKinds.includes(o.kind)){
     const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
