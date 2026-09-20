@@ -957,3 +957,17 @@ header #effect:empty{display:none}
 /* Hunt feedback belongs to Tarantula's dialogue area, never over the map.
    Battle feedback keeps its dedicated floating bubble. */
 body:not(.battle-active) #message{display:none!important}
+
+
+/* Mobile stability: keep the playfield geometry fixed when Tarantula text changes length. */
+html,body{height:100%;overflow:hidden}
+#app{height:100%;min-height:0}
+.question,.battle-active .question{height:74px;min-height:74px;max-height:74px;align-items:flex-start}
+.question>div{height:68px;min-height:68px;max-height:68px;overflow:hidden}
+.question p,.battle-active .question p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.targets-list{height:28px;min-height:28px;max-height:28px;overflow:hidden}
+@media(max-height:550px){
+  .question,.battle-active .question{height:62px;min-height:62px;max-height:62px}
+  .question>div{height:56px;min-height:56px;max-height:56px}
+  .targets-list{height:24px;min-height:24px;max-height:24px}
+}
