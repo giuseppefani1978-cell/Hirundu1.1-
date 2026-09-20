@@ -28,3 +28,12 @@ test('home stays minimal and resumes the current unlocked level', async () => {
   assert.doesNotMatch(home, /confirmNewGame/);
   assert.doesNotMatch(home, /resetBonusProgress/);
 });
+
+
+test('L8 trash obstacles render as opaque canvas shapes, never emoji glyphs', async () => {
+  const l8 = await readFile(new URL('../public/level8-flight/game.js', import.meta.url), 'utf8');
+  assert.match(l8, /function drawTrashObstacle\(o\)/);
+  assert.match(l8, /drawTrashObstacle\(o\)/);
+  assert.doesNotMatch(l8, /🗑️|🧴|🥫|🧃/);
+  assert.match(l8, /ctx\.globalAlpha=o\.hit\?\.82:1/);
+});
