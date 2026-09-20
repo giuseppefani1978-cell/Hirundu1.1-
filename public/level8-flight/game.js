@@ -159,76 +159,27 @@ function drawLevel8Coast(bg){
   ctx.fillStyle=haze;
   ctx.fillRect(0,0,W,H);
 }
-function drawTrashObstacle(o){
-  const size=o.size||96;
-  const s=size/100;
-  ctx.save();
-  ctx.translate(o.x,o.y);
-  ctx.globalAlpha=o.hit?.82:1;
-  ctx.lineWidth=Math.max(2,3*s);
-  ctx.strokeStyle='#17324a';
-  ctx.lineJoin='round';
-  ctx.lineCap='round';
-  ctx.shadowColor='rgba(0,0,0,.22)';
-  ctx.shadowBlur=7*s;
-  ctx.shadowOffsetY=3*s;
-
-  if(o.kind==='trash'){
-    ctx.fillStyle='#e8ecef';
-    ctx.beginPath();
-    ctx.roundRect(-24*s,-28*s,48*s,55*s,8*s);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#607d8b';
-    ctx.fillRect(-29*s,-35*s,58*s,9*s);
-    ctx.fillStyle='#90a4ae';
-    ctx.fillRect(-15*s,-43*s,30*s,8*s);
-    ctx.strokeStyle='#35515f';
-    ctx.beginPath();
-    ctx.moveTo(-12*s,-15*s);ctx.lineTo(-12*s,17*s);
-    ctx.moveTo(0,-15*s);ctx.lineTo(0,17*s);
-    ctx.moveTo(12*s,-15*s);ctx.lineTo(12*s,17*s);
-    ctx.stroke();
-  }else if(o.kind==='bottle'){
-    ctx.fillStyle='#5fc8a9';
-    ctx.beginPath();
-    ctx.roundRect(-13*s,-24*s,26*s,51*s,10*s);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#d9f5ed';
-    ctx.fillRect(-8*s,-38*s,16*s,16*s);
-    ctx.strokeRect(-8*s,-38*s,16*s,16*s);
-    ctx.fillStyle='#f6f0d8';
-    ctx.fillRect(-11*s,-3*s,22*s,12*s);
-    ctx.strokeRect(-11*s,-3*s,22*s,12*s);
-  }else if(o.kind==='can'){
-    ctx.fillStyle='#ef6b5b';
-    ctx.beginPath();
-    ctx.roundRect(-20*s,-29*s,40*s,58*s,7*s);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#f6d55c';
-    ctx.fillRect(-20*s,-9*s,40*s,18*s);
-    ctx.fillStyle='#d5dde2';
-    ctx.fillRect(-20*s,-29*s,40*s,7*s);
-    ctx.fillRect(-20*s,22*s,40*s,7*s);
-  }else{
-    ctx.fillStyle='#f3c778';
-    ctx.beginPath();
-    ctx.moveTo(-27*s,-22*s);ctx.lineTo(18*s,-29*s);ctx.lineTo(28*s,21*s);ctx.lineTo(-20*s,29*s);ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#fff1c7';
-    ctx.fillRect(-15*s,-10*s,29*s,20*s);
-    ctx.strokeRect(-15*s,-10*s,29*s,20*s);
-    ctx.strokeStyle='#a66f2d';
-    ctx.beginPath();
-    ctx.moveTo(-4*s,-27*s);ctx.lineTo(5*s,25*s);
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';
 for(const o of S.obstacles){
   if(trashKinds.includes(o.kind)){
-    drawTrashObstacle(o);
+    const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
+    ctx.save();
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+    ctx.filter='none';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.font=`${Math.round(o.size*.78)}px system-ui`;
+    ctx.shadowColor='rgba(255,255,255,.88)';
+    ctx.shadowBlur=5;
+    ctx.shadowOffsetX=0;
+    ctx.shadowOffsetY=0;
+    ctx.fillText(glyph,o.x,o.y);
+    ctx.shadowColor='rgba(8,28,48,.62)';
+    ctx.shadowBlur=2;
+    ctx.shadowOffsetY=2;
+    ctx.fillText(glyph,o.x,o.y);
+    ctx.restore();
   }else{
     ctx.save();
     if(o.hit)ctx.globalAlpha=.70;
