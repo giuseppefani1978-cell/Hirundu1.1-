@@ -48,7 +48,7 @@ function playLevelMusic(kind=musicKindForMode()){
  if(!musicEnabled||!kind)return;
  const active=ensureLevelTrack(kind),other=kind==='battle'?huntMusic:battleMusic;
  try{other?.pause()}catch{}
- active.play().catch(()=>{});
+ if(typeof active.play==='function')Promise.resolve(active.play()).catch(()=>{});
 }
 function setLevelMusicEnabled(enabled){
  musicEnabled=!!enabled;
