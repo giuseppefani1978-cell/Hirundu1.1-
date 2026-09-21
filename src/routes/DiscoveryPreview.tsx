@@ -15,6 +15,7 @@ export default function DiscoveryPreview(){
  const t=collectionCopy();
  const text={fr:'Aperçu A10 — aucune récompense enregistrée',it:'Anteprima A10 — nessun premio registrato',en:'A10 preview — no reward saved',es:'Vista previa A10 — ninguna recompensa guardada'};
  return <main className="discovery-preview"><div><LanguageSelect/><h1>A10 + A11</h1><p>{t[15]}</p>
+ <a className="app-button" href="#/trade-preview">{({fr:'Tester les échanges · DEMO',it:'Prova gli scambi · DEMO',en:'Try trading · DEMO',es:'Probar intercambios · DEMO'} as Record<string,string>)[LANG]||'DEMO'} →</a>
  <div className="passport-collection__filters">{[0,3,9].map(n=><button className="app-button" key={n} aria-pressed={count===n} onClick={()=>setCount(n)}>{n} / 9</button>)}</div>
  <PassportCollection itinerary={itinerary} passport={{pois:{},qrValidated:{otranto:['poi_cathedral']},declaredVisited:{otranto:['poi_castle']},consultedMaps:[]}} onSelect={key=>{setSelected(key);requestAnimationFrame(()=>document.getElementById('preview-card')?.scrollIntoView({block:'start'}));}}/>
  <section id="preview-card"><h2>{t[14]}</h2><DiscoveryCard mapKey={selected} earned={false} preview/></section>
