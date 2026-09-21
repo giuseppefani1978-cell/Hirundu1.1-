@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HIRUNDU · A03 / A04</title><link rel="stylesheet" href="review.css">
+</head>
+<body>
+<main class="review">
+  <header class="review-heading"><a href="../index.html#/">← HIRUNDU</a><label><span data-i18n="language">Langue</span> <select id="language"><option value="fr">FR</option><option value="it">IT</option><option value="en">EN</option><option value="es">ES</option></select></label></header>
+  <p class="eyebrow">A03 + A04 · DESIGN REVIEW</p><h1 data-i18n="title">Même univers. Plus de clarté.</h1>
+  <p class="lead" data-i18n="intro">Propositions isolées : les niveaux jouables restent inchangés. Ces scènes sont des maquettes, pas des captures du jeu.</p>
+  <section class="reference" aria-labelledby="style-title"><div><p class="eyebrow">A03</p><h2 id="style-title" data-i18n="style">Les repères communs</h2><p data-i18n="styleNote">Le bleu nuit reste celui de l’accueil. Dans les chasses, on conserve le ciel, l’ivoire et l’encre marine.</p></div>
+    <div class="swatches"><span><i style="background:#bfe2f8"></i><b data-i18n="sky">Ciel</b><code>#BFE2F8</code></span><span><i style="background:#fffdf5"></i><b data-i18n="paper">Ivoire</b><code>#FFFDF5</code></span><span><i style="background:#0e2b4a"></i><b data-i18n="ink">Encre</b><code>#0E2B4A</code></span><span><i style="background:#2546c1"></i><b data-i18n="action">Action</b><code>#2546C1</code></span><span><i style="background:#c8b37a"></i><b data-i18n="gold">Or</b><code>#C8B37A</code></span></div>
+    <div class="component-board"><div><strong data-i18n="type">Une lecture familière</strong><p data-i18n="typeNote">Police système pour jouer. Compteurs monospace. Titres Barlow sur l’accueil.</p><span class="counter">03 / 10</span></div><div class="button-samples"><button type="button" class="game-button primary" data-demo="primary" data-i18n="continue">Continuer</button><button type="button" class="game-button" data-demo="secondary" data-i18n="back">Retour</button><button type="button" class="game-button" disabled data-i18n="locked">Verrouillé</button><p id="sample-status" role="status"></p></div></div>
+  </section>
+  <section aria-labelledby="layout-title"><p class="eyebrow">A04</p><h2 id="layout-title" data-i18n="layout">Chaque mode garde sa place</h2>
+    <div class="controls"><label><span data-i18n="mode">Mode</span><select id="mode"><option value="classic" data-i18n="classic">Classique · 1 / 2 / 9</option><option value="arkanoid" data-i18n="arkanoid">Arkanoid · 3 / 5 / 7</option><option value="flight" data-i18n="flight">Vol · 4 / 6 / 8</option><option value="battle" data-i18n="battle">Bataille · paysage</option></select></label><label><span data-i18n="size">Format</span><select id="size"><option value="390">390 × 700</option><option value="320">320 × 568</option></select></label><label><span data-i18n="version">Version</span><select id="version"><option value="proposed" data-i18n="proposed">Proposition</option><option value="reference" data-i18n="baseline">Référence reconstituée</option></select></label></div>
+    <p id="mode-note" class="mode-note"></p>
+    <div class="stage-wrap"><div id="stage" class="stage proposed classic">
+      <div class="game-header"><strong>HIRUNDU <small id="level-label">01</small></strong><button id="pause" class="game-button" type="button" aria-label="Pause">Ⅱ</button></div>
+      <div class="question"><img src="../level4-flight/assets/tarantula.png" alt=""><button id="question-open" type="button"><b>Tarantula</b><span id="question-text"></span><small class="question-more" data-i18n="read">Lire →</small></button></div>
+      <div class="arena"><div class="landscape" aria-hidden="true"></div><div class="targets" aria-hidden="true"><span>×</span><span>×</span><span>×</span></div><div class="walls" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><img class="bird" src="../level4-flight/assets/bird.png" alt="Aracne"><div class="collectibles" aria-label="3 / 10"><b>3/10</b><span>●</span><span>●</span><span>●</span><span>○</span><span>○</span><span>○</span><span>○</span><span>○</span><span>○</span><span>○</span></div><div class="boss-status"><span>Aracne ▰▰▰▱</span><span>Tarantula ▰▰▱▱</span></div><div class="flight-pad"><button class="game-button up" data-direction="up" aria-label="Haut">▲</button><button class="game-button left" data-direction="left" aria-label="Gauche">◀</button><button class="game-button right" data-direction="right" aria-label="Droite">▶</button><button class="game-button down" data-direction="down" aria-label="Bas">▼</button></div></div>
+      <div class="bottom-controls"><button class="game-button" data-direction="left" aria-label="Gauche">◀</button><button class="game-button primary" id="main-action" data-i18n="launch">Lancer</button><button class="game-button" data-direction="right" aria-label="Droite">▶</button></div>
+      <div class="safe-area" aria-hidden="true"><span></span></div>
+    </div></div>
+    <p id="geometry" class="geometry"></p><p id="interaction" class="interaction" role="status"></p>
+    <p class="footnote" data-i18n="footnote">La comparaison garde le même décor et la même taille de scène. Elle ne valide pas encore le cadrage, les collisions ou les performances du jeu réel.</p>
+  </section>
+  <dialog id="detail"><form method="dialog"><h2 id="dialog-title"></h2><p id="dialog-text"></p><button class="game-button primary" data-i18n="close">Fermer</button></form></dialog>
+</main><script src="review.js"></script>
+</body></html>
