@@ -159,25 +159,18 @@ function drawLevel8Coast(bg){
   ctx.fillStyle=haze;
   ctx.fillRect(0,0,W,H);
 }
-function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.fillStyle='#369fab';
 for(const o of S.obstacles){
   if(trashKinds.includes(o.kind)){
     const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
     ctx.save();
-    ctx.globalAlpha=1;
-    ctx.globalCompositeOperation='source-over';
-    ctx.filter='none';
+    ctx.globalAlpha=o.hit?.72:.98;
+    ctx.shadowColor='rgba(12,39,58,.26)';
+    ctx.shadowBlur=10;
+    ctx.shadowOffsetY=5;
+    ctx.font=`${Math.round(o.size*.78)}px system-ui`;
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.font=`${Math.round(o.size*.78)}px system-ui`;
-    ctx.shadowColor='rgba(255,255,255,.88)';
-    ctx.shadowBlur=5;
-    ctx.shadowOffsetX=0;
-    ctx.shadowOffsetY=0;
-    ctx.fillText(glyph,o.x,o.y);
-    ctx.shadowColor='rgba(8,28,48,.62)';
-    ctx.shadowBlur=2;
-    ctx.shadowOffsetY=2;
     ctx.fillText(glyph,o.x,o.y);
     ctx.restore();
   }else{
