@@ -12,7 +12,7 @@ for(const family of ['classic','arkanoid','flight'])test(`${family}: actual coun
  let next,id=0,cancelled=0,animated=0;w.requestAnimationFrame=fn=>{next=fn;return ++id;};w.cancelAnimationFrame=()=>cancelled++;
  const media={matches:false,addEventListener(){},removeEventListener(){}};w.matchMedia=()=>media;
  w.HTMLElement.prototype.animate=()=>{animated++;return {cancel(){}};};
- w.eval(readFileSync('src/legacy/practice-model.js','utf8').replaceAll('export function','function')+'\n'+readFileSync('src/legacy/practice.js','utf8').replace(/^import .*;$/m,'').replaceAll('export function','function')+'\n'+source.replace(/^import .*;$/m,'').replace('export function','function'));
+ w.eval(readFileSync('src/legacy/rhythm.js','utf8').replaceAll('export function','function')+'\n'+readFileSync('src/legacy/practice-model.js','utf8').replaceAll('export function','function')+'\n'+readFileSync('src/legacy/practice.js','utf8').replace(/^import .*;$/m,'').replaceAll('export function','function')+'\n'+source.replace(/^import .*;$/gm,'').replace('export function','function'));
  let state=Object.freeze({playing:false,settings:true,found:0,bonus:0,damage:0}),host=d.getElementById('intro');
  const config={family,canvas:d.querySelector('canvas'),snapshot:()=>state,muted:()=>true,host:()=>host,counter:()=>d.getElementById('count')};
  const experience=w.mountPlayerExperience(config);next(0);assert.equal(experience.panel.parentElement,host);

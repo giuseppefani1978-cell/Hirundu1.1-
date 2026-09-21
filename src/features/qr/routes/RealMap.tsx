@@ -1,6 +1,7 @@
 import { bt, LANG } from "../i18n/bonusLocale";
 import { copy } from '../../../ui/copy.js';
 import { passportCopy as pc } from '../passport/passportCopy';
+import DiscoveryCard from '../../bonus/DiscoveryCard';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon, type LatLngExpression, type LatLngTuple } from "leaflet";
@@ -217,6 +218,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
           );
         })}
       </nav>
+      <DiscoveryCard mapKey={key} earned={Boolean(itinerary.find(step=>step.key===key)?.completed)} passport/>
       <PassportSalentino
         mapTitle={cfg.title}
         itinerary={itinerary}

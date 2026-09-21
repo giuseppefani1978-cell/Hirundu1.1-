@@ -11,6 +11,7 @@ const RealMap = lazy(() => import("./features/qr/routes/RealMap"));
 const AppLayout = lazy(() => import("./ui/AppLayout"));
 const StartPage = lazy(() => import("./routes/StartPage"));
 const JourneyPage = lazy(() => import("./routes/JourneyPage"));
+const DiscoveryPreview = lazy(() => import("./routes/DiscoveryPreview"));
 const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
@@ -116,6 +117,7 @@ export default function App() {
           {/* Accueil */}
           <Route path="/" element={<StartPage />} />
           <Route path="/journey" element={<JourneyPage />} />
+          <Route path="/discovery-preview" element={<DiscoveryPreview />} />
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />

@@ -317,6 +317,7 @@ export function boot(options = {}){
     playing: mode === 'play' && !isGamePaused(),
     settings: mode === 'splash' || (mode === 'play' && isGamePaused()),
     found: collected.size, bonus: bonusesPicked, damage: hits,
+    dangerIn: enemies.length < ENEMY_CONFIG.MAX_ON_SCREEN ? (enemySpawnAt-performance.now())/1000 : Infinity,
   }), () => !isMusicOn());
 
   function scoreReset(){

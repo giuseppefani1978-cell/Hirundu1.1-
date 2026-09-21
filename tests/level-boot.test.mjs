@@ -33,6 +33,7 @@ for (const language of ['fr','it','en','es']) test(`nine hunts and victory routi
  const server=await createServer({server:{middlewareMode:true},appType:'custom', plugins:[{
   name:'test-only-battle-outcome', enforce:'post',
   transform(code,id) {
+   if(id.endsWith('/src/features/bonus/DiscoveryCard.tsx')) return code.replace(/import \{ useNavigate \} from ['"]react-router-dom['"];/, "import Router from 'react-router-dom'; const {useNavigate}=Router;");
    if(id.endsWith('/src/features/qr/routes/RealMap.tsx')) return code.replace('import { useNavigate, useParams } from "react-router-dom";', 'import Router from "react-router-dom"; const {useNavigate,useParams}=Router;');
    if(id.endsWith('/src/battle.js')) return code + '\nexport { _endBattle as finishBattleForTest };';
   }

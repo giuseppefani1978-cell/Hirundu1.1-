@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useBonusProgress } from '../features/bonus/useBonusProgress';
 import { BONUS_MAPS } from '../features/bonus/bonusData';
 import LanguageSelect from '../ui/LanguageSelect';
+import DiscoveryCard from '../features/bonus/DiscoveryCard';
 import { copy } from '../ui/copy.js';
 import './BonusHubPage.css';
 const Rankings = lazy(() => import('../features/bonus/HallOfFameSection'));
@@ -35,6 +36,7 @@ export default function BonusHubPage() {
         const unlocked = unlockedKeys.includes(level.key) || level.done;
         return <article key={level.key} className="discoveries__card">
           <span>{copy.level} {level.id}</span><h3>{BONUS_MAPS[level.key].title}</h3>
+          <DiscoveryCard mapKey={level.key} earned={level.done}/>
           <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
             {unlocked ? copy.open : copy.locked}
           </button>
