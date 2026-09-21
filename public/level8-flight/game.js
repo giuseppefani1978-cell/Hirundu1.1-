@@ -138,6 +138,7 @@ function drawLevel8Coast(bg){
 
   ctx.save();
   ctx.drawImage(bg,x,y,dw,dh);
+  window.HirunduScenery?.draw(ctx,x,y,dw,dh,S.clock); // A06 scenery-only hook
 
   const fadeZone=Math.min(H*.24,Math.max(90,travel*.16));
   if(scenicOffset>travel-fadeZone){
@@ -148,6 +149,7 @@ function drawLevel8Coast(bg){
     // A small opposite lateral drift prevents a visible identical overlay.
     const nextX=(W-dw)/2-drift*.55;
     ctx.drawImage(bg,nextX,scenicOffset-travel*2,dw,dh);
+    window.HirunduScenery?.draw(ctx,nextX,scenicOffset-travel*2,dw,dh,S.clock); // A06 scenery-only hook
   }
   ctx.restore();
 

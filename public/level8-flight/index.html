@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#bfe2f8">
   <title>HIRUNDU · Niveau 8 · Vol sur le Salento</title>
+  <style>#sceneryToggle::after{content:"";position:absolute;inset:50% 0 auto;height:44px;transform:translateY(-50%)}#sceneryToggle[aria-pressed="true"]{background:#d9eef4}</style>
   <link rel="stylesheet" href="style.css?v=20260921-l8fillreset1">
 <link rel="stylesheet" href="../shared/player-ui.css?v=a34-1"></head>
 <body class="hirundu-flight">
@@ -13,6 +14,7 @@
     <strong>HIRUNDU <small>08 · MESSAPIA</small></strong>
     <div>
       <button id="pause" aria-label="Pause">Ⅱ</button>
+      <button id="sceneryToggle" type="button" aria-pressed="true" aria-label="Reflets activés" style="min-width:44px;position:relative">≋</button>
     </div>
   </header>
 
@@ -41,6 +43,7 @@
         <h1 id="title"></h1>
         <p id="help"></p>
         <p id="detail"></p>
+        <p id="sceneryHint" style="font-size:12px"></p>
         <div id="pauseOptions" class="pause-options">
           <label id="pauseLangRow" hidden>
             <span>🌐</span>
@@ -67,6 +70,7 @@
 </main>
 
 <script src="places.js?v=20260921-l8fillreset1"></script>
-<script src="game.js?v=a34-1"></script>
+<script src="scenery-effects.js?v=a06-play-1"></script>
+<script src="game.js?v=a06-play-1"></script>
 <script src="../shared/question-reader.js?v=a34-1"></script></body>
 </html>

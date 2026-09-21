@@ -9,7 +9,8 @@ for(const id of [3,5,7,4,6,8]){
  test(`A03/A04 level ${id}: preserve existing engine, clue reader pauses without reset`,()=>{
   const now=readFileSync(file,'utf8');
   const split=now.indexOf('\n// A04: reuse Pause');
-  assert.equal(createHash('sha256').update(now.slice(0,split)).digest('hex'),baselineHashes[id],'Existing physics and flow must stay byte-identical');
+  const engine=now.slice(0,split).replace(/^  window\.HirunduScenery\?\.draw\(ctx,x,y,dw,dh,S\.clock\); \/\/ A06 scenery-only hook\n/m,'').replace(/^    window\.HirunduScenery\?\.draw\(ctx,nextX,scenicOffset-travel\*2,dw,dh,S\.clock\); \/\/ A06 scenery-only hook\n/m,'');
+  assert.equal(createHash('sha256').update(engine).digest('hex'),baselineHashes[id],'Existing physics and flow must stay byte-identical, excluding the two exact decorative A06 draw calls');
   const adapter=now.slice(split);
   let paused=0;
   const state={mode:family==='arkanoid'?'flying':'playing'};
