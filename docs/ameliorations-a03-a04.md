@@ -31,3 +31,9 @@ L’atelier propose FR/IT/EN/ES, portrait 320 × 568 et 390 × 700, bataille 740
 Les tests automatisés vérifient les sélecteurs, les quatre langues, les quatre modes, le déplacement illustratif, les assets locaux et l’absence d’écriture de progression. Ils ne constituent pas une validation visuelle sur iPhone/Android.
 
 A03 et A04 restent **proposées, à valider**. Après accord : intégrer les tokens à portée limitée, tester chaque vrai mode aux mêmes dimensions avant/après, préserver les cadrages, mesurer les zones de jeu et valider l’absence de chevauchements sur appareils. Ne pas annoncer A04 terminée tant que ces comparaisons réelles ne sont pas faites.
+
+## Précision utilisateur — paddle et bataille
+
+Le paddle Arkanoid sur lequel Aracne rebondit est indispensable : conserver aspect, dimensions, glissement, angle de rebond et lancement des niveaux 3/5/7. Son absence dans la première maquette était une omission de représentation, jamais une proposition de suppression. Le paddle vert/or reprend les couleurs du moteur actuel et suit maintenant les commandes gauche/droite de la maquette.
+
+Batailles : conserver au maximum le travail existant, notamment les sept commandes actuelles du niveau 3 (gauche, saut, plongée, droite, esquive, attaque, spécial), les mouvements d’Aracne, les boss, l’équilibrage et l’introduction portrait/paysage. La proposition générique à trois boutons est retirée de la maquette bataille. Pas de refonte de combat ; seulement des retouches de lisibilité après comparaison et approbation. Les autres familles gardent leurs propres commandes.

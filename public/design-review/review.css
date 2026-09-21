@@ -3,3 +3,12 @@
 .reference.arkanoid #pause{min-width:44px;min-height:44px}
 .reference.classic #pause{min-width:42px;min-height:42px}
 .reference.arkanoid .question #question-text{font-size:14px;line-height:1.4}
+
+/* Preserve the Arkanoid paddle, using the game's green/gold treatment. */
+.paddle{display:none;position:absolute;bottom:38px;left:52%;transform:translateX(-50%);width:26%;height:17px;border-radius:8px;background:#285448;border:2px solid #f6d27a;box-shadow:0 3px 10px #243d3655}
+.paddle::after{content:'';position:absolute;left:7px;right:7px;top:2px;height:3px;background:#eaca78;border-radius:2px}
+.arkanoid .paddle{display:block}
+.battle-preserved{display:none}
+.battle .bottom-controls{display:none}
+.battle .battle-preserved{display:flex;flex:none;gap:7px;padding:7px 10px;justify-content:center;flex-wrap:wrap}
+.battle-preserved .game-button{font-family:'Courier New',monospace}
