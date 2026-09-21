@@ -2,6 +2,7 @@ import { bt, LANG } from "../i18n/bonusLocale";
 import { copy } from '../../../ui/copy.js';
 import { passportCopy as pc } from '../passport/passportCopy';
 import DiscoveryCard from '../../bonus/DiscoveryCard';
+import PassportCollection from '../../bonus/PassportCollection';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon, type LatLngExpression, type LatLngTuple } from "leaflet";
@@ -21,6 +22,7 @@ import { findPartnerById, getPartnerVerificationStatus, type Partner } from "../
 import {
   PASSPORT_EVENT,
   PASSPORT_STORAGE_KEY,
+  readPassportStorage,
   getDeclaredVisitedFor,
   getQrValidatedFor,
   isBrowserEnvironment,
@@ -219,6 +221,10 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
         })}
       </nav>
       <DiscoveryCard mapKey={key} earned={Boolean(itinerary.find(step=>step.key===key)?.completed)} passport/>
+      <PassportCollection itinerary={itinerary} passport={readPassportStorage()} onSelect={city=>{
+        navigate(`/passport/${city}`);
+        requestAnimationFrame(()=>document.querySelector('.discovery-keepsake')?.scrollIntoView({block:'start'}));
+      }}/>
       <PassportSalentino
         mapTitle={cfg.title}
         itinerary={itinerary}

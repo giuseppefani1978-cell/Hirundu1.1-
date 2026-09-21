@@ -1,5 +1,4 @@
 import { attachPractice } from './practice.js';
-import { mountRhythm } from './rhythm.js';
 // Shared hunt feedback and family guides. Never writes gameplay state.
 const copy={
     fr:['Effets visuels','Sons des actions','Tester le son','Revoir le guide vol','Suivant','Terminer','Passer','Maintiens une flèche du pavé pour piloter. Le décor défile seul ; toucher la carte ne déplace pas Aracne.','Lis la question, puis rejoins la carte du bon lieu. Chaque découverte ajoute une amphore.','Évite les obstacles. Le café redonne de l’énergie ; le rustico protège temporairement.','Bonus collecté','Lieu découvert','Dommage reçu','Chasse terminée !','Son prêt : tu devrais entendre deux notes.','Audio indisponible ou bloqué. Réessaie avec « Tester le son ».','Sons coupés. Active « Sons des actions ».','Musique coupée : les sons des actions sont également coupés.','Préférence non enregistrée sur cet appareil.'],
@@ -28,7 +27,6 @@ export function mountPlayerExperience(config){
  panel.innerHTML='<label><input data-ui="effects" type="checkbox"><span data-ui="effectsLabel"></span></label> <label><input data-ui="sound" type="checkbox"><span data-ui="soundLabel"></span></label><button type="button" data-ui="test"></button><p data-ui="audio" role="status"></p><button type="button" data-ui="review"></button><div data-ui="guide"><p data-ui="instruction"></p><button type="button" data-ui="next"></button><button type="button" data-ui="skip"></button></div>';
  const el=name=>panel.querySelector('[data-ui="'+name+'"]');
  const practice=attachPractice({host:panel,family:config.family,allowed:()=>config.snapshot().settings});
- const rhythm=mountRhythm({host:panel,canvas:config.canvas,advance:config.advance});
  const status=document.createElement('div');status.className='hirundu-action-status';status.setAttribute('role','status');document.body.append(status);
  el('effects').checked=read('hirundu_action_effects_v1','on')==='on';
  el('sound').checked=read('hirundu_action_sound_v1','off')==='on';
@@ -65,7 +63,6 @@ export function mountPlayerExperience(config){
  function update(now){
   if(!active)return;
   const current=config.snapshot();
-  rhythm.update(current);
   if(lang()!==lastLanguage){lastLanguage=lang();labels();}
   const host=current.settings?config.host():null;
   if(host&&panel.parentElement!==host)host.append(panel);
@@ -92,5 +89,5 @@ export function mountPlayerExperience(config){
  document.addEventListener('pointerdown',arm);document.addEventListener('keydown',arm);
  media.addEventListener?.('change',clear);document.addEventListener('visibilitychange',onHidden);
  labels();frame=requestAnimationFrame(update);
- return {dispose(){active=false;cancelAnimationFrame(frame);clear();audio?.close();practice.dispose();rhythm.dispose();panel.remove();status.remove();media.removeEventListener?.('change',clear);document.removeEventListener('visibilitychange',onHidden);document.removeEventListener('pointerdown',arm);document.removeEventListener('keydown',arm);},panel};
+ return {dispose(){active=false;cancelAnimationFrame(frame);clear();audio?.close();practice.dispose();panel.remove();status.remove();media.removeEventListener?.('change',clear);document.removeEventListener('visibilitychange',onHidden);document.removeEventListener('pointerdown',arm);document.removeEventListener('keydown',arm);},panel};
 }

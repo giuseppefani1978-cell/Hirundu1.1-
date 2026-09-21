@@ -4,6 +4,8 @@ import { useBonusProgress } from '../features/bonus/useBonusProgress';
 import { BONUS_MAPS } from '../features/bonus/bonusData';
 import LanguageSelect from '../ui/LanguageSelect';
 import DiscoveryCard from '../features/bonus/DiscoveryCard';
+import { collectionCopy } from '../features/bonus/collectionCopy';
+import '../features/bonus/PassportCollection.css';
 import { copy } from '../ui/copy.js';
 import './BonusHubPage.css';
 const Rankings = lazy(() => import('../features/bonus/HallOfFameSection'));
@@ -17,6 +19,8 @@ export default function BonusHubPage() {
   const next = progress.find((level) => !level.done && level.unlocked);
   const completed = progress.filter((level) => level.done).length;
   const unlockedKey = (location.state as { unlockedKey?: string } | null)?.unlockedKey;
+  const featured = progress.find(level=>level.key===unlockedKey&&level.done) || [...progress].reverse().find(level=>level.done);
+  const collection = collectionCopy();
   return <main className="discoveries">
     <header className="discoveries__nav">
       <button className="app-button app-button--ghost" onClick={() => navigate('/')}>← {copy.home}</button>
@@ -30,6 +34,11 @@ export default function BonusHubPage() {
         ▶ {copy.continue} · {copy.level} {next.id}
       </button> : <><p>{copy.complete}</p><button className="app-button" onClick={() => navigate('/level/1')}>{copy.replay}</button></>}
     </section>
+    {featured && <section className="discoveries__spotlight">
+      <h2>{featured.key===unlockedKey ? collection[0] : collection[14]}</h2>
+      <DiscoveryCard mapKey={featured.key} earned/>
+      <button className="app-button" onClick={()=>navigate('/passport/'+featured.key)}>{collection[12]} · {completed} / {progress.length}</button>
+    </section>}
     <section aria-labelledby="maps-title">
       <h2 id="maps-title">{copy.maps}</h2><p>{copy.mapHint}</p>
       <div className="discoveries__maps">{progress.map((level) => {

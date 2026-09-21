@@ -1,7 +1,6 @@
 import { mountPlayerExperience } from './playerExperience.js';
 import './playerExperience.css';
 import './practice.css';
-import './rhythm.css';
 export function actionSoundsEnabled(){try{return localStorage.getItem('hirundu_action_sound_v1')==='on';}catch{return false;}}
 export function mountClassicExperience(canvas,snapshot,muted){
  return mountPlayerExperience({family:'classic',canvas,snapshot,muted,existingAudio:true,

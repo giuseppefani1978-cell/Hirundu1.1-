@@ -5,19 +5,6 @@ import {JSDOM} from 'jsdom';
 import React,{act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createServer} from 'vite';
-test('A09 warnings are bounded, muted in pause/battle, optional and advance only on a click',()=>{
- const source=readFileSync('src/legacy/rhythm.js','utf8');assert.equal(source,readFileSync('public/shared/rhythm.js','utf8'));
- const dom=new JSDOM('<html lang="fr"><div id="host"></div><canvas></canvas></html>',{runScripts:'outside-only',url:'https://example.test/',pretendToBeVisual:true}),w=dom.window,d=w.document;
- w.eval(source.replace('export function','function'));let advances=0;
- const r=w.mountRhythm({host:d.getElementById('host'),canvas:d.querySelector('canvas'),advance:()=>advances++});
- const warning=d.querySelector('.hirundu-danger'),button=d.querySelector('.hirundu-advance');
- r.update({playing:true,dangerIn:1.2,canAdvance:false});assert.equal(warning.hidden,true);assert.equal(button.hidden,true);
- r.update({playing:true,dangerIn:.5,canAdvance:true,advanceKind:'targets'});assert.equal(warning.hidden,false);assert.match(button.textContent,/cibles/);assert.equal(advances,0);button.click();button.click();assert.equal(advances,1);
- r.update({playing:false,dangerIn:.5,canAdvance:true});assert.equal(warning.hidden,true);assert.equal(button.hidden,true);button.click();assert.equal(advances,1);
- const check=d.querySelector('input');check.checked=false;check.dispatchEvent(new w.Event('change'));r.update({playing:true,dangerIn:.4});assert.equal(warning.hidden,true);
- for(const language of ['fr','it','en','es']){d.documentElement.lang=language;r.update({playing:true,canAdvance:true,advanceKind:'question'});assert.ok(button.textContent.length>5);}
- r.dispose();assert.equal(d.querySelector('.hirundu-danger'),null);dom.window.close();
-});
 test('A10 cards preserve real-world passport data, gate locked content, localize, and navigate to their territory',async()=>{
  const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test/'}),prior={};
  for(const k of ['window','document','localStorage','CustomEvent','IS_REACT_ACT_ENVIRONMENT']){prior[k]=Object.getOwnPropertyDescriptor(globalThis,k);Object.defineProperty(globalThis,k,{value:k==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[k],configurable:true,writable:true});}
@@ -37,6 +24,25 @@ test('A10 cards preserve real-world passport data, gate locked content, localize
   }
   await mount({mapKey:'arneo',earned:true});await act(async()=>d.querySelector('button').click());assert.equal(d.querySelector('output').textContent,'/passport/arneo');
   await mount({mapKey:'itria',earned:false,preview:true});assert.match(d.querySelector('article').textContent,/DEMO/);assert.equal(d.querySelector('button'),null);
+  assert.equal(storage.getItem('salentino_passport_v1'),before);
+  const {default:Collection}=await server.ssrLoadModule('/src/features/bonus/PassportCollection.tsx');
+  const {collectionCopy}=await server.ssrLoadModule('/src/features/bonus/collectionCopy.ts');
+  const keys=Object.keys(DISCOVERY_CARDS);let selected=null;
+  const passport={pois:{},qrValidated:{otranto:['poi_cathedral','foreign','poi_cathedral']},declaredVisited:{otranto:['poi_castle']},consultedMaps:[]};
+  async function showCollection(count){
+   if(root)await act(async()=>root.unmount());root=createRoot(d.getElementById('root'));
+   const itinerary=keys.map((key,i)=>({key,id:i+1,name:key,completed:i<count,available:i<=count}));
+   await act(async()=>root.render(React.createElement(Collection,{itinerary,passport,onSelect:key=>selected=key})));
+  }
+  for(const lang of ['fr','it','en','es']){
+   setLang(lang);await showCollection(0);assert.equal(d.querySelectorAll('.passport-collection__tile').length,9);assert.equal(d.querySelectorAll('img').length,0);assert.equal(d.querySelectorAll('.passport-collection__tile button').length,0);
+   assert.ok(!d.body.textContent.includes(DISCOVERY_CARDS.itria.name));assert.ok(d.body.textContent.includes(collectionCopy()[9]));
+   await showCollection(3);assert.equal(d.querySelector('progress').value,3);assert.equal(d.querySelectorAll('img').length,3);
+   assert.deepEqual([...d.querySelectorAll('.passport-collection__tile:first-child dd')].map(el=>el.textContent),['1','1']);
+   await act(async()=>d.querySelector('.passport-collection__tile button').click());assert.equal(selected,'otranto');
+   await act(async()=>d.querySelectorAll('.passport-collection__filters button')[2].click());assert.equal(d.querySelectorAll('.passport-collection__tile').length,6);assert.equal(d.querySelectorAll('img').length,0);
+   await showCollection(9);assert.equal(d.querySelector('progress').value,9);assert.ok(d.body.textContent.includes(collectionCopy()[4]));
+  }
   assert.equal(storage.getItem('salentino_passport_v1'),before);
  }finally{if(root)await act(async()=>root.unmount());await server.close();dom.window.close();for(const [k,v] of Object.entries(prior)){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 });

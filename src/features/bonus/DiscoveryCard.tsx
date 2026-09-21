@@ -4,6 +4,7 @@ import { LANG } from '../../i18n.js';
 import { withBase } from '../../utils/basePath.js';
 import { BONUS_MAPS,type BonusKey } from './bonusData';
 import { DISCOVERY_CARDS } from './discoveryCards';
+import { collectionCopy } from './collectionCopy';
 import './DiscoveryCard.css';
 const labels={
  fr:['Acquis dans le jeu','Dans ton passeport','Illustration du territoire','Le savais-tu ?','Voir la source','Ouvrir le passeport','Une découverte virtuelle ne valide pas une visite réelle.'],
@@ -21,7 +22,10 @@ export default function DiscoveryCard({mapKey,earned,passport=false,preview=fals
   <div className="discovery-keepsake__body"><span className="discovery-keepsake__stamp">{preview?'A10 · DEMO':'✓ '+t[0]}</span><h3>{data.name}</h3>
   <p><strong>{t[3]}</strong> {data.fact[index]}</p><a href={data.source} target="_blank" rel="noopener noreferrer">{t[4]} ↗</a>
   {!preview&&<p className="discovery-keepsake__saved">📔 {t[1]} · {BONUS_MAPS[mapKey].title}</p>}
-  {!passport&&!preview&&<button className="app-button" onClick={()=>navigate('/passport/'+mapKey)}>{t[5]}</button>}
+  {!preview&&<div className="discovery-keepsake__actions">
+   {!passport&&<button className="app-button" onClick={()=>navigate('/passport/'+mapKey)}>{t[5]}</button>}
+   <button className="app-button" onClick={()=>navigate('/poi/'+mapKey+'/realmap')}>{collectionCopy()[10]} ↗</button>
+  </div>}
   <small>{t[6]}</small></div>
  </article>;
 }
