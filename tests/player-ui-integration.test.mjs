@@ -10,7 +10,8 @@ for(const id of [3,5,7,4,6,8]){
   const now=readFileSync(file,'utf8');
   const split=now.indexOf('\n// A04: reuse Pause');
   const engine=now.slice(0,split).replace(/^  window\.HirunduScenery\?\.draw\(ctx,x,y,dw,dh,S\.clock\); \/\/ A06 scenery-only hook\n/m,'').replace(/^    window\.HirunduScenery\?\.draw\(ctx,nextX,scenicOffset-travel\*2,dw,dh,S\.clock\); \/\/ A06 scenery-only hook\n/m,'');
-  assert.equal(createHash('sha256').update(engine).digest('hex'),baselineHashes[id],'Existing physics and flow must stay byte-identical, excluding the two exact decorative A06 draw calls');
+  const preserved=engine.replace("const slot=kind==='battle'?battleMusic:huntMusic;","const slot=kind==='battle'?'battleMusic':'huntMusic';");
+  assert.equal(createHash('sha256').update(preserved).digest('hex'),baselineHashes[id],'Existing physics and flow must stay byte-identical, excluding the two decorative A06 calls and the exact audio cache correction');
   const adapter=now.slice(split);
   let paused=0;
   const state={mode:family==='arkanoid'?'flying':'playing'};

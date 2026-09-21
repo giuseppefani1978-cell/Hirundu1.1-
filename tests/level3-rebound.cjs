@@ -4,9 +4,12 @@ const ctx=new Proxy({measureText:s=>({width:s.length*10})},{get:(o,k)=>o[k]||(()
 function element(id){if(!elements.has(id))elements.set(id,{textContent:'',value:'fr',options:[{},{},{}],classList:{add(){},remove(){},toggle(){}},style:{},setAttribute(){},addEventListener(){},focus(){},setPointerCapture(){},getBoundingClientRect:()=>({left:0,top:0,width:390,height:540}),getContext:()=>ctx});return elements.get(id)}
 const sandbox={console,document:{getElementById:element,documentElement:{},body:{classList:{add(){},remove(){},toggle(){}}},addEventListener(){}},navigator:{language:'en'},Image:class{set src(v){this.complete=true;this.naturalWidth=1024;this.naturalHeight=1536;this.onload()}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},URLSearchParams,devicePixelRatio:2,addEventListener(){},requestAnimationFrame(){},location:{reload(){},search:'',origin:'https://example.test'},Math};
 sandbox.window=sandbox;sandbox.parent=sandbox;
+const audioTracks=[];
+sandbox.Audio=class{constructor(src){this.src=src;this.paused=true;this.plays=0;audioTracks.push(this);}play(){this.paused=false;this.plays++;return Promise.resolve();}pause(){this.paused=true;}};
 vm.createContext(sandbox);for(const f of ['hunt-model.js','places.js','battle.js','game.js'])vm.runInContext(fs.readFileSync('public/level3-arkanoid/'+f,'utf8'),sandbox);
 const run=s=>vm.runInContext(s,sandbox);
 (async()=>{await new Promise(r=>setImmediate(r));run('start()');assert.equal(run('state.mode'),'ready');
+assert.equal(audioTracks.length,1);assert.equal(audioTracks[0].plays,1,'starting the real hunt requests music playback');
 run('launch()');assert.equal(run('state.mode'),'flying');const launchY=run('state.ball.y');run('step(.1)');assert.ok(run('state.ball.y')<launchY);
 run('state.mode="flying";state.paddle=300;state.paddleTarget=520;state.paddleV=0;step(.01)');assert.ok(run('state.paddle>300&&state.paddle<520'),'paddle eases toward target');
 run('pause()');const y=run('state.ball.y');run('step(1)');assert.equal(run('state.ball.y'),y);run('resume()');assert.equal(run('state.mode'),'flying');

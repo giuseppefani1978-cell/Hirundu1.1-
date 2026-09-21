@@ -28,7 +28,7 @@ const MUSIC_PREF_KEY='hirundu_music_v1';
 let musicEnabled=(()=>{try{return localStorage.getItem(MUSIC_PREF_KEY)!=='off'}catch{return true}})();
 let huntMusic=null,battleMusic=null;
 function ensureLevelTrack(kind){
- const slot=kind==='battle'?'battleMusic':'huntMusic';
+ const slot=kind==='battle'?battleMusic:huntMusic;
  if(slot)return slot;
  const track=new Audio(kind==='battle'?'../assets/battle_loop.mp3':'../assets/hunt_loop.wav');
  track.loop=true;track.preload='auto';track.volume=kind==='battle'?.58:.60;

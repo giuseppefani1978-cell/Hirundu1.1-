@@ -1,7 +1,7 @@
 import { mountPlayerExperience } from './player-experience.js';
 const ark=document.body.classList.contains('hirundu-arkanoid');
 const gameCanvas=document.getElementById('game');
-const instance=mountPlayerExperience({family:ark?'arkanoid':'flight',canvas:gameCanvas,muted:()=>!musicEnabled,
+const instance=mountPlayerExperience({family:ark?'arkanoid':'flight',canvas:gameCanvas,muted:()=>!(typeof musicEnabled==='boolean'?musicEnabled:typeof hostMusicEnabled==='boolean'?hostMusicEnabled:false),
  host:()=>document.querySelector('#cover .card')||document.querySelector('#cover article'),
  counter:kind=>document.getElementById(ark?(kind==='discovery'?'leaves':kind==='damage'?'energy':'coffeeCount'):'progress'),
  snapshot:()=>ark?{
