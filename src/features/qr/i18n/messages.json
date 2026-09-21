@@ -820,5 +820,29 @@
     "it": "Torna alle scoperte",
     "en": "Back to discoveries",
     "es": "Volver a los descubrimientos"
+  },
+  "Partenaire confirmé": {
+    "fr": "Partenaire confirmé",
+    "it": "Partner confermato",
+    "en": "Confirmed partner",
+    "es": "Socio confirmado"
+  },
+  "Commerce référencé · partenariat non confirmé": {
+    "fr": "Commerce référencé · partenariat non confirmé",
+    "it": "Attività elencata · collaborazione non confermata",
+    "en": "Listed business · partnership unconfirmed",
+    "es": "Comercio listado · colaboración no confirmada"
+  },
+  "Démonstration · aucun partenariat ni avantage réel confirmé": {
+    "fr": "Démonstration · aucun partenariat ni avantage réel confirmé",
+    "it": "Dimostrazione · nessuna collaborazione o vantaggio reale confermato",
+    "en": "Demo · no confirmed partnership or real benefit",
+    "es": "Demostración · sin colaboración ni beneficio real confirmado"
+  },
+  "Les fiches de lieux de ce territoire sont en préparation. Tu peux continuer le jeu.": {
+    "fr": "Les fiches de lieux de ce territoire sont en préparation. Tu peux continuer le jeu.",
+    "it": "Le schede dei luoghi di questo territorio sono in preparazione. Puoi continuare a giocare.",
+    "en": "Place details for this territory are being prepared. You can continue playing.",
+    "es": "Las fichas de lugares de este territorio están en preparación. Puedes seguir jugando."
   }
 }

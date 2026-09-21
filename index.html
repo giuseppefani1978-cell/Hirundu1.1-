@@ -17,6 +17,20 @@
   })();
 </script>
     <script>
+      // Available even when the application bundle cannot load.
+      (() => {
+        const messages = {
+          fr: ['Rechargement nécessaire.', 'Recharger', 'Sur iPhone : Partager → Ajouter à l’écran d’accueil'],
+          it: ['È necessario ricaricare.', 'Ricarica', 'Su iPhone: Condividi → Aggiungi alla schermata Home'],
+          en: ['Reload required.', 'Reload', 'On iPhone: Share → Add to Home Screen'],
+          es: ['Es necesario recargar.', 'Recargar', 'En iPhone: Compartir → Añadir a la pantalla de inicio'],
+        };
+        let lang = new URLSearchParams(location.search).get('lang');
+        try { lang = lang || localStorage.getItem('__lang__'); } catch {}
+        window.__HIRUNDU_BOOT_COPY__ = messages[lang] || messages.fr;
+      })();
+    </script>
+    <script>
       // PWA boot recovery: if an old standalone launch/cache leaves the React root blank,
       // retry once from the canonical GitHub Pages root with a cache-busting query.
       (() => {
@@ -28,8 +42,8 @@
           if (!root) return;
           root.innerHTML =
             '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#a9d6f5;color:#0e2b4a;font:600 16px system-ui;text-align:center">' +
-            '<div><strong>HIRUNDU</strong><br><br>Rechargement nécessaire.<br>' +
-            '<button id="hirunduRecoveryButton" style="margin-top:16px;padding:12px 16px;border:0;border-radius:12px;background:#0e2b4a;color:#fff;font:700 15px system-ui">Recharger</button></div></div>';
+            '<div><strong>HIRUNDU</strong><br><br>' + window.__HIRUNDU_BOOT_COPY__[0] + '<br>' +
+            '<button id="hirunduRecoveryButton" style="margin-top:16px;padding:12px 16px;border:0;border-radius:12px;background:#0e2b4a;color:#fff;font:700 15px system-ui">' + window.__HIRUNDU_BOOT_COPY__[1] + '</button></div></div>';
           document.getElementById("hirunduRecoveryButton")?.addEventListener("click", () => {
             try { sessionStorage.removeItem(RECOVERY_KEY); } catch {}
             const url = new URL(BASE, location.origin);
@@ -185,7 +199,7 @@
         const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
         if (isIOS && isSafari && !isStandalone) {
           const tip = document.createElement("div");
-          tip.innerHTML = "Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>";
+          tip.textContent = window.__HIRUNDU_BOOT_COPY__[2];
           tip.style.cssText =
             "position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);";
           document.body.appendChild(tip);

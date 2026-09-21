@@ -134,8 +134,8 @@
     "id": "beach_grotte",
     "name": "Grotta della Poesia",
     "type": "beach",
-    "lat": 40.2883,
-    "lng": 18.4317,
+    "lat": 40.286061,
+    "lng": 18.430054,
     "reward": {
       "type": "stars",
       "value": 2

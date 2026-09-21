@@ -61,10 +61,7 @@ export default function QrHub() {
 
   const enrichedPois = useMemo(() => getEnrichedPois(), []);
 
-  const actionDescriptor = useMemo(() => {
-    if (!lastScan) return null;
-    return describeAction(lastScan, navigate, enrichedPois);
-  }, [lastScan, navigate, enrichedPois]);
+  const actionDescriptor = lastScan ? describeAction(lastScan, navigate, enrichedPois) : null;
 
   const openScanner = useCallback(() => {
     setScannerKey((k) => k + 1); // force remount
@@ -397,7 +394,9 @@ function describeAction(
         icon: "🏅",
         title: `${bt("Badge débloqué")} : ${action.name}`,
         subtitle: (partnerByName ? bt(partnerByName.description) : "") || bt("Badge fictif pour valider le flux de progression."),
-        meta: partnerByName ? rewardLabel(partnerByName.reward) : undefined,
+        meta: partnerByName && getPartnerVerificationStatus(partnerByName) === "confirmed"
+          ? rewardLabel(partnerByName.reward)
+          : bt("Aucune récompense réelle attribuée"),
         tone: partnerByName && getPartnerVerificationStatus(partnerByName) === "confirmed" ? "success" : "neutral",
         actionLabel: bt("Voir les bonus"),
         onAction: () => navigate("/bonus"),
