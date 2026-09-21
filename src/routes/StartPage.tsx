@@ -1,48 +1,42 @@
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import TestShortcuts from '../ui/TestShortcuts';
 import LanguageSelect from '../ui/LanguageSelect';
 import { copy } from '../ui/copy.js';
 import { t } from '../i18n.js';
-import { getResumeTarget } from '../features/bonus/bonusStorage';
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import "./StartPage.css";
+import { useBonusProgress } from '../features/bonus/useBonusProgress';
+import { journeyState } from '../features/bonus/journeyState';
+import { journeyCopy } from '../ui/journeyCopy';
+import OriginalStartPage from './OriginalStartPage';
+import './StartPage.css';
 
 export default function StartPage() {
+  const location = useLocation();
+  if (new URLSearchParams(location.search).get('home') === 'original') return <OriginalStartPage />;
+  return <PlayerHome />;
+}
+function PlayerHome() {
   const navigate = useNavigate();
   const location = useLocation();
-  const debug = new URLSearchParams(location.search).has("debug");
-  const resumeTarget = getResumeTarget();
-  const resumeLevel = resumeTarget?.id ?? 1;
-  const hasProgress = resumeLevel > 1;
-
-  return (
-    <div className="start-page">
-      <div className="start-page__hero">
-        <div className="start-page__content">
-          <p>HIRUNDU · v9 · TEST</p>
-          <LanguageSelect />
-          <p className="start-page__eyebrow">{t("title", "HIRUNDU")}</p>
-          <h1 className="start-page__title">{copy.ready}</h1>
-          <p className="start-page__lead">{copy.lead}</p>
-          <div className="start-page__actions">
-            <button
-              type="button"
-              className="app-button app-button--dark start-page__cta"
-              onClick={() => navigate(`/level/${resumeLevel}`)}
-            >
-              ▶︎ {hasProgress ? copy.continue : copy.start} · {copy.level} {resumeLevel}
-            </button>
-            <button
-              type="button"
-              className="app-button app-button--ghost"
-              onClick={() => navigate("/bonus/otranto", { state: { fromIntro: true } })}
-            >
-              🎁 {copy.bonus}
-            </button>
-          </div>
-          {debug ? <TestShortcuts /> : null}
-        </div>
-      </div>
-    </div>
-  );
+  const { progress } = useBonusProgress();
+  const { completed, current, complete } = journeyState(progress);
+  const words = journeyCopy();
+  return <main className="start-page start-page--player">
+    <div className="start-page__hero"><div className="start-page__content">
+      <div className="start-page__top"><span>HIRUNDU</span><LanguageSelect /></div>
+      <p className="start-page__eyebrow">{t('title', 'HIRUNDU')}</p>
+      <h1 className="start-page__title">{complete ? copy.complete : copy.ready}</h1>
+      <p className="start-page__lead">{complete ? words.all : copy.lead}</p>
+      <div className="start-page__resume"><span>{current ? words.nextHunt : words.journeyLink}</span><strong>{current ? `${copy.level} ${current.id} / ${progress.length}` : `${completed} / ${progress.length}`}</strong></div>
+      {current && <p className="start-page__territory">{current.name}</p>}
+      <button type="button" className="start-page__play" onClick={() => navigate(current ? `/level/${current.id}` : '/journey')}>
+        {current ? completed > 0 ? copy.continue : copy.start : words.chooseReplay}<span aria-hidden="true">↗</span>
+      </button>
+      <nav className="start-page__links" aria-label={words.journeyLink}>
+        <Link to="/journey"><span aria-hidden="true">⌖</span>{words.journeyLink}<span aria-hidden="true">›</span></Link>
+        <Link to="/bonus" state={{ fromIntro: true }}><span aria-hidden="true">◇</span>{copy.bonus}<span aria-hidden="true">›</span></Link>
+        <Link to="/passport"><span aria-hidden="true">▤</span>{words.passport}<span aria-hidden="true">›</span></Link>
+      </nav>
+      {new URLSearchParams(location.search).has('debug') && <TestShortcuts />}
+    </div></div>
+  </main>;
 }

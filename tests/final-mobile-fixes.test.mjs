@@ -28,8 +28,8 @@ test('L8 uses the validated L6 obstacle cadence and movement model', async () =>
 
 test('home stays minimal and resumes the current unlocked level', async () => {
   const home = await readFile(new URL('../src/routes/StartPage.tsx', import.meta.url), 'utf8');
-  assert.match(home, /const resumeTarget = getResumeTarget\(\)/);
-  assert.match(home, /navigate\(`\/level\/\$\{resumeLevel\}`\)/);
+  assert.match(home, /journeyState\(progress\)/);
+  assert.match(home, /navigate\(current \? `\/level\/\$\{current.id\}`/);
   assert.doesNotMatch(home, /replayLevel/);
   assert.doesNotMatch(home, /confirmNewGame/);
   assert.doesNotMatch(home, /resetBonusProgress/);

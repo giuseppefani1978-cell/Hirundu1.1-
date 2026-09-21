@@ -10,6 +10,7 @@ const PoiMarket = lazy(() => import("./features/qr/routes/PoiMarket"));
 const RealMap = lazy(() => import("./features/qr/routes/RealMap"));
 const AppLayout = lazy(() => import("./ui/AppLayout"));
 const StartPage = lazy(() => import("./routes/StartPage"));
+const JourneyPage = lazy(() => import("./routes/JourneyPage"));
 const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
@@ -114,6 +115,7 @@ export default function App() {
           <Routes>
           {/* Accueil */}
           <Route path="/" element={<StartPage />} />
+          <Route path="/journey" element={<JourneyPage />} />
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />

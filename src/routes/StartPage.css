@@ -101,3 +101,21 @@
     min-width: 0;
   }
 }
+
+/* A01: scoped to the approved home; original variant keeps its exact styles. */
+.start-page--player .start-page__content {width:100%;box-sizing:border-box;}
+.start-page--player .start-page__top {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:26px;}
+.start-page--player .start-page__top>span {font:800 12px system-ui;letter-spacing:.16em;}
+.start-page--player .language-select {font-size:12px;margin:0;gap:8px;flex-wrap:wrap;}
+.start-page--player .language-select select {background:#0c2339;color:#e9f5ff;border-color:#758ca7;font-size:16px;}
+.start-page--player .start-page__resume {display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#b4cbdf;font:500 12px/1.4 system-ui;}
+.start-page--player .start-page__resume strong {color:#e9f5ff;font-size:15px;}
+.start-page--player .start-page__territory {color:#d2e2ff;font:500 14px/1.4 system-ui;margin:7px 0 14px;}
+.start-page--player .start-page__play {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:50px;margin-top:14px;padding:13px 20px;border-radius:999px;border:1px solid #6698c9;background:linear-gradient(130deg,#245582,#183b64);box-shadow:inset 0 1px 0 #ffffff18,0 7px 22px #0003;color:#f8fbff;font:700 16px/1.4 system-ui;cursor:pointer;}
+.start-page--player .start-page__play:hover {background:#285b8a;}
+.start-page--player .start-page__links {display:grid;gap:3px;margin-top:16px;}
+.start-page--player .start-page__links a {display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 7px;box-sizing:border-box;border-bottom:1px solid #ffffff12;text-decoration:none;color:#d8e8f7;font:500 14px/1.4 system-ui;}
+.start-page--player .start-page__links a span {color:#a7dcff;font-size:21px;}
+.start-page--player .start-page__links a span:last-child {margin-left:auto;}
+.start-page--player :is(button,a,select):focus-visible {outline:3px solid #ffe259;outline-offset:4px;}
+@media(max-width:360px){.start-page--player .start-page__content{padding:22px;}.start-page--player .start-page__hero{padding-inline:12px;}}

@@ -1,5 +1,7 @@
 # A02 — Parcours des neuf étapes
 
+**Statut actualisé :** aperçu approuvé par l’utilisateur puis intégré dans `src/routes/JourneyPage.tsx` avec les données réelles. Le texte ci-dessous décrit le prototype conservé comme référence. Voir `integration-a01-a02.md`.
+
 ## Périmètre
 
 Aperçu isolé : `public/preview-a02.html`. Source éditable : `docs/preview-a02.fragment.html`. La proposition A01 approuvée reste disponible et inchangée. Aucun composant, route de jeu, niveau, score, collision, récompense ou sauvegarde n’est modifié.
