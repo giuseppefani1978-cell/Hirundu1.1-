@@ -292,3 +292,12 @@ for(const [id,action] of [['jump','jump'],['dive','dive'],['dodge','dodge']])$(i
 
 window.__L3_START_BATTLE_MUSIC__=()=>playLevelMusic('battle');
 window.__L3_STOP_BATTLE_MUSIC__=()=>pauseLevelMusic();
+
+// A04: reuse Pause to read a full clue; keep rebound and combat unchanged.
+window.hirunduReadQuestion = (clue) => {
+ if (!["ready","flying","transition"].includes(state.mode)) return false;
+ pause();
+ if (state.mode !== "paused") return false;
+ $("cardHelp").textContent = clue;
+ return true;
+};

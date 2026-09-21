@@ -1364,3 +1364,7 @@ body[data-game-phase="hunt"] #hud {
   color:#fff;
   font:900 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
 }
+
+/* A03/A04 classic: preserve map/HUD/battle layout; enlarge Pause hit target only. */
+#pauseBtn::before{content:'';position:absolute;inset:-1px;min-width:44px;min-height:44px}
+#pauseBtn:focus-visible{outline:3px solid #2546c1;outline-offset:3px}

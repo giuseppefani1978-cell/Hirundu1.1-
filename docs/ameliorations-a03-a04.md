@@ -37,3 +37,13 @@ A03 et A04 restent **proposées, à valider**. Après accord : intégrer les tok
 Le paddle Arkanoid sur lequel Aracne rebondit est indispensable : conserver aspect, dimensions, glissement, angle de rebond et lancement des niveaux 3/5/7. Son absence dans la première maquette était une omission de représentation, jamais une proposition de suppression. Le paddle vert/or reprend les couleurs du moteur actuel et suit maintenant les commandes gauche/droite de la maquette.
 
 Batailles : conserver au maximum le travail existant, notamment les sept commandes actuelles du niveau 3 (gauche, saut, plongée, droite, esquive, attaque, spécial), les mouvements d’Aracne, les boss, l’équilibrage et l’introduction portrait/paysage. La proposition générique à trois boutons est retirée de la maquette bataille. Pas de refonte de combat ; seulement des retouches de lisibilité après comparaison et approbation. Les autres familles gardent leurs propres commandes.
+
+## Intégration approuvée — branche de test
+
+A03/A04 ont été autorisées puis codées à portée limitée : feuille commune chargée par l’application et les six pages autonomes, tokens des couleurs existantes, contraste des boutons désactivés, focus visible, traitements papier/encre des questions. Aucune refonte de bataille.
+
+A04 : les dimensions existantes du canvas, des zones de jeu, du HUD, du paddle et du pavé de pilotage sont conservées. Pause classique bénéficie d’une cible de 44 px via extension de hitbox ; Pause vol gagne une cible de 44 px sans agrandir l’en-tête. Arkanoid conserve ses contrôles déjà confortables et son enveloppe de dialogue validée.
+
+Dans 3/5/7 et 4/6/8, la commande Lire/Leggi/Read/Leer ouvre la question complète via la pause existante. Le texte passe dans l’aide du panneau Pause. La reprise reste explicite et utilise le moteur existant. Pas de dialogue supplémentaire, de nouveau mécanisme de sauvegarde ou de reprise automatique. Le lecteur n’apparaît pas pendant le combat ou les écrans d’introduction.
+
+Vérification : 90 tests réussis ; compilation Vite réussie. Les tests d’intégration vérifient que le code moteur précédant les nouveaux adaptateurs reste identique octet par octet, et que les adaptateurs n’ouvrent pas le lecteur pendant une bataille. Contrôle tactile/visuel sur iPhone et Android encore nécessaire avant production. L’action A04 reste en validation mobile, sans gain de surface inventé.

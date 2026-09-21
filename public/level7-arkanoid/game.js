@@ -257,3 +257,12 @@ if(typeof ResizeObserver==='function'){new ResizeObserver(resize).observe(canvas
 for(const [id,action] of [['jump','jump'],['dive','dive'],['dodge','dodge']])$(id).addEventListener('pointerdown',e=>{e.preventDefault();Battle.action(action);canvas.focus({preventScroll:true})});
 
 for(const [id,action] of [['jump','jump'],['dive','dive'],['dodge','dodge']])$(id).onclick=e=>{if(e.detail===0)Battle.action(action)};
+
+// A04: reuse Pause to read a full clue; keep rebound and combat unchanged.
+window.hirunduReadQuestion = (clue) => {
+ if (!["ready","flying","transition"].includes(state.mode)) return false;
+ pause();
+ if (state.mode !== "paused") return false;
+ $("cardHelp").textContent = clue;
+ return true;
+};
