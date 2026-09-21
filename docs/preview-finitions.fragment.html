@@ -1,0 +1,83 @@
+<div id="hirundu-finitions">
+  <div class="viz-carousel viz-dotted-background" aria-label="Accueil Hirundu : comparaison" data-previous-label="Précédent" data-next-label="Suivant">
+    <section data-variant="Proposition · continuité">
+      <div class="hf-screen refined">
+        <div class="hf-panel">
+          <div class="hf-top"><span>HIRUNDU</span><span>FR · Français</span></div>
+          <p class="hf-eyebrow">LE VOL D’ARACNE</p>
+          <h2>Prêt·e pour<br>la chasse ?</h2>
+          <p class="hf-lead">Explore le Salento, collecte les trésors et gagne les batailles pour débloquer les cartes.</p>
+          <div class="hf-resume"><span>TA PROCHAINE CHASSE</span><strong>Niveau 8 <small>/ 9</small></strong></div>
+          <button class="hf-primary cursor-interaction" data-action="resume">Continuer la chasse <span aria-hidden="true">↗</span></button>
+          <div class="hf-links">
+            <button class="cursor-interaction" data-action="discoveries"><span aria-hidden="true">◇</span> Mes découvertes <span aria-hidden="true">›</span></button>
+            <button class="cursor-interaction" data-action="passport"><span aria-hidden="true">▤</span> Mon passeport <span aria-hidden="true">›</span></button>
+          </div>
+          <div class="hf-detail" hidden><button class="hf-back cursor-interaction" data-action="back">← Retour</button><h3></h3><p></p></div>
+          <p class="hf-status" role="status" aria-live="polite"></p>
+        </div>
+        <span class="hf-demo">APERÇU INTERACTIF · PROGRESSION D’EXEMPLE</span>
+      </div>
+    </section>
+    <section data-variant="Accueil actuel · référence" hidden>
+      <div class="hf-screen original">
+        <div class="hf-panel">
+          <p>HIRUNDU · v9 · TEST</p>
+          <div class="hf-language">Langue <span>FR · Français ⌄</span></div>
+          <p class="hf-eyebrow">LE VOL D’ARACNE</p>
+          <h2>Prêt·e pour<br>la chasse ?</h2>
+          <p class="hf-lead">Explore le Salento, collecte les trésors et gagne les batailles pour débloquer les cartes.</p>
+          <div class="hf-old-button">▶︎ Continuer la chasse · Niveau 8</div>
+          <div class="hf-old-button ghost">🎁 Mes découvertes</div>
+        </div>
+        <span class="hf-demo">RECONSTITUTION DE L’ACCUEIL PUBLIÉ · NIVEAU 8</span>
+      </div>
+    </section>
+  </div>
+</div>
+<style>
+#hirundu-finitions .hf-screen{box-sizing:border-box;width:100%;max-width:390px;min-height:650px;margin:auto;padding:55px 20px 25px;display:flex;flex-direction:column;justify-content:center;gap:32px;background:radial-gradient(circle at 20% 20%,rgba(64,163,255,.35),transparent 60%),radial-gradient(circle at 80% 30%,rgba(255,226,89,.25),transparent 55%),radial-gradient(circle at 50% 80%,rgba(138,255,182,.2),transparent 65%),linear-gradient(180deg,#0b1d33,#02070f 50%,#02050a);color:#f0f6ff;font-family:Inter,Segoe UI,system-ui,sans-serif;color-scheme:dark;border-radius:26px;overflow:hidden}
+#hirundu-finitions .hf-screen *{box-sizing:border-box}
+#hirundu-finitions .hf-panel{position:relative;background:rgba(6,16,33,.55);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:28px;box-shadow:0 40px 70px rgba(3,10,24,.5);backdrop-filter:blur(12px) saturate(160%)}
+#hirundu-finitions .hf-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;letter-spacing:.08em;color:#b9cee1;margin-bottom:34px}
+#hirundu-finitions .hf-top span:first-child{font-weight:800;letter-spacing:.16em;color:#eaf3ff}
+#hirundu-finitions .hf-eyebrow{font:700 12px/1.2 Barlow,system-ui;letter-spacing:.24em;color:#a7dcff;margin:0 0 14px}
+#hirundu-finitions h2{font:800 32px/1.1 Barlow,system-ui;margin:0 0 20px;color:#f0f6ff;letter-spacing:-.025em}
+#hirundu-finitions .hf-lead{font:400 15px/1.6 Inter,system-ui;color:#d2e2ff;margin:0 0 26px}
+#hirundu-finitions .hf-resume{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+#hirundu-finitions .hf-resume>span{font-size:9px;letter-spacing:.12em;color:#afc6dc}
+#hirundu-finitions .hf-resume strong{font-size:15px;white-space:nowrap}#hirundu-finitions .hf-resume small{font-size:12px;font-weight:400;color:#afc6dc}
+#hirundu-finitions button{font-family:inherit;font-size:14px;min-height:48px;transition:transform .16s,background .16s}
+#hirundu-finitions button:active{transform:scale(.98)}
+#hirundu-finitions button:focus-visible{outline:3px solid #ffe259;outline-offset:4px}
+#hirundu-finitions .hf-primary{display:flex;width:100%;justify-content:space-between;align-items:center;padding:14px 19px;border-radius:999px;border:1px solid #6698c9;background:linear-gradient(130deg,#245582,#183b64);box-shadow:inset 0 1px 0 #ffffff18,0 7px 22px #0003;color:#f8fbff;font-weight:700}
+#hirundu-finitions .hf-primary:hover{background:#285b8a}
+#hirundu-finitions .hf-primary span{font-size:22px}
+#hirundu-finitions .hf-links{margin-top:16px;display:grid;gap:3px}
+#hirundu-finitions .hf-links button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 7px;background:transparent;border:0;border-bottom:1px solid #ffffff12;border-radius:0;color:#d8e8f7}
+#hirundu-finitions .hf-links button span:first-child{color:#a7dcff;font-size:21px}#hirundu-finitions .hf-links button span:last-child{margin-left:auto;color:#a7bed3;font-size:21px}
+#hirundu-finitions .hf-demo{font:500 9px/1.5 system-ui;letter-spacing:.1em;text-align:center;color:#a7bed3}
+#hirundu-finitions .hf-status{font:400 12px/1.4 system-ui;color:#c0e5ff;margin:0;min-height:0}
+#hirundu-finitions .hf-status:not(:empty){margin-top:14px}
+#hirundu-finitions .hf-detail{position:absolute;inset:0;border-radius:24px;padding:28px;background:#0d2338;z-index:2}
+#hirundu-finitions .hf-detail h3{font:700 27px/1.15 system-ui;margin:28px 0 18px;color:#f0f6ff}
+#hirundu-finitions .hf-detail p{font:400 16px/1.65 system-ui;color:#d2e2ff}
+#hirundu-finitions .hf-back{background:transparent;border:0;color:#a7dcff;padding:0 12px 0 0}
+#hirundu-finitions .original .hf-panel>p:first-child{font-size:16px;margin:0 0 16px}
+#hirundu-finitions .hf-language{display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:16px;margin-bottom:24px}
+#hirundu-finitions .hf-language span{background:#fff;color:#10243e;border:1px solid #7591ad;border-radius:10px;padding:11px 8px;font-size:14px}
+#hirundu-finitions .hf-old-button{border-radius:999px;background:#0b1020;color:#f8fafc;padding:12px 15px;font:600 14px/1.5 system-ui;margin-top:16px}
+#hirundu-finitions .hf-old-button.ghost{background:rgba(148,163,184,.12);color:#0f172a}
+@media(max-width:360px){#hirundu-finitions .hf-screen{padding:35px 12px 20px;min-height:650px}#hirundu-finitions .hf-panel{padding:23px}#hirundu-finitions h2{font-size:30px}}
+@media(prefers-reduced-motion:reduce){#hirundu-finitions button{transition:none}#hirundu-finitions button:active{transform:none}}
+</style>
+<script>
+(()=>{const root=document.getElementById('hirundu-finitions');const detail=root.querySelector('.hf-detail');const status=root.querySelector('.hf-status');let previous;
+root.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>{const action=button.dataset.action;
+if(action==='back'){detail.hidden=true;previous?.focus();return;}
+if(action==='resume'){status.textContent='Reprise au niveau 8 — démonstration uniquement.';return;}
+previous=button;detail.hidden=false;
+detail.querySelector('h3').textContent=action==='passport'?'Mon passeport':'Mes découvertes';
+detail.querySelector('p').textContent=action==='passport'?'Les découvertes dans le jeu et les visites réelles restent distinctes. Les visites et les QR codes sont facultatifs.':'Retrouve ici les cartes débloquées après les batailles. Cet aperçu ne contient pas tes données de jeu.';
+detail.querySelector('button').focus();}));})();
+</script>
