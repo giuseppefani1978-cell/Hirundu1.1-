@@ -1,3 +1,4 @@
+import { mountClassicExperience, actionSoundsEnabled } from '../../legacy/classicExperience.js';
 import { copy } from '../../ui/copy.js';
 import { createLevelSession, setupHuntControls, drawAnimatedBird } from '../../legacy/levelSession.js';
 import { canCollectTarget, computeTargetHitRadiusPx } from '../../legacy/huntValidation.js';
@@ -312,6 +313,11 @@ export function boot(options = {}){
   let finalized = false;
   let playerName = null;
   let country = getCountry();
+  const playerExperience = mountClassicExperience(canvas, () => ({
+    playing: mode === 'play' && !isGamePaused(),
+    settings: mode === 'splash' || (mode === 'play' && isGamePaused()),
+    found: collected.size, bonus: bonusesPicked, damage: hits,
+  }), () => !isMusicOn());
 
   function scoreReset(){
     score = 0; hits = 0; bonusesPicked = 0; bonusScore = 0; starsPicked = 0;
@@ -558,7 +564,7 @@ export function boot(options = {}){
           collected.add(p.key);
           ui.updateScore(collected.size, STARS_TARGET);
           ui.renderStars(collected.size, STARS_TARGET);
-          starEmphasis();
+          if (actionSoundsEnabled()) starEmphasis();
           ui.showEphemeralLabel(px, py - 28, poiName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
 
           score += SCORE.STAR; starsPicked++; updateScoreLive();
@@ -742,7 +748,7 @@ onProceed: async () => {
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
       if (Math.hypot(bx-ex, by-ey) < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
         collided = true;
-        failSfx();
+        if (actionSoundsEnabled()) failSfx();
         playerSlowTimer = Math.max(playerSlowTimer, 1.25);
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
         const away = Math.atan2((ey - by), (ex - bx));
@@ -773,7 +779,7 @@ onProceed: async () => {
 
         pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
         const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
-        ping(hz, 0.35);
+        if (actionSoundsEnabled()) ping(hz, 0.35);
 
         bonuses.splice(i, 1);
         updateScoreLive();
@@ -938,6 +944,7 @@ onProceed: async () => {
 
   return () => {
     running = false;
+    playerExperience.dispose();
     session.dispose();
     document.getElementById("__score_live")?.remove();
     cleanupIntro?.();

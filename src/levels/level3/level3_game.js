@@ -1,3 +1,4 @@
+import { mountClassicExperience, actionSoundsEnabled } from '../../legacy/classicExperience.js';
 import { bootReboundLevel3 } from './reboundLevel3.js';
 import { copy } from '../../ui/copy.js';
 import { createLevelSession, setupHuntControls, drawAnimatedBird } from '../../legacy/levelSession.js';
@@ -364,6 +365,11 @@ export function boot(options = {}){
   let finalized = false;
   let playerName = null;
   let country = getCountry();
+  const playerExperience = mountClassicExperience(canvas, () => ({
+    playing: mode === 'play' && !isGamePaused(),
+    settings: mode === 'splash' || (mode === 'play' && isGamePaused()),
+    found: collected.size, bonus: bonusesPicked, damage: hits,
+  }), () => !isMusicOn());
 
   let flightHandoffApplied = false;
   function scoreReset(){
@@ -620,7 +626,7 @@ export function boot(options = {}){
           collected.add(p.key);
           ui.updateScore(collected.size, LEAVES_TARGET);
           renderInventory(collected.size, LEAVES_TARGET);
-          starEmphasis();
+          if (actionSoundsEnabled()) starEmphasis();
           ui.showEphemeralLabel(px, py - 28, placeName(p.key), { color: 'rgba(255,255,255,0.7)', durationMs: 950, dy: -30 });
 
           score += SCORE.STAR; leavesPicked++; updateScoreLive();
@@ -837,7 +843,7 @@ export function boot(options = {}){
       const ex = ox + e.x*dw, ey = oy + e.y*dh;
       if (Math.hypot(bx-ex, by-ey) < ENEMY_CONFIG.COLLIDE_RADIUS_PX){
         collided = true;
-        failSfx();
+        if (actionSoundsEnabled()) failSfx();
         playerSlowTimer = Math.max(playerSlowTimer, 1.25);
         hitShake = Math.min(SHAKE.MAX_S, hitShake + SHAKE.HIT_ADD);
         const away = Math.atan2((ey - by), (ex - bx));
@@ -868,7 +874,7 @@ export function boot(options = {}){
 
         pickedCounts[b.type] = (pickedCounts[b.type] || 0) + 1;
         const hz = (b.type === 'caffe') ? 980 : (b.type === 'rustico' ? 880 : 780);
-        ping(hz, 0.35);
+        if (actionSoundsEnabled()) ping(hz, 0.35);
 
         bonuses.splice(i, 1);
         updateScoreLive();
@@ -1037,6 +1043,7 @@ export function boot(options = {}){
 
   return () => {
     running = false;
+    playerExperience.dispose();
     session.dispose();
     document.getElementById("__score_live")?.remove();
     cleanupIntro?.();
