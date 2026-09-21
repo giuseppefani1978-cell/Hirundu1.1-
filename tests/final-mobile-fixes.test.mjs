@@ -21,6 +21,8 @@ test('L8 uses the validated L6 obstacle cadence and movement model', async () =>
   assert.doesNotMatch(l8, /drawTrashObstacle/);
   assert.match(l8, /ctx\.globalAlpha=1/);
   assert.match(l8, /ctx\.globalCompositeOperation='source-over'/);
+  assert.match(l8, /ctx\.filter='none'/);
+  assert.match(l8, /ctx\.fillStyle='#369fab'/);
   assert.match(l8, /ctx\.fillText\(glyph,o\.x,o\.y\)/);
 });
 
