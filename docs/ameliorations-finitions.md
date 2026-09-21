@@ -1,4 +1,12 @@
-# Proposition de finitions — à valider
+# Proposition de finitions — référence approuvée
+
+## Décision utilisateur du 21 septembre 2026
+
+L’aperçu A01 est approuvé, sous réserve de pouvoir revenir à l’accueil précédent. L’utilisateur relève un ressenti peut-être moins « jeu » ; garder ce point pour les améliorations suivantes. Cette approbation ne demande pas de publication. Le composant d’accueil en production reste intact ; sa référence est `main` au commit `58a2185ac1d6c7d05ec2c6d461a5327fd768f69a`. La proposition approuvée reste dans `public/preview-finitions.html` au commit `3816a0e45b3408ea44b5a1857de9d13fd8c9817e`. Aucun retour arrière destructif n’est nécessaire à ce stade.
+
+Statut : direction visuelle A01 approuvée ; intégration aux données réelles et aux quatre langues encore à réaliser. Ne pas considérer toute l’action A01 comme terminée.
+
+La suite retenue suit l’ordre du PDF : A02, parcours illustré des neuf étapes. Voir `ameliorations-a02.md`.
 
 L’utilisateur conserve l’accueil publié comme référence. La première refonte A01 est rejetée (PR #36 fermée). Cette proposition repart de main `58a2185`, qui inclut la correction des obstacles au niveau 8.
 
