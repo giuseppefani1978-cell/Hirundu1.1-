@@ -14,6 +14,7 @@ const StartPage = lazy(() => import("./routes/StartPage"));
 const JourneyPage = lazy(() => import("./routes/JourneyPage"));
 const DiscoveryPreview = lazy(() => import("./routes/DiscoveryPreview"));
 const TradePreview = lazy(() => import("./routes/TradePreview"));
+const CardTradePage = lazy(() => import("./routes/CardTradePage"));
 const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
@@ -123,6 +124,7 @@ export default function App() {
           <Route path="/journey" element={<JourneyPage />} />
           <Route path="/discovery-preview" element={<DiscoveryPreview />} />
           <Route path="/trade-preview" element={<TradePreview />} />
+          <Route path="/card-trade" element={<CardTradePage />} />
           <Route path="/settings" element={<SettingsPage />} />
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
