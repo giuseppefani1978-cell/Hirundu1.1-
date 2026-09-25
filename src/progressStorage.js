@@ -231,6 +231,31 @@ export function replaceDurableProgressSnapshot() {
   return snapshot;
 }
 
+export function restoreDurableProgressSnapshot(snapshot) {
+  const storage = getStorage();
+  if (!storage || !snapshot || snapshot.version !== DURABLE_PROGRESS_VERSION || !snapshot.values || typeof snapshot.values !== "object") return null;
+
+  const entries = Object.entries(snapshot.values).filter(([key, raw]) =>
+    key !== PASSPORT_STORAGE_KEY && isDurableLegacyKey(key) && typeof raw === "string"
+  );
+  const previous = entries.map(([key]) => [key, storage.getItem(key)]);
+  try {
+    entries.forEach(([key, raw]) => storage.setItem(key, raw));
+    const restored = buildSnapshot(storage, collectLegacyValues(storage));
+    if (!writeSnapshot(storage, restored)) throw new Error("snapshot");
+    return restored;
+  } catch (error) {
+    previous.forEach(([key, raw]) => {
+      try {
+        if (raw === null) storage.removeItem(key);
+        else storage.setItem(key, raw);
+      } catch { /* best-effort rollback */ }
+    });
+    publishSaveResult(false, error instanceof Error ? error.message : "restore");
+    return null;
+  }
+}
+
 export function clearDurableProgressSnapshot() {
   const storage = getStorage();
   if (!storage) return;
