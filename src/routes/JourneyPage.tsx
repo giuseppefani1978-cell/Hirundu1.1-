@@ -4,6 +4,7 @@ import { useBonusProgress } from '../features/bonus/useBonusProgress';
 import { journeyState, stageFamily, stageState } from '../features/bonus/journeyState';
 import { journeyCopy } from '../ui/journeyCopy';
 import LanguageSelect from '../ui/LanguageSelect';
+import ReplayGoal from '../features/bonus/ReplayGoal';
 import { copy } from '../ui/copy.js';
 import { t } from '../i18n.js';
 import './JourneyPage.css';
@@ -51,6 +52,7 @@ export default function JourneyPage() {
           {!canPlay ? words.unavailable : selected.done ? words.replay : completed === 0 ? words.start : words.play}
         </button>
         {rewardUnlocked && selectedState !== 'future' && <Link className="hp-card-link" to={`/poi/${selected.key}/realmap`}>{words.viewMap} →</Link>}
+        {selected.done && <ReplayGoal key={selected.id} level={selected.id}/>}
       </section>
     </div>
   </main>;
