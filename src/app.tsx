@@ -3,6 +3,7 @@ import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { initializeDurableProgress, syncDurableProgress } from "./progressStorage.js";
+import { applyComfort } from "./features/comfort/preferences.js";
 
 // ---- Lazy load pages (code-splitting)
 const QrHub = lazy(() => import("./features/qr/routes/QrHub"));
@@ -17,6 +18,7 @@ const LegacyLevelPage = lazy(() => import("./routes/LegacyLevelPage"));
 const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
 const RegionDiscoveries = lazy(() => import("./levels/RegionDiscoveries"));
+const SettingsPage = lazy(() => import("./routes/SettingsPage"));
 
 type AppErrorBoundaryProps = { children: React.ReactNode };
 type AppErrorBoundaryState = { failed: boolean };
@@ -97,6 +99,7 @@ export default function App() {
 
   useEffect(() => {
     initializeDurableProgress();
+    applyComfort();
     const sync = () => { syncDurableProgress(); };
     const refreshLanguage = () => setLanguageRevision((value) => value + 1);
     window.addEventListener("pagehide", sync);
@@ -120,6 +123,7 @@ export default function App() {
           <Route path="/journey" element={<JourneyPage />} />
           <Route path="/discovery-preview" element={<DiscoveryPreview />} />
           <Route path="/trade-preview" element={<TradePreview />} />
+          <Route path="/settings" element={<SettingsPage />} />
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />

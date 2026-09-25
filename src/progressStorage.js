@@ -1,6 +1,19 @@
 export const DURABLE_PROGRESS_KEY = "hirundu_progress_v1";
 const DURABLE_PROGRESS_VERSION = 1;
 const PASSPORT_STORAGE_KEY = "salentino_passport_v1";
+export const PROGRESS_SAVE_EVENT = "hirundu:progress-save";
+let lastSaveResult = null;
+
+export function getProgressSaveResult() {
+  return lastSaveResult;
+}
+
+function publishSaveResult(ok, reason = "") {
+  lastSaveResult = { ok, at: Date.now(), reason };
+  if (typeof window !== "undefined") {
+    try { window.dispatchEvent(new CustomEvent(PROGRESS_SAVE_EVENT, { detail: lastSaveResult })); } catch { /* restricted browser */ }
+  }
+}
 
 const STATIC_KEYS = new Set([
   "player_name",
@@ -172,9 +185,11 @@ function buildSnapshot(storage, baseValues = {}) {
 function writeSnapshot(storage, snapshot) {
   try {
     storage.setItem(DURABLE_PROGRESS_KEY, JSON.stringify(snapshot));
+    publishSaveResult(true);
     return true;
   } catch (error) {
     console.warn("[progress] unable to persist durable snapshot", error);
+    publishSaveResult(false, error instanceof Error ? error.message : "storage");
     return false;
   }
 }
