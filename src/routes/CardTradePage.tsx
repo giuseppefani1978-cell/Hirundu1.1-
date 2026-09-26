@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import QRCode from "qrcode";
 import LanguageSelect from "../ui/LanguageSelect";
 import QrScanner from "../features/qr/components/QrScanner";
@@ -56,6 +57,8 @@ const originLabels: Record<string, Record<CardOrigin, string>> = {
 type Mode = "send" | "receive" | "field";
 
 export default function CardTradePage() {
+  const location = useLocation();
+  const requestedCard = new URLSearchParams(location.search).get("card") as BonusKey | null;
   const language = (LANG in copy ? LANG : "fr") as keyof typeof copy;
   const t = copy[language];
   const labels = originLabels[language] ?? originLabels.fr;
@@ -67,7 +70,13 @@ export default function CardTradePage() {
   const [receiptQr, setReceiptQr] = useState("");
   const [message, setMessage] = useState("");
   const [fieldQrs, setFieldQrs] = useState<Record<string, string>>({});
-  const cards = (Object.entries(inventory.cards) as [BonusKey, number][]).filter(([, count]) => count > 0);
+  const cards = (Object.entries(inventory.cards) as [BonusKey, number][])
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => {
+      if (requestedCard && a === requestedCard) return -1;
+      if (requestedCard && b === requestedCard) return 1;
+      return 0;
+    });
 
   useEffect(() => {
     const refresh = () => setInventory(readCardInventory());
@@ -172,7 +181,7 @@ export default function CardTradePage() {
   return (
     <main className="card-trade">
       <div className="card-trade__inner">
-        <nav><a href="#/trade-preview">← {t.back}</a><LanguageSelect /></nav>
+        <nav><a href="#/bonus">← {t.back}</a><LanguageSelect /></nav>
         <header><span>HIRUNDU · COLLECTION</span><h1>{t.title}</h1><p>{t.intro}</p></header>
         <p className="card-trade__rule">{t.collectionRule}</p>
         <div className="card-trade__tabs">
