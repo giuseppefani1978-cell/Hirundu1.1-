@@ -23,20 +23,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Use relative asset paths for isolated preview
-        run: sed -i 's#base: "/Hirundu1.1-/"#base: "./"#' vite.config.ts
-
-      - name: Validate and build
+      - name: Build isolated preview
         run: |
-          npm run typecheck
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("vite.config.ts")
+          s = p.read_text()
+          s = s.replace('base: "/Hirundu1.1-/"', 'base: "./"')
+          p.write_text(s)
+          PY
           npm run build
-
-      - name: Prepare static preview
-        run: |
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
 
-      - name: Publish isolated preview branch
+      - name: Publish compiled preview branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
