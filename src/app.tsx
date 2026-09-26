@@ -3,6 +3,7 @@ import { copy } from "./ui/copy.js";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { initializeDurableProgress, syncDurableProgress } from "./progressStorage.js";
+import StartupIntro from "./routes/StartupIntro";
 
 // ---- Lazy load pages (code-splitting)
 const QrHub = lazy(() => import("./features/qr/routes/QrHub"));
@@ -94,6 +95,21 @@ function Loading() {
 
 export default function App() {
   const [, setLanguageRevision] = useState(0);
+  const [introComplete, setIntroComplete] = useState(() => {
+    try {
+      const forceIntro = new URLSearchParams(window.location.search).get("intro") === "1";
+      return !forceIntro && sessionStorage.getItem("hirundu_startup_intro_seen") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const completeIntro = () => {
+    try {
+      sessionStorage.setItem("hirundu_startup_intro_seen", "1");
+    } catch {}
+    setIntroComplete(true);
+  };
 
   useEffect(() => {
     initializeDurableProgress();
@@ -111,6 +127,9 @@ export default function App() {
 
   return (
     <AppErrorBoundary>
+      {!introComplete ? (
+        <StartupIntro onComplete={completeIntro} />
+      ) : (
       <HashRouter /* hash routing = compatible GitHub Pages */>
         <ScrollToTop />
         <Suspense fallback={<Loading />}>
@@ -145,6 +164,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </HashRouter>
+      )}
     </AppErrorBoundary>
   );
 }
