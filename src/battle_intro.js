@@ -3,6 +3,7 @@ import {
   FLOW_PHASES,
   setGameFlowPhase,
   watchRequiredOrientation,
+  orientationMatches,
   LANGUAGE_EVENT,
 } from './game_flow.js';
 
@@ -121,7 +122,10 @@ export function startBattleIntro({
 
   let cleaned = false;
   let removalTimer = 0;
-  let canProceed = true;
+  let isMobile = false;
+  let landscapeReady = true;
+  let rotationRequestPending = false;
+  let armedForLandscape = false;
 
   const refreshLanguage = () => {
     phase.textContent = copy.huntComplete;
@@ -140,9 +144,13 @@ export function startBattleIntro({
   window.addEventListener(LANGUAGE_EVENT, refreshLanguage);
 
   const stopOrientationWatch = watchRequiredOrientation('landscape', ({ mobile, matches }) => {
-    canProceed = matches;
-    button.disabled = !matches;
-    button.setAttribute('aria-disabled', String(!matches));
+    isMobile = mobile;
+    landscapeReady = matches;
+
+    // Android fix: keep the CTA available in portrait so the user gesture can
+    // request fullscreen + Screen Orientation API landscape lock.
+    button.disabled = !!rotationRequestPending;
+    button.setAttribute('aria-disabled', String(!!rotationRequestPending));
     document.body.classList.toggle('mobile-portrait', mobile && !matches);
     overlay.classList.toggle('is-landscape-ready', matches);
 
@@ -155,6 +163,12 @@ export function startBattleIntro({
       ? copy.landscapeReady
       : (copy.rotateLandscape || copy.battleOrientation);
     orientationStatus.dataset.ready = matches ? 'true' : 'false';
+
+    // If the player already tapped "Fight" in portrait, enter the battle as
+    // soon as Android reports the landscape viewport.
+    if (armedForLandscape && matches && !rotationRequestPending && !cleaned) {
+      window.setTimeout(enterBattle, 0);
+    }
   });
 
   function cleanup({ animate = false } = {}) {
@@ -185,15 +199,77 @@ export function startBattleIntro({
     }
   }
 
-  function proceed() {
-    if (cleaned || !canProceed) return;
+  function enterBattle() {
+    if (cleaned) return;
+    armedForLandscape = false;
     setGameFlowPhase(FLOW_PHASES.BATTLE, { level, boss });
     cleanup({ animate: true });
     onProceed?.();
   }
 
+  async function requestLandscapeFromGesture() {
+    // Chrome/Android generally requires a user gesture and, in browser mode,
+    // fullscreen before screen.orientation.lock() is accepted.
+    try {
+      const root = document.documentElement;
+      if (!document.fullscreenElement && root?.requestFullscreen) {
+        await root.requestFullscreen();
+        window.__HIRUNDU_BATTLE_FULLSCREEN__ = true;
+      }
+    } catch {}
+
+    try {
+      if (screen.orientation?.lock) {
+        await screen.orientation.lock('landscape');
+        window.__HIRUNDU_BATTLE_ORIENTATION_LOCKED__ = true;
+      }
+    } catch {}
+
+    // Give Android/browser chrome a short time to resize the visual viewport.
+    for (const delay of [0, 120, 280, 600]) {
+      if (delay) await new Promise(resolve => window.setTimeout(resolve, delay));
+      if (orientationMatches('landscape')) return true;
+    }
+    return false;
+  }
+
+  async function proceed() {
+    if (cleaned || rotationRequestPending) return;
+
+    if (!isMobile || landscapeReady || orientationMatches('landscape')) {
+      enterBattle();
+      return;
+    }
+
+    armedForLandscape = true;
+    rotationRequestPending = true;
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('aria-busy', 'true');
+
+    const rotated = await requestLandscapeFromGesture();
+
+    rotationRequestPending = false;
+    button.removeAttribute('aria-busy');
+    button.disabled = false;
+    button.setAttribute('aria-disabled', 'false');
+
+    if (cleaned) return;
+    landscapeReady = orientationMatches('landscape');
+    if (rotated || landscapeReady) {
+      enterBattle();
+      return;
+    }
+
+    // Locking can be refused by some Android/browser combinations. In that
+    // case keep the intro open and armed: a manual rotation will continue.
+    orientationStatus.textContent = copy.rotateLandscape || copy.battleOrientation;
+    orientationStatus.dataset.ready = 'false';
+    try { navigator.vibrate?.(40); } catch {}
+  }
+
   button.addEventListener('click', proceed);
-  if (!button.disabled) button.focus();
+  button.focus();
 
   return cleanup;
 }
