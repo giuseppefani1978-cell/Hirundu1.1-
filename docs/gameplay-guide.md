@@ -20,7 +20,7 @@ La progression virtuelle, la collection de cartes et le passeport de visites ré
 | Niveaux | Famille | Commande principale | Objectif de chasse |
 |---|---|---|---|
 | 1, 2 et 9 | Classique | pavé directionnel | déplacer Aracne jusqu’au lieu correspondant à l’énigme |
-| 3, 5 et 7 | Arkanoid | barre, glissement et bouton Envol | faire rebondir Aracne, casser les murs et atteindre le bon lieu |
+| 3, 5 et 7 | Chasse à rebonds | barre, glissement et bouton Envol | faire rebondir Aracne, casser les murs et atteindre le bon lieu |
 | 4, 6 et 8 | Vol | pavé directionnel maintenu | piloter Aracne pendant que le décor défile automatiquement |
 
 Le parcours affiche les neuf étapes. Un niveau gagné reste rejouable. La reprise choisit le premier niveau disponible non terminé, y compris avec une ancienne sauvegarde non contiguë. Les territoires encore verrouillés restent secrets.
@@ -47,7 +47,7 @@ Le tutoriel doit faire agir, pas seulement faire lire.
 3. rejoindre la cible demandée ;
 4. confirmer la réussite sans modifier la vraie progression.
 
-### Arkanoid
+### Chasse à rebonds
 
 1. déplacer la barre avec les flèches ou en glissant le doigt ;
 2. appuyer sur Envol pour lancer Aracne ;

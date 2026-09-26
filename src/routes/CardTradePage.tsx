@@ -229,3 +229,4 @@ function FieldScenario({ scenario, qr, yes, no }: { scenario: FieldCardScenario;
     </article>
   );
 }
+

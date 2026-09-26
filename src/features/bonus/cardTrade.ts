@@ -288,3 +288,4 @@ export function cancelPendingOffer(): CardInventoryState {
   state.pending = null;
   return write(state);
 }
+
