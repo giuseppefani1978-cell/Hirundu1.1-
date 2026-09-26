@@ -43,7 +43,7 @@ function GameFamilyPreview({
         />
         <i className="game-guide__preview-target">1</i>
         <span className="game-guide__preview-controls" aria-hidden="true">
-          ‹　↑　›
+          ‹ ↑ ›
         </span>
       </div>
     );
@@ -134,7 +134,7 @@ function GameFamilyPreview({
       />
       <i className="game-guide__preview-target">3</i>
       <span className="game-guide__preview-controls" aria-hidden="true">
-        ←　↑　→
+        ← ↑ →
       </span>
     </div>
   );
