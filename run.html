@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <script>
+      // PWA boot recovery: if an old standalone launch/cache leaves the React root blank,
+      // retry once from the canonical GitHub Pages root with a cache-busting query.
+      (() => {
+        const RECOVERY_KEY = "hirundu_boot_recovery_20260919";
+        const BASE = "./";
+
+        const showRecovery = () => {
+          const root = document.getElementById("root");
+          if (!root) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#a9d6f5;color:#0e2b4a;font:600 16px system-ui;text-align:center">' +
+            '<div><strong>HIRUNDU</strong><br><br>Rechargement nécessaire.<br>' +
+            '<button id="hirunduRecoveryButton" style="margin-top:16px;padding:12px 16px;border:0;border-radius:12px;background:#0e2b4a;color:#fff;font:700 15px system-ui">Recharger</button></div></div>';
+          document.getElementById("hirunduRecoveryButton")?.addEventListener("click", () => {
+            try { sessionStorage.removeItem(RECOVERY_KEY); } catch {}
+            const url = new URL(BASE, location.origin);
+            url.searchParams.set("fresh", Date.now().toString());
+            url.hash = location.hash;
+            location.replace(url.toString());
+          });
+        };
+
+        window.setTimeout(() => {
+          const root = document.getElementById("root");
+          if (root && root.childElementCount > 0) {
+            try { sessionStorage.removeItem(RECOVERY_KEY); } catch {}
+            return;
+          }
+
+          let retried = false;
+          try { retried = sessionStorage.getItem(RECOVERY_KEY) === "1"; } catch {}
+          if (!retried) {
+            try { sessionStorage.setItem(RECOVERY_KEY, "1"); } catch {}
+            const url = new URL(BASE, location.origin);
+            url.searchParams.set("fresh", Date.now().toString());
+            url.hash = location.hash;
+            location.replace(url.toString());
+            return;
+          }
+          showRecovery();
+        }, 3200);
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>HIRUNDU – Le Vol d’Aracne</title>
+
+    <meta name="theme-color" content="#a9d6f5" />
+
+    <!-- Chemins RELATIFS pour GitHub Pages -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
+
+    <!-- Apple Touch Icons (relatifs) -->
+    <link rel="apple-touch-icon" sizes="120x120" href="./apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="./apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-180x180.png" />
+
+    <!-- Favicons (relatifs) -->
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
+  <link rel="stylesheet" href="./shared/player-ui.css?v=a34-1">
+  <script type="module" crossorigin src="./assets/index-DqlIkN1M.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BCfKAfIJ.css">
+</head>
+
+  <body>
+    <div id="root"></div>
+
+    <!-- Entrée Vite (Vite réécrit ce chemin au build) -->
+
+    <!-- Désactiver/Nettoyer d’anciens Service Workers -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        const HIRUNDU_SCOPE = "/__hirundu_preview__/";
+        navigator.serviceWorker.getRegistrations()
+          .then(rs => rs
+            .filter(r => {
+              try { return new URL(r.scope).pathname.startsWith(HIRUNDU_SCOPE); }
+              catch { return false; }
+            })
+            .forEach(r => r.unregister()))
+          .catch(() => {});
+        if (window.caches && caches.keys) {
+          caches.keys()
+            .then(keys => keys
+              .filter(k => /hirundu|aracne/i.test(k))
+              .forEach(k => caches.delete(k)))
+            .catch(() => {});
+        }
+        try { localStorage.setItem("sw_disabled", "true"); } catch {}
+      }
+    </script>
+
+    <!-- Installation Android (PWA) : disponible uniquement depuis le menu Pause -->
+    <script>
+      (() => {
+        let deferredPrompt = null;
+
+        const isStandalone = () =>
+          window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          window.navigator.standalone === true;
+
+        const publishInstallState = () => {
+          const available = Boolean(deferredPrompt) && !isStandalone();
+          window.__HIRUNDU_PWA_INSTALL_AVAILABLE__ = available;
+          window.dispatchEvent(new CustomEvent("hirundu:pwa-install-state", {
+            detail: { available }
+          }));
+        };
+
+        window.__HIRUNDU_INSTALL_APP__ = async () => {
+          if (!deferredPrompt || isStandalone()) {
+            publishInstallState();
+            return { outcome: "unavailable" };
+          }
+
+          const promptEvent = deferredPrompt;
+          deferredPrompt = null;
+          // Dès que l'utilisateur choisit « Installer », le CTA disparaît du menu pause.
+          publishInstallState();
+
+          try {
+            await promptEvent.prompt();
+            return await promptEvent.userChoice;
+          } catch (error) {
+            console.warn("PWA install prompt failed", error);
+            return { outcome: "error" };
+          }
+        };
+
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          if (isStandalone()) return;
+          deferredPrompt = e;
+          publishInstallState();
+        });
+
+        window.addEventListener("appinstalled", () => {
+          deferredPrompt = null;
+          try { localStorage.setItem("hirundu_pwa_installed", "true"); } catch {}
+          publishInstallState();
+        });
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", publishInstallState, { once: true });
+        } else {
+          publishInstallState();
+        }
+      })();
+    </script>
+
+    <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
+    <script>
+      (function () {
+        const ua = navigator.userAgent || "";
+        const isIOS = /iphone|ipad|ipod/i.test(ua);
+        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+        if (isIOS && isSafari && !isStandalone) {
+          const tip = document.createElement("div");
+          tip.innerHTML = "Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>";
+          tip.style.cssText =
+            "position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);";
+          document.body.appendChild(tip);
+          setTimeout(() => tip.remove(), 8000);
+        }
+      })();
+    </script>
+
+    <!-- Debug erreurs JS (moins intrusif) -->
+    <script>
+      const __DEV__ = location.hostname.includes("localhost") || location.hostname.endsWith(".app.github.dev");
+      window.addEventListener("error", (e) => {
+        console.error("JS Error:", e.message, e.error);
+        if (__DEV__) {
+          const msg = "Erreur JS: " + e.message;
+          if (!window.__errShown) { window.__errShown = true; alert(msg); setTimeout(()=>{ window.__errShown=false;}, 3000); }
+        }
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        console.error("Unhandled promise:", e.reason);
+        if (__DEV__) {
+          const msg = "Erreur async: " + (e.reason?.message || e.reason);
+          if (!window.__rejShown) { window.__rejShown = true; alert(msg); setTimeout(()=>{ window.__rejShown=false;}, 3000); }
+        }
+      });
+    </script>
+
+
+  </body>
+</html>
