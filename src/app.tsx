@@ -20,6 +20,7 @@ const BonusHubPage = lazy(() => import("./routes/BonusHubPage"));
 const RegionLevelPage = lazy(() => import("./levels/RegionLevelPage"));
 const RegionDiscoveries = lazy(() => import("./levels/RegionDiscoveries"));
 const SettingsPage = lazy(() => import("./routes/SettingsPage"));
+const GameGuidePage = lazy(() => import("./routes/GameGuidePage"));
 
 type AppErrorBoundaryProps = { children: React.ReactNode };
 type AppErrorBoundaryState = { failed: boolean };
@@ -126,6 +127,7 @@ export default function App() {
           <Route path="/trade-preview" element={<TradePreview />} />
           <Route path="/card-trade" element={<CardTradePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/guide" element={<GameGuidePage />} />
 
           {/* Lancement d’un niveau “legacy” via paramètre */}
           <Route path="/level/:levelId" element={<LegacyLevelPage />} />
