@@ -318,6 +318,23 @@ export function disposeBattle() {
   state.active = false;
   _stopBattleTheme();
   _stopVictoryMusic();
+
+  // Release the landscape lock acquired from the battle-intro user gesture.
+  // This lets Android return naturally to portrait for the hunt/menu.
+  try {
+    if (window.__HIRUNDU_BATTLE_ORIENTATION_LOCKED__ && screen.orientation?.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch {}
+  try {
+    if (window.__HIRUNDU_BATTLE_FULLSCREEN__ && document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch?.(()=>{});
+    }
+  } catch {}
+  try {
+    delete window.__HIRUNDU_BATTLE_ORIENTATION_LOCKED__;
+    delete window.__HIRUNDU_BATTLE_FULLSCREEN__;
+  } catch {}
   window.removeEventListener('keydown', _onKeyDown, true);
   window.removeEventListener('keyup', _onKeyUp, true);
   window.removeEventListener('orientationchange', _updateRotateOverlay);
