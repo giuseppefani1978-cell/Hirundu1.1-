@@ -22,6 +22,7 @@ import {
   type PartnerReward,
 } from "../services/partners";
 import { BONUS_MAPS, type BonusKey } from "../../bonus/bonusData";
+import { isHirunduCardQr, queueCardQr } from "../../bonus/cardTrade";
 import { getEnrichedPois } from "../services/pois";
 import { setPoiQrValidated } from "../passport/passportStorage";
 import { useAppDispatch, useAppSelector } from "../../../store";
@@ -187,10 +188,15 @@ export default function QrHub() {
 
   const handleScanResult = useCallback(
     (payload: string) => {
-      closeScanner();        // ferme l’UI
-      handlePayload(payload); // puis traite l’action
+      closeScanner();
+      if (isHirunduCardQr(payload)) {
+        queueCardQr(payload);
+        navigate("/card-trade");
+        return;
+      }
+      handlePayload(payload);
     },
-    [closeScanner, handlePayload]
+    [closeScanner, handlePayload, navigate]
   );
 
   const handleScanError = useCallback(
@@ -510,3 +516,4 @@ function normalizeToken(value: string | undefined | null): string {
     .replace(/[^a-z0-9\s]/g, "")
     .trim();
 }
+

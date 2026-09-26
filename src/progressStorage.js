@@ -1,6 +1,19 @@
 export const DURABLE_PROGRESS_KEY = "hirundu_progress_v1";
 const DURABLE_PROGRESS_VERSION = 1;
 const PASSPORT_STORAGE_KEY = "salentino_passport_v1";
+export const PROGRESS_SAVE_EVENT = "hirundu:progress-save";
+let lastSaveResult = null;
+
+export function getProgressSaveResult() {
+  return lastSaveResult;
+}
+
+function publishSaveResult(ok, reason = "") {
+  lastSaveResult = { ok, at: Date.now(), reason };
+  if (typeof window !== "undefined") {
+    try { window.dispatchEvent(new CustomEvent(PROGRESS_SAVE_EVENT, { detail: lastSaveResult })); } catch { /* restricted browser */ }
+  }
+}
 
 const STATIC_KEYS = new Set([
   "player_name",
@@ -172,9 +185,11 @@ function buildSnapshot(storage, baseValues = {}) {
 function writeSnapshot(storage, snapshot) {
   try {
     storage.setItem(DURABLE_PROGRESS_KEY, JSON.stringify(snapshot));
+    publishSaveResult(true);
     return true;
   } catch (error) {
     console.warn("[progress] unable to persist durable snapshot", error);
+    publishSaveResult(false, error instanceof Error ? error.message : "storage");
     return false;
   }
 }
@@ -214,6 +229,31 @@ export function replaceDurableProgressSnapshot() {
   const snapshot = buildSnapshot(storage);
   writeSnapshot(storage, snapshot);
   return snapshot;
+}
+
+export function restoreDurableProgressSnapshot(snapshot) {
+  const storage = getStorage();
+  if (!storage || !snapshot || snapshot.version !== DURABLE_PROGRESS_VERSION || !snapshot.values || typeof snapshot.values !== "object") return null;
+
+  const entries = Object.entries(snapshot.values).filter(([key, raw]) =>
+    key !== PASSPORT_STORAGE_KEY && isDurableLegacyKey(key) && typeof raw === "string"
+  );
+  const previous = entries.map(([key]) => [key, storage.getItem(key)]);
+  try {
+    entries.forEach(([key, raw]) => storage.setItem(key, raw));
+    const restored = buildSnapshot(storage, collectLegacyValues(storage));
+    if (!writeSnapshot(storage, restored)) throw new Error("snapshot");
+    return restored;
+  } catch (error) {
+    previous.forEach(([key, raw]) => {
+      try {
+        if (raw === null) storage.removeItem(key);
+        else storage.setItem(key, raw);
+      } catch { /* best-effort rollback */ }
+    });
+    publishSaveResult(false, error instanceof Error ? error.message : "restore");
+    return null;
+  }
 }
 
 export function clearDurableProgressSnapshot() {

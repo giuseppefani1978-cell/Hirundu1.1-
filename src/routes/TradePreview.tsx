@@ -23,6 +23,7 @@ export default function TradePreview(){
  function reset(){setCards(demoCards());setStep('cards');setTab(false);setCancelled(false);setGift(false);}
  return <main className="trade-preview"><div className="trade-preview__inner">
   <nav><a href="#/discovery-preview">← {t[32]}</a><LanguageSelect/></nav>
+  <p><a className="trade-primary" href="#/card-trade">QR · {({fr:'Tester un échange entre deux téléphones',it:'Prova uno scambio tra due telefoni',en:'Test a trade between two phones',es:'Probar un intercambio entre dos teléfonos'} as Record<string,string>)[LANG]||'QR'}</a></p>
   <p className="trade-preview__notice">{t[2]}</p>
   <header><span>HIRUNDU · COLLECTION</span><h1 ref={title} tabIndex={-1}>{step==='cards'?t[0]:step==='offer'?t[12]:step==='recipient'?t[19]:gift?t[23]:t[22]}</h1><p>{step==='cards'?t[1]:t[24]}</p></header>
   {step==='cards'&&<>

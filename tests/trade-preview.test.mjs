@@ -23,13 +23,13 @@ test('trade demo: duplicate-only, reject, gift, exchange, reset, four languages 
    assert.equal(d.querySelectorAll('.trade-preview__grid article').length,4);
    assert.equal(d.querySelectorAll('.trade-preview__grid .trade-primary').length,2);
    await click('.trade-preview__tabs button',1);assert.equal(d.querySelectorAll('.trade-preview__grid article').length,2);
-   await click('.trade-primary');assert.ok(d.querySelector('select option[value="messapia"]'));
+   await click('.trade-preview__grid .trade-primary');assert.ok(d.querySelector('select option[value="messapia"]'));
    await click('.trade-preview__offer>.trade-primary');assert.equal(d.querySelectorAll('.trade-preview__offer .trade-card').length,2);
    await click('.trade-preview__offer>button',1);assert.ok(d.querySelector('[role="status"]'));assert.equal(d.querySelectorAll('.trade-preview__grid .trade-primary').length,2);
-   await click('.trade-primary');await click('.trade-preview__offer>.trade-primary');await click('.trade-preview__offer>.trade-primary');
-   assert.ok(d.querySelector('.trade-preview__seal'));await click('.trade-primary');assert.equal(d.querySelectorAll('.trade-preview__grid .trade-primary').length,1);
-   await click('.trade-primary');await click('.trade-preview__offer .trade-preview__tabs button',1);assert.equal(d.querySelector('.trade-preview__offer select'),null);
-   await click('.trade-preview__offer>.trade-primary');assert.equal(d.querySelectorAll('.trade-preview__offer .trade-card').length,1);await click('.trade-preview__offer>.trade-primary');await click('.trade-primary');
+   await click('.trade-preview__grid .trade-primary');await click('.trade-preview__offer>.trade-primary');await click('.trade-preview__offer>.trade-primary');
+   assert.ok(d.querySelector('.trade-preview__seal'));await click('.trade-preview__offer>.trade-primary');assert.equal(d.querySelectorAll('.trade-preview__grid .trade-primary').length,1);
+   await click('.trade-preview__grid .trade-primary');await click('.trade-preview__offer .trade-preview__tabs button',1);assert.equal(d.querySelector('.trade-preview__offer select'),null);
+   await click('.trade-preview__offer>.trade-primary');assert.equal(d.querySelectorAll('.trade-preview__offer .trade-card').length,1);await click('.trade-preview__offer>.trade-primary');await click('.trade-preview__offer>.trade-primary');
    assert.equal(d.querySelectorAll('.trade-preview__grid article').length,0);
    await click('footer button');assert.equal(d.querySelectorAll('.trade-preview__grid article').length,4);
    assert.equal(writes,0,'demo never writes storage');assert.equal(storage.getItem('salentino_passport_v1'),'unchanged');assert.equal(storage.getItem('level1_won'),'true');
