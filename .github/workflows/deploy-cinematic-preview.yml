@@ -1,0 +1,51 @@
+name: Deploy cinematic preview
+
+on:
+  push:
+    branches:
+      - test/v4-cinematic-intro-2026-09-26
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build isolated preview
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("vite.config.ts")
+          s = p.read_text()
+          s = s.replace('base: "/Hirundu1.1-/"', 'base: "./"')
+          p.write_text(s)
+          PY
+          npm run build
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+
+      - name: Publish compiled preview branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Preview cinematic intro from ${GITHUB_SHA}"
+          git branch -M cinematic-preview
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin cinematic-preview
