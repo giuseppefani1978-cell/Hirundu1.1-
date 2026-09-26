@@ -9,6 +9,8 @@ import { journeyCopy } from '../ui/journeyCopy';
 import OriginalStartPage from './OriginalStartPage';
 import './StartPage.css';
 
+const guideLabels={fr:'Guide du jeu',it:'Guida al gioco',en:'Game guide',es:'Guía del juego'};
+
 export default function StartPage() {
   const location = useLocation();
   if (new URLSearchParams(location.search).get('home') === 'original') return <OriginalStartPage />;
@@ -36,6 +38,7 @@ function PlayerHome() {
         <Link to="/bonus" state={{ fromIntro: true }}><span aria-hidden="true">◇</span>{copy.bonus}<span aria-hidden="true">›</span></Link>
         <Link to="/passport"><span aria-hidden="true">▤</span>{words.passport}<span aria-hidden="true">›</span></Link>
         <Link to="/settings"><span aria-hidden="true">⚙</span>{t('settings', 'Réglages')}<span aria-hidden="true">›</span></Link>
+        <Link to="/guide"><span aria-hidden="true">?</span>{guideLabels[(document.documentElement.lang||'fr').slice(0,2) as keyof typeof guideLabels]||guideLabels.fr}<span aria-hidden="true">›</span></Link>
       </nav>
       {new URLSearchParams(location.search).has('debug') && <TestShortcuts />}
     </div></div>
