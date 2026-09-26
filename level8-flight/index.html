@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#bfe2f8">
+  <title>HIRUNDU · Niveau 8 · Vol sur le Salento</title>
+  <style>#sceneryToggle::after{content:"";position:absolute;inset:50% 0 auto;height:44px;transform:translateY(-50%)}#sceneryToggle[aria-pressed="true"]{background:#d9eef4}</style>
+  <link rel="stylesheet" href="style.css?v=20260921-l8fillreset1">
+  <link rel="stylesheet" href="player-feedback.css?v=a78-1">
+  <link rel="stylesheet" href="../shared/practice.css?v=1">
+<link rel="stylesheet" href="../shared/player-ui.css?v=a34-1"></head>
+<body class="hirundu-flight">
+<main>
+  <header>
+    <strong>HIRUNDU <small>08 · MESSAPIA</small></strong>
+    <div>
+      <button id="pause" aria-label="Pause">Ⅱ</button>
+      <button id="sceneryToggle" type="button" aria-pressed="true" aria-label="Reflets activés" style="min-width:44px;position:relative">≋</button>
+    </div>
+  </header>
+
+  <section class="speech">
+    <img src="../level4-flight/assets/tarantula.png" alt="">
+    <div>
+      <b id="speaker">Tarantula</b>
+      <p id="question" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="arena">
+    <canvas id="game" tabindex="0" aria-label="Zone de vol"></canvas>
+    <div id="progress"></div>
+
+    <div id="microPad" aria-label="Micro-pad de pilotage" hidden>
+      <button class="pad-up" data-dx="0" data-dy="-1" aria-label="Monter">▲</button>
+      <button class="pad-left" data-dx="-1" data-dy="0" aria-label="Gauche">◀</button>
+      <button class="pad-right" data-dx="1" data-dy="0" aria-label="Droite">▶</button>
+      <button class="pad-down" data-dx="0" data-dy="1" aria-label="Descendre">▼</button>
+    </div>
+
+    <div id="cover">
+      <article>
+        <span id="eyebrow"></span>
+        <h1 id="title"></h1>
+        <p id="help"></p>
+        <p id="detail"></p>
+        <p id="sceneryHint" style="font-size:12px"></p>
+        <button id="start"></button>
+        <button id="again" hidden></button>
+        <div id="playerSettings">
+          <label><input id="actionEffects" type="checkbox" checked><span id="actionEffectsLabel"></span></label>
+          <label><input id="actionSound" type="checkbox"><span id="actionSoundLabel"></span></label>
+          <button id="testActionSound" type="button"></button>
+          <p id="actionAudioStatus" role="status"></p>
+          <button id="replayGuide" type="button"></button>
+          <section id="flightGuide" hidden>
+            <p id="guideText"></p>
+            <button id="guideNext" type="button"></button>
+            <button id="guideSkip" type="button"></button>
+          </section>
+        </div>
+        <div id="pauseOptions" class="pause-options">
+          <label id="pauseLangRow" hidden>
+            <span>🌐</span>
+            <select id="lang" aria-label="Langue">
+              <option value="fr">FR</option>
+              <option value="it">IT</option>
+              <option value="en">EN</option>
+              <option value="es">ES</option>
+            </select>
+          </label>
+          <button id="musicToggle" type="button" hidden></button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <span>🏺 <b id="count">0/10</b></span>
+    <span id="energy"></span>
+    <span id="bonuses">☕ 0 · 🥐 0</span>
+  </footer>
+</main>
+
+<script src="places.js?v=20260921-l8fillreset1"></script>
+<script src="scenery-effects.js?v=a06-play-1"></script>
+<script src="game.js?v=a06-play-1"></script>
+<script src="player-feedback.js?v=a78-1"></script>
+<script type="module" src="../shared/flight8-practice.js?v=1"></script>
+<script src="../shared/question-reader.js?v=a34-1"></script></body>
+</html>
