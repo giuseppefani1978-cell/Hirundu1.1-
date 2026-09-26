@@ -7,10 +7,10 @@ import { DISCOVERY_CARDS } from './discoveryCards';
 import { collectionCopy } from './collectionCopy';
 import './DiscoveryCard.css';
 const labels={
- fr:['Acquis dans le jeu','Dans ton passeport','Illustration du territoire','Le savais-tu ?','Voir la source','Ouvrir le passeport','Une découverte virtuelle ne valide pas une visite réelle.'],
- it:['Ottenuto nel gioco','Nel tuo passaporto','Illustrazione del territorio','Lo sapevi?','Leggi la fonte','Apri il passaporto','Una scoperta virtuale non convalida una visita reale.'],
- en:['Earned in the game','In your passport','Territory illustration','Did you know?','View source','Open passport','A virtual discovery does not validate a real visit.'],
- es:['Obtenido en el juego','En tu pasaporte','Ilustración del territorio','¿Lo sabías?','Ver fuente','Abrir pasaporte','Un descubrimiento virtual no valida una visita real.']
+ fr:['Acquis dans le jeu','Dans ton passeport','Illustration du territoire','Le savais-tu ?','Voir la source','Ouvrir le passeport','Une découverte virtuelle ne valide pas une visite réelle.','Échanges QR · 15 min'],
+ it:['Ottenuto nel gioco','Nel tuo passaporto','Illustrazione del territorio','Lo sapevi?','Leggi la fonte','Apri il passaporto','Una scoperta virtuale non convalida una visita reale.','Scambi QR · 15 min'],
+ en:['Earned in the game','In your passport','Territory illustration','Did you know?','View source','Open passport','A virtual discovery does not validate a real visit.','QR trades · 15 min'],
+ es:['Obtenido en el juego','En tu pasaporte','Ilustración del territorio','¿Lo sabías?','Ver fuente','Abrir pasaporte','Un descubrimiento virtual no valida una visita real.','Intercambios QR · 15 min']
 };
 export default function DiscoveryCard({mapKey,earned,passport=false,preview=false}:{mapKey:BonusKey;earned:boolean;passport?:boolean;preview?:boolean}){
  const navigate=useNavigate();if(!earned&&!preview)return null;
@@ -24,6 +24,7 @@ export default function DiscoveryCard({mapKey,earned,passport=false,preview=fals
   {!preview&&<p className="discovery-keepsake__saved">📔 {t[1]} · {BONUS_MAPS[mapKey].title}</p>}
   {!preview&&<div className="discovery-keepsake__actions">
    {!passport&&<button className="app-button" onClick={()=>navigate('/passport/'+mapKey)}>{t[5]}</button>}
+   <button className="app-button" onClick={()=>navigate('/card-trade?card='+mapKey)}>⇄ {t[7]}</button>
    <button className="app-button" onClick={()=>navigate('/poi/'+mapKey+'/realmap')}>{collectionCopy()[10]} ↗</button>
   </div>}
   <small>{t[6]}</small></div>

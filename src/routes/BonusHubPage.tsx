@@ -37,7 +37,10 @@ export default function BonusHubPage() {
     {featured && <section className="discoveries__spotlight">
       <h2>{featured.key===unlockedKey ? collection[0] : collection[14]}</h2>
       <DiscoveryCard mapKey={featured.key} earned/>
-      <button className="app-button" onClick={()=>navigate('/passport/'+featured.key)}>{collection[12]} · {completed} / {progress.length}</button>
+      <div className="discoveries__spotlight-actions">
+        <button className="app-button app-button--dark" onClick={()=>navigate('/level/'+featured.id)}>↻ {copy.replay} · {copy.level} {featured.id}</button>
+        <button className="app-button" onClick={()=>navigate('/passport/'+featured.key)}>{collection[12]} · {completed} / {progress.length}</button>
+      </div>
     </section>}
     <section aria-labelledby="maps-title">
       <h2 id="maps-title">{copy.maps}</h2><p>{copy.mapHint}</p>
@@ -46,9 +49,12 @@ export default function BonusHubPage() {
         return <article key={level.key} className="discoveries__card">
           <span>{copy.level} {level.id}</span><h3>{BONUS_MAPS[level.key].title}</h3>
           <DiscoveryCard mapKey={level.key} earned={level.done}/>
-          <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
-            {unlocked ? copy.open : copy.locked}
-          </button>
+          <div className="discoveries__card-actions">
+            <button className="app-button" disabled={!unlocked} onClick={() => navigate(`/poi/${level.key}/realmap`)}>
+              {unlocked ? copy.open : copy.locked}
+            </button>
+            {level.done ? <button className="app-button app-button--ghost" onClick={() => navigate(`/level/${level.id}`)}>↻ {copy.replay}</button> : null}
+          </div>
         </article>;
       })}</div>
     </section>
