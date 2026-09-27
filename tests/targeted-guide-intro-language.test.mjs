@@ -18,6 +18,9 @@ test('startup cinematic is shown on every fresh app launch and retries autoplay 
   assert.match(intro, /loadeddata/);
   assert.match(intro, /canplay/);
   assert.match(intro, /pageshow/);
+  assert.match(intro, /hirundu_intro\.webp/);
+  assert.match(intro, /startManualFallback/);
+  assert.match(intro, /currentTime = target/);
   assert.doesNotMatch(intro, /pointerdown.*retry/);
 });
 
