@@ -222,7 +222,7 @@ export function redeemFieldCardQr(raw: string): {
   if (!scenario) throw Error("unknown-field-card");
   const state = readCardInventory();
   if (state.redeemed[scenario.id]) {
-    return { scenario, state, alreadyRedeemed: true, passportValidated: scenario.validatesVisit };
+    return { scenario, state, alreadyRedeemed: true, passportValidated: false };
   }
 
   grantCard(state, scenario.card, scenario.kind);
