@@ -2,7 +2,7 @@
 export function createPractice(family){
  const ark=family==='arkanoid';
  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
- const s={family,step:0,x:.3,y:.7,paddle:.5,ballX:.66,ballY:.18,vx:0,vy:.58,launched:false,moved:0,done:false,misses:0,targetX:.75,targetY:.3};
+ const s={family,step:0,x:.3,y:.7,paddle:.5,ballX:.66,ballY:.2,vx:0,vy:.6,launched:false,moved:0,done:false,misses:0,targetX:.75,targetY:.3};
  function updateStepFromMovement(){if(s.step===0&&s.moved>=.06)s.step=1;}
  function setPaddle(value){
   if(!ark||s.done)return;
