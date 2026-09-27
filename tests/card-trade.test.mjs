@@ -79,8 +79,9 @@ test("a complete replay grants a transferable duplicate while preserving one gam
     assert.equal(inventory.cards.otranto, 2);
     assert.equal(inventory.origins.otranto.game, 2);
 
-    const offer = trade.createCardOffer("otranto");
-    assert.ok(offer.token.startsWith("HIRUNDU-CARD-1."));
+    const offer = await trade.createCardOffer("otranto");
+    assert.ok(offer.token.startsWith("HIRUNDU-CARD-2."));
+    assert.ok(offer.offer.expiresAt - offer.offer.issuedAt <= 15 * 60 * 1000);
   } finally {
     await server.close();
     dom.window.close();
@@ -101,39 +102,39 @@ test("three-step QR trade credits only the receiver confirmed by the sender", as
 
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto");
     assert.equal(trade.readCardInventory().cards.otranto, 2);
 
     useDom(domB);
-    const acceptedB = trade.acceptCardOffer(offer.token);
+    const acceptedB = await trade.acceptCardOffer(offer.token);
     let receiverB = trade.readCardInventory();
     assert.equal(receiverB.cards.otranto ?? 0, 0);
     assert.ok(receiverB.received[offer.offer.id]);
 
     useDom(domC);
-    const acceptedC = trade.acceptCardOffer(offer.token);
+    const acceptedC = await trade.acceptCardOffer(offer.token);
     let receiverC = trade.readCardInventory();
     assert.equal(receiverC.cards.otranto ?? 0, 0);
     assert.ok(receiverC.received[offer.offer.id]);
 
     useDom(domA);
-    const completed = trade.completeCardReceipt(acceptedB.token);
+    const completed = await trade.completeCardReceipt(acceptedB.token);
     const sender = trade.readCardInventory();
     assert.equal(sender.cards.otranto, 1);
     assert.equal(sender.origins.otranto.game, 1);
-    assert.throws(() => trade.completeCardReceipt(acceptedC.token));
+    await assert.rejects(() => trade.completeCardReceipt(acceptedC.token));
 
     useDom(domC);
-    assert.throws(() => trade.finalizeCardConfirmation(completed.token));
+    await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
     receiverC = trade.readCardInventory();
     assert.equal(receiverC.cards.otranto ?? 0, 0);
 
     useDom(domB);
-    const final = trade.finalizeCardConfirmation(completed.token);
+    const final = await trade.finalizeCardConfirmation(completed.token);
     receiverB = final.state;
     assert.equal(receiverB.cards.otranto, 1);
     assert.equal(receiverB.origins.otranto.exchange, 1);
-    assert.throws(() => trade.finalizeCardConfirmation(completed.token));
+    await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
   } finally {
     await server.close();
     domA.window.close();
@@ -141,4 +142,46 @@ test("three-step QR trade credits only the receiver confirmed by the sender", as
     domC.window.close();
     restoreGlobals(prior);
   }
+});
+
+
+test("signed QR offers reject tampering and expire after 15 minutes", async () => {
+  const domA = new JSDOM("", { url: "https://sender-expiry.invalid/" });
+  const domB = new JSDOM("", { url: "https://receiver-expiry.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  const realNow = Date.now;
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const base = realNow();
+    Date.now = () => base;
+    const offer = await trade.createCardOffer("otranto");
+
+    useDom(domB);
+    const last = offer.token.at(-1);
+    const tampered = offer.token.slice(0, -1) + (last === "A" ? "B" : "A");
+    await assert.rejects(() => trade.inspectCardOffer(tampered));
+
+    Date.now = () => base + 16 * 60 * 1000;
+    await assert.rejects(() => trade.inspectCardOffer(offer.token));
+  } finally {
+    Date.now = realNow;
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
+
+test("trade page renders generated offer QR directly under the selected duplicate", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
+  );
+  assert.match(source, /qrCard === key \? renderActiveQr\(\) : null/);
+  assert.match(source, /await createCardOffer\(card\)/);
+  assert.match(source, /remainingLabel/);
+  assert.match(source, /Generating QR|Génération du QR/);
 });
