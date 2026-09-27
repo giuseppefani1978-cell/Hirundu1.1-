@@ -196,7 +196,7 @@ canvas.addEventListener('pointermove',e=>{
  if(e.pointerId===touchPointer||(e.pointerType==='mouse'&&touchPointer===null))pointer(e);
 });
 for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,e=>{if(e.pointerId===touchPointer)touchPointer=null;});
-$('play').onclick=()=>state.mode==='paused'?resume():state.mode==='battleIntro'||state.mode==='battleLost'?Battle.start():start();$('restart').onclick=start;$('launch').onclick=launchOrRecall;$('pause').onclick=()=>state.mode==='paused'?resume():pause();
+$('play').onclick=()=>{if(state.mode==='paused')resume();else if(state.mode==='battleIntro'||state.mode==='battleLost')void startBattleFromCover();else start();};$('restart').onclick=start;$('launch').onclick=launchOrRecall;$('pause').onclick=()=>state.mode==='paused'?resume():pause();
 $('hint').onclick=()=>{if(!['ready','flying'].includes(state.mode))return;state.hinted=true;notice(text().hintText+' '+place(active()).name,3)};
 $('language').onchange=e=>{e.stopPropagation();const wasPaused=state.mode==='paused',pausedFrom=state.previous;lang=$('language').value;try{localStorage.setItem('hirundu_arcade_language',lang);localStorage.setItem('__lang__',lang)}catch{}translated();labelBridge();sendHost('language',{lang});if(wasPaused){state.previous=pausedFrom;state.mode='paused';showPause();$('language').focus({preventScroll:true})}};['pointerdown','pointerup','touchstart','touchend','click'].forEach(type=>$('language').addEventListener(type,e=>e.stopPropagation(),{passive:true}));
 for(const [id,key] of [['left','ArrowLeft'],['right','ArrowRight']]){const button=$(id);button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);keys.add(key)});for(const event of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(event,()=>keys.delete(key));}
@@ -248,6 +248,7 @@ const battleCopy={
 for(const language of Object.keys(battleCopy))extras[language].battleHelp=battleCopy[language].help;
 function battleUI(){return battleCopy[lang]}
 function battleOrientationReady(){return typeof matchMedia!=='function'||!matchMedia('(pointer: coarse)').matches||matchMedia('(orientation: landscape)').matches;}
+let battleRotationPending=false;
 function syncBattleOrientation(){
  const ready=battleOrientationReady();
  document.body.classList.toggle('battle-orientation-ready',ready);
@@ -257,7 +258,28 @@ function syncBattleOrientation(){
  $('orientationPrompt').hidden=state.mode!=='battleIntro'&&ready;
  $('orientationTitle').textContent=ready?battleUI().ready:battleUI().rotate;
  $('orientationText').textContent=ready?battleUI().readyHelp:battleUI().orientation;
- $('play').disabled=!ready||!state.assetsReady;
+ // Keep the CTA available in portrait: the tap is the user gesture Android
+ // needs for fullscreen + Screen Orientation API landscape lock.
+ $('play').disabled=!state.assetsReady||battleRotationPending;
+}
+async function requestBattleLandscapeFromGesture(){
+ if(battleOrientationReady())return true;
+ battleRotationPending=true;syncBattleOrientation();
+ try{
+  if(!document.fullscreenElement&&document.documentElement?.requestFullscreen)await document.documentElement.requestFullscreen();
+ }catch(_){}
+ try{
+  if(screen.orientation?.lock)await screen.orientation.lock('landscape');
+ }catch(_){}
+ for(const delay of [0,120,280,600]){
+  if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+  if(battleOrientationReady()){battleRotationPending=false;syncBattleOrientation();return true;}
+ }
+ battleRotationPending=false;syncBattleOrientation();return false;
+}
+async function startBattleFromCover(){
+ if(!['battleIntro','battleLost'].includes(state.mode))return;
+ if(await requestBattleLandscapeFromGesture())Battle.start();
 }
 function battleIntro(){
  pauseLevelMusic();state.mode='battleIntro';state.message=0;touchPointer=null;keys.clear();
