@@ -19,7 +19,7 @@ test('mobile regression: L3 battle requests Android landscape from the Fight use
   const game = await readFile(new URL('../public/level3-arkanoid/game.js', import.meta.url), 'utf8');
   assert.match(game, /requestBattleLandscapeFromGesture/);
   assert.match(game, /document\.documentElement\?\.requestFullscreen/);
-  assert.match(game, /screen\.orientation\?\.lock\('landscape'\)/);
+  assert.match(game, /screen\.orientation\.lock\('landscape'\)/);
   assert.match(game, /startBattleFromCover/);
   assert.match(game, /\$\('play'\)\.disabled=!state\.assetsReady\|\|battleRotationPending/);
   assert.doesNotMatch(game, /\$\('play'\)\.disabled=!ready\|\|!state\.assetsReady/);
