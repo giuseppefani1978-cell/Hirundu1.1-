@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 
-test('V9.2 mobile game flow enforces portrait hunt and landscape battle intro', async () => {
+for (const rotation of ['automatic', 'manual', 'unsupported']) {
+test(`mobile battle rotation: ${rotation} preserves the landscape gate`, async () => {
   const dom = new JSDOM('<!doctype html><body></body>', {
     url: 'https://example.test/Hirundu1.1-/?lang=fr',
     pretendToBeVisual: true,
   });
   const w = dom.window;
 
-  for (const key of ['window','document','localStorage','location','navigator','Event','CustomEvent','HTMLElement']) {
+  for (const key of ['window','document','localStorage','location','navigator','screen','Event','CustomEvent','HTMLElement']) {
     Object.defineProperty(globalThis, key, {
       value: key === 'window' ? w : w[key],
       configurable: true,
@@ -55,19 +56,51 @@ test('V9.2 mobile game flow enforces portrait hunt and landscape battle intro', 
       onProceed: () => { proceeded += 1; },
     });
 
+    const calls = [];
+    const rotate = () => {
+      w.innerWidth = 844;
+      w.innerHeight = 390;
+      w.dispatchEvent(new w.Event('resize'));
+    };
+    if (rotation !== 'unsupported') {
+      w.document.documentElement.requestFullscreen = async () => { calls.push('fullscreen'); };
+      Object.defineProperty(w.screen, 'orientation', { configurable: true, value: {
+        lock: async (orientation) => {
+          calls.push(orientation);
+          if (rotation === 'manual') throw new Error('Lock refused');
+          rotate();
+        },
+      } });
+    }
+    const waitUntil = async (condition) => {
+      const deadline = Date.now() + 2500;
+      while (!condition()) {
+        assert.ok(Date.now() < deadline, 'rotation request completes');
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    };
     const start = w.document.getElementById('__battle_start_btn');
-    assert.equal(start.disabled, true, 'portrait mobile blocks battle start');
+    assert.equal(start.disabled, false, 'portrait allows a user gesture to request rotation');
     assert.equal(flow.getGameFlowState().phase, 'battle-intro');
     start.click();
     assert.equal(proceeded, 0, 'battle cannot start while still portrait');
-
-    w.innerWidth = 844;
-    w.innerHeight = 390;
-    w.dispatchEvent(new w.Event('resize'));
-    assert.equal(start.disabled, false, 'landscape unlocks battle start');
-
+    assert.equal(start.disabled, true, 'pending rotation prevents duplicate requests');
     start.click();
-    assert.equal(proceeded, 1);
+
+    if (rotation === 'automatic') {
+      await waitUntil(() => proceeded === 1);
+      assert.deepEqual(calls, ['fullscreen', 'landscape']);
+      assert.equal(w.__HIRUNDU_BATTLE_ORIENTATION_LOCKED__, true);
+    } else {
+      await waitUntil(() => !start.disabled);
+      assert.equal(proceeded, 0, 'refused or unavailable rotation does not bypass the gate');
+      assert.equal(flow.getGameFlowState().phase, 'battle-intro');
+      assert.deepEqual(calls, rotation === 'manual' ? ['fullscreen', 'landscape'] : []);
+      rotate();
+      await waitUntil(() => proceeded === 1);
+    }
+    start.click();
+    assert.equal(proceeded, 1, 'battle starts exactly once after landscape is ready');
     assert.equal(flow.getGameFlowState().phase, 'battle');
 
     cleanup?.();
@@ -78,6 +111,7 @@ test('V9.2 mobile game flow enforces portrait hunt and landscape battle intro', 
   }
 });
 
+}
 
 test('V9.3 pause state is explicit and reversible', async () => {
   const dom = new JSDOM('<!doctype html><body></body>', {
