@@ -149,8 +149,8 @@ const copy = {
     next: 'Continuer',
     finish: 'Commencer l’aventure',
     step: 'Étape',
-    practice: 'Choisis une famille puis ouvre l’entraînement.',
-    safe: 'Cet exercice n’ajoute ni point, ni victoire, ni visite.',
+    practice: 'Choisis une famille puis essaie ses commandes pour comprendre comment elle se joue.',
+    safe: 'Cette démonstration est facultative : elle sert uniquement à comprendre les commandes et ne modifie ni score, ni victoire, ni visite.',
     families: {
       classic: 'Chasse classique',
       arkanoid: 'Chasse à rebonds',
@@ -201,7 +201,7 @@ const copy = {
       {
         icon: '✦',
         title: 'Apprends en jouant',
-        text: 'Les commandes changent selon la famille. Fais le véritable exercice interactif avant de commencer.',
+        text: 'Les commandes changent selon la famille. Essaie-les ici si tu veux comprendre le geste avant de jouer le vrai niveau.',
         bullets: [
           'Déplacer Aracne',
           'Réussir un rebond avec la barre',
@@ -258,8 +258,8 @@ const copy = {
     next: 'Continua',
     finish: 'Inizia l’avventura',
     step: 'Tappa',
-    practice: 'Scegli una famiglia e apri l’allenamento.',
-    safe: 'L’esercizio non aggiunge punti, vittorie o visite.',
+    practice: 'Scegli una famiglia e prova i suoi comandi per capire come si gioca.',
+    safe: 'Questa demo è facoltativa: serve solo a capire i comandi e non modifica punteggi, vittorie o visite.',
     families: {
       classic: 'Caccia classica',
       arkanoid: 'Caccia a rimbalzi',
@@ -310,7 +310,7 @@ const copy = {
       {
         icon: '✦',
         title: 'Impara giocando',
-        text: 'I comandi cambiano secondo la famiglia. Prova il vero esercizio interattivo prima di iniziare.',
+        text: 'I comandi cambiano secondo la famiglia. Provali qui se vuoi capire il gesto prima del vero livello.',
         bullets: [
           'Muovere Aracne',
           'Riuscire in un rimbalzo con la barra',
@@ -367,8 +367,8 @@ const copy = {
     next: 'Continue',
     finish: 'Start the adventure',
     step: 'Step',
-    practice: 'Choose a family, then open its practice.',
-    safe: 'Practice adds no score, victory or visit.',
+    practice: 'Choose a family and try its controls to understand how it plays.',
+    safe: 'This optional demo only explains the controls; it changes no score, victory or visit.',
     families: {
       classic: 'Classic hunt',
       arkanoid: 'Rebound hunt',
@@ -419,7 +419,7 @@ const copy = {
       {
         icon: '✦',
         title: 'Learn by playing',
-        text: 'Controls change with each family. Try the real interactive practice before starting.',
+        text: 'Controls change with each family. Try them here if you want to understand the gesture before the real level.',
         bullets: [
           'Move Aracne',
           'Bounce on the paddle',
@@ -476,8 +476,8 @@ const copy = {
     next: 'Continuar',
     finish: 'Empezar la aventura',
     step: 'Etapa',
-    practice: 'Elige una familia y abre el entrenamiento.',
-    safe: 'El ejercicio no añade puntos, victorias ni visitas.',
+    practice: 'Elige una familia y prueba sus controles para entender cómo se juega.',
+    safe: 'Esta demo es opcional: solo sirve para entender los controles y no modifica puntos, victorias ni visitas.',
     families: {
       classic: 'Caza clásica',
       arkanoid: 'Caza de rebotes',
@@ -528,7 +528,7 @@ const copy = {
       {
         icon: '✦',
         title: 'Aprende jugando',
-        text: 'Los controles cambian según la familia. Prueba el ejercicio interactivo real antes de empezar.',
+        text: 'Los controles cambian según la familia. Pruébalos aquí si quieres entender el gesto antes del nivel real.',
         bullets: [
           'Mover a Aracne',
           'Rebotar con la barra',
