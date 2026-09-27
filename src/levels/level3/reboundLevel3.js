@@ -1,6 +1,7 @@
 import { withBase } from '../../paths';
 import { LANG, setLang } from '../../i18n.js';
 import { markLevelWin, unlockBonus } from '../../features/bonus/bonusStorage';
+import { recordGameVictoryCard } from '../../features/bonus/cardTrade';
 import { addHallOfFameEntry } from '../../hof/storage.js';
 import { FLOW_PHASES, LANGUAGE_EVENT, PAUSE_EVENT, setGameFlowPhase, clearGameFlow } from '../../game_flow.js';
 import { AUDIO_STATE_EVENT, isMusicOn } from '../../audio.js';
@@ -38,6 +39,9 @@ export function bootReboundLevel3(options = {}) {
     }
     if (data.type === 'victory' && !options.testBattle && !handledWin && data.leaves === 10 && finite(data.score) && finite(data.elapsed)) {
       handledWin=true;won=true;
+      let replayVictory=false;
+      try { replayVictory=window.localStorage.getItem('level3_won')==='true'; } catch {}
+      try { recordGameVictoryCard('lecce',replayVictory); } catch (error) { console.warn('Unable to record level 3 victory card',error); }
       markLevelWin(3);unlockBonus('lecce');
       try {
         window.localStorage.setItem('lecce_bonus_unlocked','true');
