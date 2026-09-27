@@ -17,8 +17,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/startup-visual-autoplay-fallback-2026-09-27
-      - name: Verify ffmpeg
-        run: ffmpeg -version
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
       - name: Generate animated WebP fallback
         run: >
           ffmpeg -y -i public/assets/hirundu_intro.mp4
