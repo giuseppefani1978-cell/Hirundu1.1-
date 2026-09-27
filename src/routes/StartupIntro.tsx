@@ -57,24 +57,85 @@ export default function StartupIntro({ onComplete }: Props) {
     video.load();
 
     let cancelled = false;
+    let manualFallback = false;
+    let fallbackFrame = 0;
+    let fallbackStart = 0;
+    let fallbackBaseTime = 0;
+
+    const stopManualFallback = () => {
+      manualFallback = false;
+      if (fallbackFrame) cancelAnimationFrame(fallbackFrame);
+      fallbackFrame = 0;
+    };
+
+    const runManualFallback = (now: number) => {
+      if (cancelled || !manualFallback) return;
+      if (!fallbackStart) {
+        fallbackStart = now;
+        fallbackBaseTime = Math.max(0, video.currentTime || 0);
+      }
+      if (!Number.isFinite(video.duration) || video.duration <= 0) {
+        fallbackFrame = requestAnimationFrame(runManualFallback);
+        return;
+      }
+
+      const target = Math.min(
+        video.duration,
+        fallbackBaseTime + (now - fallbackStart) / 1000,
+      );
+
+      // Low Power Mode can forbid play(), but seeking a muted local video is
+      // still allowed. Advancing currentTime therefore keeps the cinematic
+      // visibly moving without a user gesture.
+      if (!video.seeking && Math.abs(video.currentTime - target) >= 0.07) {
+        try { video.currentTime = target; } catch {}
+      }
+
+      if (target >= video.duration - 0.06) {
+        manualFallback = false;
+        setCanEnter(true);
+        return;
+      }
+      fallbackFrame = requestAnimationFrame(runManualFallback);
+    };
+
+    const startManualFallback = () => {
+      if (cancelled || manualFallback || video.ended) return;
+      manualFallback = true;
+      video.pause();
+      fallbackStart = 0;
+      fallbackBaseTime = video.currentTime || 0;
+      fallbackFrame = requestAnimationFrame(runManualFallback);
+    };
+
     const tryPlay = () => {
-      if (cancelled || video.ended || !video.paused) return;
+      if (cancelled || manualFallback || video.ended || !video.paused) return;
       video.muted = true;
       const attempt = video.play();
-      if (attempt && typeof attempt.catch === "function") {
-        void attempt.catch(() => {
-          // iOS can reject a first attempt while restoring a standalone PWA.
-          // Timed retries below do not require a user gesture.
-        });
+      if (attempt && typeof attempt.then === "function") {
+        void attempt
+          .then(() => stopManualFallback())
+          .catch((error) => {
+            if (error?.name === "NotAllowedError") startManualFallback();
+          });
       }
     };
 
     const timers = [0, 80, 220, 500, 1000, 1800].map((delay) =>
       window.setTimeout(tryPlay, delay),
     );
+    // If iOS keeps the video paused despite the normal autoplay attempts,
+    // switch automatically to frame-by-frame visual playback.
+    timers.push(window.setTimeout(() => {
+      if (!cancelled && video.paused && !video.ended) startManualFallback();
+    }, 850));
+
     const onReady = () => tryPlay();
     const onVisible = () => {
-      if (document.visibilityState === "visible") tryPlay();
+      if (document.visibilityState === "visible") {
+        if (manualFallback) return;
+        tryPlay();
+      }
     };
 
     video.addEventListener("loadedmetadata", onReady);
@@ -86,6 +147,7 @@ export default function StartupIntro({ onComplete }: Props) {
 
     return () => {
       cancelled = true;
+      stopManualFallback();
       timers.forEach((timer) => window.clearTimeout(timer));
       video.pause();
       video.removeEventListener("timeupdate", updateFinalAction);
