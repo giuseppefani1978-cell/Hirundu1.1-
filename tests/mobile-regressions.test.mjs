@@ -14,6 +14,17 @@ test('mobile regression: L3 owns hunt and battle music and pause toggle works lo
   assert.match(battle, /__L3_STOP_BATTLE_MUSIC__/);
 });
 
+
+test('mobile regression: L3 battle requests Android landscape from the Fight user gesture', async () => {
+  const game = await readFile(new URL('../public/level3-arkanoid/game.js', import.meta.url), 'utf8');
+  assert.match(game, /requestBattleLandscapeFromGesture/);
+  assert.match(game, /document\.documentElement\?\.requestFullscreen/);
+  assert.match(game, /screen\.orientation\?\.lock\('landscape'\)/);
+  assert.match(game, /startBattleFromCover/);
+  assert.match(game, /\$\('play'\)\.disabled=!state\.assetsReady\|\|battleRotationPending/);
+  assert.doesNotMatch(game, /\$\('play'\)\.disabled=!ready\|\|!state\.assetsReady/);
+});
+
 test('mobile regression: L3 question area keeps a stable height', async () => {
   const css = await readFile(new URL('../public/level3-arkanoid/style.css', import.meta.url), 'utf8');
   const host = await readFile(new URL('../src/levels/level3/reboundLevel3.js', import.meta.url), 'utf8');
