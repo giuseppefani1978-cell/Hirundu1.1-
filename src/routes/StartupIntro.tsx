@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { LANG } from "../i18n.js";
 import { withBase } from "../utils/basePath.js";
 import "./StartupIntro.css";
 
@@ -6,27 +7,54 @@ type Props = {
   onComplete: () => void;
 };
 
+const introLabels = {
+  fr: { skip: "Passer", start: "Commencer" },
+  it: { skip: "Salta", start: "Inizia" },
+  en: { skip: "Skip", start: "Start" },
+  es: { skip: "Omitir", start: "Empezar" },
+} as const;
+
 export default function StartupIntro({ onComplete }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canEnter, setCanEnter] = useState(false);
+  const labels = introLabels[(LANG in introLabels ? LANG : "fr") as keyof typeof introLabels];
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    // iOS/PWA autoplay is reliable only when the media is already muted + inline
+    // before play() is attempted. Retry on media readiness/pageshow as well so
+    // opening the installed web app does not require a tap to start the intro.
+    video.defaultMuted = true;
     video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("autoplay", "");
+
     const play = () => {
+      if (video.ended || !video.paused) return;
       void video.play().catch(() => {
-        // Mobile browsers may delay autoplay; a first tap on the intro retries it.
+        // A later readiness/pageshow/visibility event retries automatically.
       });
     };
-    play();
-
-    const retry = () => {
-      if (video.paused && !video.ended) play();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") play();
     };
-    window.addEventListener("pointerdown", retry, { once: true });
-    return () => window.removeEventListener("pointerdown", retry);
+
+    play();
+    video.addEventListener("loadeddata", play);
+    video.addEventListener("canplay", play);
+    window.addEventListener("pageshow", play);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      video.removeEventListener("loadeddata", play);
+      video.removeEventListener("canplay", play);
+      window.removeEventListener("pageshow", play);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   const updateFinalAction = () => {
@@ -57,7 +85,7 @@ export default function StartupIntro({ onComplete }: Props) {
         className="startup-intro__skip"
         onClick={onComplete}
       >
-        Passer
+        {labels.skip}
       </button>
 
       {canEnter && (
@@ -67,7 +95,7 @@ export default function StartupIntro({ onComplete }: Props) {
           aria-label="Commencer HIRUNDU"
           onClick={onComplete}
         >
-          Commencer
+          {labels.start}
         </button>
       )}
     </section>
