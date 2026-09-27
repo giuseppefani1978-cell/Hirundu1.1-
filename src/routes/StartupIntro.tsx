@@ -61,6 +61,8 @@ export default function StartupIntro({ onComplete }: Props) {
     let fallbackFrame = 0;
     let fallbackStart = 0;
     let fallbackBaseTime = 0;
+    let fallbackImage: HTMLImageElement | null = null;
+    let fallbackDoneTimer = 0;
 
     const stopManualFallback = () => {
       manualFallback = false;
@@ -99,6 +101,32 @@ export default function StartupIntro({ onComplete }: Props) {
       fallbackFrame = requestAnimationFrame(runManualFallback);
     };
 
+    const showAnimatedFallback = () => {
+      if (cancelled || fallbackImage) return;
+      const image = document.createElement("img");
+      image.className = "startup-intro__video";
+      image.alt = "";
+      image.setAttribute("aria-hidden", "true");
+      image.decoding = "async";
+      image.onload = () => {
+        if (cancelled) return;
+        fallbackImage = image;
+        video.style.visibility = "hidden";
+        stopManualFallback();
+        const durationMs =
+          Number.isFinite(video.duration) && video.duration > 0
+            ? video.duration * 1000
+            : 10000;
+        fallbackDoneTimer = window.setTimeout(
+          () => setCanEnter(true),
+          Math.max(1000, durationMs),
+        );
+      };
+      image.onerror = () => image.remove();
+      image.src = withBase("assets/hirundu_intro.webp");
+      host.appendChild(image);
+    };
+
     const startManualFallback = () => {
       if (cancelled || manualFallback || video.ended) return;
       manualFallback = true;
@@ -106,6 +134,10 @@ export default function StartupIntro({ onComplete }: Props) {
       fallbackStart = 0;
       fallbackBaseTime = video.currentTime || 0;
       fallbackFrame = requestAnimationFrame(runManualFallback);
+      // Animated WebP is derived from the same MP4 and is not subject to
+      // Safari's media-autoplay permission. It replaces manual seeking as soon
+      // as it has loaded, while manual seeking keeps the first frames moving.
+      showAnimatedFallback();
     };
 
     const tryPlay = () => {
@@ -149,6 +181,8 @@ export default function StartupIntro({ onComplete }: Props) {
       cancelled = true;
       stopManualFallback();
       timers.forEach((timer) => window.clearTimeout(timer));
+      if (fallbackDoneTimer) window.clearTimeout(fallbackDoneTimer);
+      fallbackImage?.remove();
       video.pause();
       video.removeEventListener("timeupdate", updateFinalAction);
       video.removeEventListener("ended", ended);
