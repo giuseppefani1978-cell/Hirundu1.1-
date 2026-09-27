@@ -14,11 +14,11 @@ export function createPractice(family){
  function resetBallForLaunch(){
   const offset=s.paddle<.55?.15:-.15;
   s.ballX=clamp(s.paddle+offset,.18,.82);
-  s.ballY=.18;
+  s.ballY=.2;
   // Start slightly off-centre but drift back toward the paddle so the
   // teaching bounce is forgiving on small touch screens.
   s.vx=offset>0?-.12:.12;
-  s.vy=.58;
+  s.vy=.6;
  }
  return {
   state:s,
