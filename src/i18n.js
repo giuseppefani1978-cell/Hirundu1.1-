@@ -7,6 +7,7 @@ import { syncDurableProgress } from './progressStorage.js';
 export const I18N = {
   fr: {
     title: "Le Vol d’Aracne",
+    settings: "Réglages",
     subtitle: "Collecte les 10 étoiles et découvre 10 lieux secrets du Salento.",
     start: "Démarrer",
     hudStars: "Étoiles",
@@ -46,6 +47,7 @@ export const I18N = {
 
   it: {
     title: "Il Volo di Aracne",
+    settings: "Impostazioni",
     subtitle: "Raccogli le 10 stelle e scopri 10 luoghi segreti del Salento.",
     start: "Avvia",
     hudStars: "Stelle",
@@ -85,6 +87,7 @@ export const I18N = {
 
   es: {
     title: "El Vuelo de Aracne",
+    settings: "Ajustes",
     subtitle: "Recoge las 10 estrellas y descubre 10 lugares secretos del Salento.",
     start: "Empezar",
     hudStars: "Estrellas",
@@ -124,6 +127,7 @@ export const I18N = {
 
   en: {
     title: "Aracne’s Flight",
+    settings: "Settings",
     subtitle: "Collect 10 stars and discover 10 secret places in Salento.",
     start: "Start",
     hudStars: "Stars",

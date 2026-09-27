@@ -1,9 +1,9 @@
 import { createPractice } from './practice-model.js';
 const words={
-fr:['S’entraîner','Entraînement','Fermer','Passer','Envol','Recommencer','Maintiens une flèche pour déplacer Aracne.','Déplace la barre avec ← ou →.','Rejoins la cible marquée ✓.','Appuie sur Envol, puis place la barre sous Aracne.','Rebond réussi ! Aracne doit maintenant toucher la cible.','✓ Exercice réussi ! Tu peux reprendre la partie.','Raté ? Replace la barre et relance : aucun point perdu.','Flèches du clavier ou pavé tactile. Aucun score de partie n’est modifié.','Impossible de mémoriser cet entraînement sur cet appareil.','Gauche','Droite','Monter','Descendre'],
-it:['Allenati','Allenamento','Chiudi','Salta','Volo','Ricomincia','Tieni premuta una freccia per muovere Aracne.','Muovi la barra con ← o →.','Raggiungi il bersaglio ✓.','Premi Volo e metti la barra sotto Aracne.','Rimbalzo riuscito! Ora Aracne deve colpire il bersaglio.','✓ Esercizio riuscito! Puoi riprendere la partita.','Riposiziona la barra e rilancia: nessun punto perso.','Frecce della tastiera o pad tattile. Il punteggio della partita non cambia.','Impossibile salvare questo allenamento sul dispositivo.','Sinistra','Destra','Su','Giù'],
-en:['Practise','Practice','Close','Skip','Launch','Restart','Hold an arrow to move Aracne.','Move the paddle with ← or →.','Reach the target marked ✓.','Press Launch, then put the paddle beneath Aracne.','Bounce achieved! Now Aracne must touch the target.','✓ Practice complete! You can return to the game.','Reposition the paddle and launch again: no points lost.','Keyboard arrows or touch pad. Your game score is unchanged.','Unable to remember this practice on this device.','Left','Right','Up','Down'],
-es:['Practicar','Entrenamiento','Cerrar','Omitir','Vuelo','Reiniciar','Mantén una flecha para mover a Aracne.','Mueve la barra con ← o →.','Alcanza el objetivo ✓.','Pulsa Vuelo y coloca la barra bajo Aracne.','¡Rebote logrado! Aracne debe tocar el objetivo.','✓ ¡Ejercicio logrado! Puedes volver a la partida.','Coloca la barra y vuelve a lanzar: no pierdes puntos.','Flechas del teclado o mando táctil. La puntuación no cambia.','No se pudo guardar este entrenamiento en el dispositivo.','Izquierda','Derecha','Subir','Bajar']
+fr:['Essayer les commandes','Démonstration des commandes','Fermer','Passer','Envol','Recommencer','Maintiens une flèche pour déplacer Aracne.','Glisse la barre ou utilise ← / →.','Rejoins la cible marquée ✓.','Place la barre sous Aracne, puis appuie sur Envol.','Rebond réussi ! Aracne doit maintenant toucher la cible.','✓ Exercice réussi ! Tu peux reprendre la partie.','Raté ? Replace la barre et relance : aucun point perdu.','Flèches du clavier ou pavé tactile. Aucun score de partie n’est modifié.','Impossible de mémoriser cet entraînement sur cet appareil.','Gauche','Droite','Monter','Descendre'],
+it:['Prova i comandi','Demo dei comandi','Chiudi','Salta','Volo','Ricomincia','Tieni premuta una freccia per muovere Aracne.','Trascina la barra oppure usa ← / →.','Raggiungi il bersaglio ✓.','Metti la barra sotto Aracne, poi premi Volo.','Rimbalzo riuscito! Ora Aracne deve colpire il bersaglio.','✓ Esercizio riuscito! Puoi riprendere la partita.','Riposiziona la barra e rilancia: nessun punto perso.','Frecce della tastiera o pad tattile. Il punteggio della partita non cambia.','Impossibile salvare questo allenamento sul dispositivo.','Sinistra','Destra','Su','Giù'],
+en:['Try the controls','Controls demo','Close','Skip','Launch','Restart','Hold an arrow to move Aracne.','Drag the paddle or use ← / →.','Reach the target marked ✓.','Put the paddle beneath Aracne, then press Launch.','Bounce achieved! Now Aracne must touch the target.','✓ Practice complete! You can return to the game.','Reposition the paddle and launch again: no points lost.','Keyboard arrows or touch pad. Your game score is unchanged.','Unable to remember this practice on this device.','Left','Right','Up','Down'],
+es:['Probar controles','Demostración de controles','Cerrar','Omitir','Vuelo','Reiniciar','Mantén una flecha para mover a Aracne.','Arrastra la barra o usa ← / →.','Alcanza el objetivo ✓.','Coloca la barra bajo Aracne y luego pulsa Vuelo.','¡Rebote logrado! Aracne debe tocar el objetivo.','✓ ¡Ejercicio logrado! Puedes volver a la partida.','Coloca la barra y vuelve a lanzar: no pierdes puntos.','Flechas del teclado o mando táctil. La puntuación no cambia.','No se pudo guardar este entrenamiento en el dispositivo.','Izquierda','Derecha','Subir','Bajar']
 };
 export function attachPractice({host,family,allowed=()=>true,sprite}){
  const language=()=>words[(document.documentElement.lang||'fr').slice(0,2)]||words.fr;
@@ -31,12 +31,26 @@ export function attachPractice({host,family,allowed=()=>true,sprite}){
    for(const type of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(type,e=>held.delete(e.pointerId));
   }
   function add(text,fn){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=fn;actions.append(b);return b;}
-  const launch=add(w[4],()=>model.launch());launch.hidden=family!=='arkanoid';
+  const launch=add(w[4],()=>{model.launch();canvas.focus();});launch.hidden=family!=='arkanoid';
   add(w[5],()=>{release();model=createPractice(family);saved=false;});
   const skip=add(w[3],()=>{try{if(!done)localStorage.setItem(key,'skipped');}catch{}close();});
   const exit=add(w[2],()=>close());
   function onKey(e){if(e.key.startsWith('Arrow')){e.preventDefault();e.stopPropagation();if(e.type==='keydown')keys.add(e.key);else keys.delete(e.key);}else if(e.code==='Space'&&e.target===canvas){e.preventDefault();model.launch();}}
   canvas.tabIndex=0;
+  let draggingPaddle=false;
+  function movePaddleFromPointer(e){
+   if(family!=='arkanoid')return;
+   const rect=canvas.getBoundingClientRect();
+   if(!rect.width)return;
+   model.setPaddle((e.clientX-rect.left)/rect.width);
+  }
+  canvas.addEventListener('pointerdown',e=>{
+   if(family!=='arkanoid')return;
+   e.preventDefault();draggingPaddle=true;movePaddleFromPointer(e);
+   try{canvas.setPointerCapture(e.pointerId);}catch{}
+  });
+  canvas.addEventListener('pointermove',e=>{if(draggingPaddle)movePaddleFromPointer(e);});
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,()=>{draggingPaddle=false;});
   function render(now){
    if(stopped)return;
    if(document.hidden){release();raf=requestAnimationFrame(render);return;}
