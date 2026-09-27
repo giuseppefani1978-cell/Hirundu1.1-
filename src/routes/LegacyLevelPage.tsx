@@ -1,4 +1,5 @@
 import { markLevelWin, unlockBonus, type BonusProgressEntry } from '../features/bonus/bonusStorage';
+import { recordGameVictoryCard } from '../features/bonus/cardTrade';
 import React from "react";
 import { disposeBattle } from "../battle.js";
 import { useEffect, useMemo, useRef } from "react";
@@ -127,8 +128,12 @@ function LegacyLevelPage() {
     const handleWin = () => {
       if (handledWin || cancelled) return;
       handledWin = true;
+      let replayVictory = false;
+      try { replayVictory = window.localStorage.getItem(`level${level}_won`) === "true"; } catch {}
       markLevelWin(level);
       unlockBonus(bonusKey as BonusProgressEntry["key"]);
+      try { recordGameVictoryCard(bonusKey as BonusProgressEntry["key"], replayVictory); }
+      catch (error) { console.warn("Unable to record victory card", error); }
       storeToast(bonusKey);
       const next = getNextLevelId(level);
       document.body.classList.add("game-level-exit");
