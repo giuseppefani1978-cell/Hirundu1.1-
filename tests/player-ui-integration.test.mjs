@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {JSDOM} from 'jsdom';
-const baselineHashes={"3": "e04397867ff08cea06539eb0194e454eaecbc442fabf59e170d171e4f994d101", "5": "ecb046b222574c4cacf1778262ff5113b8564eb4875c740b41658b40385d403c", "7": "90ffd66f740a5eadca6f668963766d0e8275fa50ae60dc71a0a968d0b42266be", "4": "8bcb020aa163bd4c262e619eae0a4c525a411f3934a6ec609ce019b84a884a58", "6": "ae3bfdb8b00c76677c956070a8bc93e3fd3cdc8be1f263414af88526ab0b303d", "8": "315accb60b55e824848f12ec0d467f98af8b23fcff68c2c309b890c31c31e086"};
+const baselineHashes={"3": "8a27c529cce2a5563873cbfc389d4286d0e514c4650fdd6ac73e3a731693eccb", "5": "ecb046b222574c4cacf1778262ff5113b8564eb4875c740b41658b40385d403c", "7": "90ffd66f740a5eadca6f668963766d0e8275fa50ae60dc71a0a968d0b42266be", "4": "8bcb020aa163bd4c262e619eae0a4c525a411f3934a6ec609ce019b84a884a58", "6": "ae3bfdb8b00c76677c956070a8bc93e3fd3cdc8be1f263414af88526ab0b303d", "8": "315accb60b55e824848f12ec0d467f98af8b23fcff68c2c309b890c31c31e086"};
 for(const id of [3,5,7,4,6,8]){
  const family=[3,5,7].includes(id)?'arkanoid':'flight',file=`public/level${id}-${family}/game.js`;
  test(`A03/A04 level ${id}: preserve existing engine, clue reader pauses without reset`,()=>{

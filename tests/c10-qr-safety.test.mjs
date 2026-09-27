@@ -9,6 +9,13 @@ test('C10 bundled QR scenarios are explicitly demo-only', async () => {
   assert.ok(scenarios.every((item) => /Démonstration/i.test(item.notes || '')));
 });
 
+test('C10 demo QR scenarios are not rendered in the public scanner journey', async () => {
+  const hub = await readFile(new URL('../src/features/qr/routes/QrHub.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(hub, /getAllQrScenarios/);
+  assert.doesNotMatch(hub, /SCENARIOS\.map/);
+  assert.doesNotMatch(hub, /Scénarios de test/);
+});
+
 test('C10 demo partner and badge scans cannot validate the real passport', async () => {
   const hub = await readFile(new URL('../src/features/qr/routes/QrHub.tsx', import.meta.url), 'utf8');
   assert.match(hub, /getPartnerVerificationStatus\(partner\) === "confirmed"/);

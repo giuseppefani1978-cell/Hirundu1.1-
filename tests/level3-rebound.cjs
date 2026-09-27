@@ -98,7 +98,7 @@ run('start()');assert.equal(run('state.focus+state.shield+state.recharge'),0);as
 sandbox.matchMedia=q=>({matches:q==='(pointer: coarse)',addEventListener(){}});
 run('state.found=ids.slice();battleIntro();Battle.start()');
 assert.equal(run('state.mode'),'battleIntro','portrait cannot skip the introduction');
-assert.equal(element('play').disabled,true);
+assert.equal(element('play').disabled,false,'portrait keeps Fight enabled so the user gesture can request landscape');
 sandbox.matchMedia=q=>({matches:q==='(pointer: coarse)'||q==='(orientation: landscape)',addEventListener(){}});
 run('syncBattleOrientation()');assert.equal(element('play').disabled,false);
 assert.equal(run('state.mode'),'battleIntro','rotation alone does not start combat');
