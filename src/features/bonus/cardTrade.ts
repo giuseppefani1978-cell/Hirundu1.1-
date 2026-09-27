@@ -1,6 +1,5 @@
 import { BONUS_MAPS, type BonusKey } from "./bonusData";
 import { getUnlockedKeys } from "./bonusStorage";
-import { setPoiQrValidated } from "../qr/passport/passportStorage";
 
 const STORAGE_KEY = "hirundu_card_inventory_v1";
 const DEVICE_KEY = "hirundu_card_device_v1";
@@ -17,10 +16,12 @@ export type CardInventoryState = {
   origins: Partial<Record<BonusKey, OriginCounts>>;
   received: Record<string, number>;
   redeemed: Record<string, number>;
+  confirmed: Record<string, number>;
   pending: Pending | null;
 };
 type Offer = { type: "offer"; version: 1; id: string; card: BonusKey; sender: string; issuedAt: number };
 type Receipt = { type: "receipt"; version: 1; offerId: string; card: BonusKey; receiver: string; issuedAt: number };
+type Confirmation = { type: "confirmation"; version: 1; offerId: string; card: BonusKey; receiver: string; sender: string; issuedAt: number };
 
 export type FieldCardScenario = {
   id: string;
@@ -77,7 +78,7 @@ function device(): string {
 }
 
 function blank(): CardInventoryState {
-  return { version: 1, cards: {}, origins: {}, received: {}, redeemed: {}, pending: null };
+  return { version: 1, cards: {}, origins: {}, received: {}, redeemed: {}, confirmed: {}, pending: null };
 }
 
 function positive(value: unknown): number {
@@ -95,14 +96,14 @@ function write(state: CardInventoryState): CardInventoryState {
   return state;
 }
 
-function encode(value: Offer | Receipt): string {
+function encode(value: Offer | Receipt | Confirmation): string {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   let binary = "";
   bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
   return TRADE_PREFIX + btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
-function decode(raw: string): Offer | Receipt {
+function decode(raw: string): Offer | Receipt | Confirmation {
   if (!raw.startsWith(TRADE_PREFIX)) throw Error("not-hirundu");
   const body = raw.slice(TRADE_PREFIX.length).replaceAll("-", "+").replaceAll("_", "/");
   const padded = body + "=".repeat((4 - body.length % 4) % 4);
@@ -112,7 +113,7 @@ function decode(raw: string): Offer | Receipt {
     parsed?.version !== 1 || !validKey(parsed.card) || typeof parsed.issuedAt !== "number" ||
     Date.now() - parsed.issuedAt > MAX_AGE || parsed.issuedAt > Date.now() + 60_000
   ) throw Error("invalid");
-  return parsed as Offer | Receipt;
+  return parsed as Offer | Receipt | Confirmation;
 }
 
 function sanitizeOrigins(value: unknown): Partial<Record<BonusKey, OriginCounts>> {
@@ -140,6 +141,7 @@ export function readCardInventory(): CardInventoryState {
       state.origins = sanitizeOrigins(saved.origins);
       state.received = saved.received;
       state.redeemed = saved.redeemed && typeof saved.redeemed === "object" ? saved.redeemed : {};
+      state.confirmed = saved.confirmed && typeof saved.confirmed === "object" ? saved.confirmed : {};
       state.pending = saved.pending ?? null;
     }
   } catch {
@@ -207,7 +209,7 @@ export function findFieldCardScenario(raw: string): FieldCardScenario | undefine
 }
 
 export function isHirunduCardQr(raw: string): boolean {
-  return raw.trim().startsWith(TRADE_PREFIX) || !!findFieldCardScenario(raw);
+  return raw.trim().startsWith(TRADE_PREFIX);
 }
 
 export function redeemFieldCardQr(raw: string): {
@@ -227,11 +229,8 @@ export function redeemFieldCardQr(raw: string): {
   state.redeemed[scenario.id] = Date.now();
   write(state);
 
-  if (scenario.validatesVisit && scenario.mapKey && scenario.poiId) {
-    const config = BONUS_MAPS[scenario.mapKey];
-    setPoiQrValidated(scenario.mapKey, scenario.poiId, true, config.poiIds);
-  }
-  return { scenario, state, alreadyRedeemed: false, passportValidated: scenario.validatesVisit };
+  // Demonstration field QR codes are deliberately isolated from the real passport.
+  return { scenario, state, alreadyRedeemed: false, passportValidated: false };
 }
 
 export function queueCardQr(raw: string): void {
@@ -264,7 +263,6 @@ export function inspectCardOffer(raw: string): Offer {
 export function acceptCardOffer(raw: string): { offer: Offer; receipt: Receipt; token: string } {
   const offer = inspectCardOffer(raw);
   const state = readCardInventory();
-  grantCard(state, offer.card, "exchange");
   state.received[offer.id] = Date.now();
   write(state);
   const receipt: Receipt = { type: "receipt", version: 1, offerId: offer.id, card: offer.card, receiver: device(), issuedAt: Date.now() };
@@ -274,7 +272,8 @@ export function acceptCardOffer(raw: string): { offer: Offer; receipt: Receipt; 
 function removeTransferableCopy(state: CardInventoryState, card: BonusKey): void {
   const origins = { ...(state.origins[card] ?? {}) };
   const preferred: CardOrigin[] = ["test", "legacy", "physical", "partner", "exchange"];
-  const origin = preferred.find((candidate) => positive(origins[candidate]) > 0);
+  let origin = preferred.find((candidate) => positive(origins[candidate]) > 0);
+  if (!origin && positive(origins.game) > 1) origin = "game";
   if (!origin) throw Error("no-transferable-copy");
   const next = positive(origins[origin]) - 1;
   if (next) origins[origin] = next;
@@ -283,7 +282,7 @@ function removeTransferableCopy(state: CardInventoryState, card: BonusKey): void
   state.cards[card] = sumOrigins(origins);
 }
 
-export function completeCardReceipt(raw: string): { card: BonusKey; state: CardInventoryState } {
+export function completeCardReceipt(raw: string): { card: BonusKey; state: CardInventoryState; confirmation: Confirmation; token: string } {
   const receipt = decode(raw);
   if (receipt.type !== "receipt") throw Error("invalid-receipt");
   const state = readCardInventory();
@@ -293,7 +292,21 @@ export function completeCardReceipt(raw: string): { card: BonusKey; state: CardI
   removeTransferableCopy(state, receipt.card);
   state.pending = null;
   write(state);
-  return { card: receipt.card, state };
+  const confirmation: Confirmation = {
+    type: "confirmation", version: 1, offerId: receipt.offerId, card: receipt.card,
+    receiver: receipt.receiver, sender: device(), issuedAt: Date.now(),
+  };
+  return { card: receipt.card, state, confirmation, token: encode(confirmation) };
+}
+
+export function finalizeCardConfirmation(raw: string): { card: BonusKey; state: CardInventoryState } {
+  const confirmation = decode(raw);
+  if (confirmation.type !== "confirmation" || confirmation.receiver !== device()) throw Error("invalid-confirmation");
+  const state = readCardInventory();
+  if (!state.received[confirmation.offerId] || state.confirmed[confirmation.offerId]) throw Error("confirmation-not-expected");
+  grantCard(state, confirmation.card, "exchange");
+  state.confirmed[confirmation.offerId] = Date.now();
+  return { card: confirmation.card, state: write(state) };
 }
 
 export function cancelPendingOffer(): CardInventoryState {
