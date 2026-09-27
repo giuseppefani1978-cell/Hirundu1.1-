@@ -24,7 +24,8 @@ export function createPractice(family){
   state:s,
   setPaddle,
   launch(){
-   if(ark&&s.step===1&&!s.launched&&!s.done){
+   if(ark&&!s.launched&&!s.done){
+    if(s.step===0)s.step=1;
     resetBallForLaunch();
     s.launched=true;
    }

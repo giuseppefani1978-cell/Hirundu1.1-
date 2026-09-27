@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { LANG } from "../i18n.js";
 import { withBase } from "../utils/basePath.js";
 import "./StartupIntro.css";
@@ -15,70 +15,95 @@ const introLabels = {
 } as const;
 
 export default function StartupIntro({ onComplete }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const [canEnter, setCanEnter] = useState(false);
   const labels = introLabels[(LANG in introLabels ? LANG : "fr") as keyof typeof introLabels];
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
 
-    // iOS/PWA autoplay is reliable only when the media is already muted + inline
-    // before play() is attempted. Retry on media readiness/pageshow as well so
-    // opening the installed web app does not require a tap to start the intro.
+    // Important for iOS/PWA: create the element imperatively so autoplay,
+    // muted and playsinline exist BEFORE the MP4 source is attached.
+    const video = document.createElement("video");
+    video.className = "startup-intro__video";
+    video.autoplay = true;
     video.defaultMuted = true;
     video.muted = true;
     video.playsInline = true;
+    video.preload = "auto";
+    video.controls = false;
+    video.disablePictureInPicture = true;
+    video.setAttribute("autoplay", "");
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
-    video.setAttribute("autoplay", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("preload", "auto");
 
-    const play = () => {
-      if (video.ended || !video.paused) return;
-      void video.play().catch(() => {
-        // A later readiness/pageshow/visibility event retries automatically.
-      });
+    const updateFinalAction = () => {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      setCanEnter(video.currentTime >= Math.max(0, video.duration - 2.2));
     };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") play();
+    const ended = () => setCanEnter(true);
+
+    video.addEventListener("timeupdate", updateFinalAction);
+    video.addEventListener("ended", ended);
+    video.addEventListener("error", onComplete);
+
+    host.replaceChildren(video);
+
+    // Attach the source only after the autoplay-safe properties above are set.
+    video.src = withBase("assets/hirundu_intro.mp4");
+    video.load();
+
+    let cancelled = false;
+    const tryPlay = () => {
+      if (cancelled || video.ended || !video.paused) return;
+      video.muted = true;
+      const attempt = video.play();
+      if (attempt && typeof attempt.catch === "function") {
+        void attempt.catch(() => {
+          // iOS can reject a first attempt while restoring a standalone PWA.
+          // Timed retries below do not require a user gesture.
+        });
+      }
     };
 
-    play();
-    video.addEventListener("loadeddata", play);
-    video.addEventListener("canplay", play);
-    window.addEventListener("pageshow", play);
-    document.addEventListener("visibilitychange", onVisibility);
+    const timers = [0, 80, 220, 500, 1000, 1800].map((delay) =>
+      window.setTimeout(tryPlay, delay),
+    );
+    const onReady = () => tryPlay();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tryPlay();
+    };
+
+    video.addEventListener("loadedmetadata", onReady);
+    video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
+    window.addEventListener("pageshow", onReady);
+    window.addEventListener("focus", onReady);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      video.removeEventListener("loadeddata", play);
-      video.removeEventListener("canplay", play);
-      window.removeEventListener("pageshow", play);
-      document.removeEventListener("visibilitychange", onVisibility);
+      cancelled = true;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      video.pause();
+      video.removeEventListener("timeupdate", updateFinalAction);
+      video.removeEventListener("ended", ended);
+      video.removeEventListener("error", onComplete);
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
+      window.removeEventListener("pageshow", onReady);
+      window.removeEventListener("focus", onReady);
+      document.removeEventListener("visibilitychange", onVisible);
+      video.remove();
     };
-  }, []);
-
-  const updateFinalAction = () => {
-    const video = videoRef.current;
-    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-    setCanEnter(video.currentTime >= Math.max(0, video.duration - 2.2));
-  };
+  }, [onComplete]);
 
   return (
     <section className="startup-intro" aria-label="Introduction HIRUNDU">
-      <video
-        ref={videoRef}
-        className="startup-intro__video"
-        src={withBase("assets/hirundu_intro.mp4")}
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        controls={false}
-        disablePictureInPicture
-        onTimeUpdate={updateFinalAction}
-        onEnded={() => setCanEnter(true)}
-        onError={onComplete}
-      />
+      <div ref={hostRef} className="startup-intro__media" />
 
       <button
         type="button"
@@ -92,7 +117,7 @@ export default function StartupIntro({ onComplete }: Props) {
         <button
           type="button"
           className="startup-intro__enter"
-          aria-label="Commencer HIRUNDU"
+          aria-label={labels.start}
           onClick={onComplete}
         >
           {labels.start}

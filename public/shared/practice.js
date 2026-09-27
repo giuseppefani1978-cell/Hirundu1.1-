@@ -33,7 +33,6 @@ export function attachPractice({host,family,allowed=()=>true,sprite}){
   function add(text,fn){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=fn;actions.append(b);return b;}
   const launch=add(w[4],()=>{model.launch();canvas.focus();});launch.hidden=family!=='arkanoid';
   add(w[5],()=>{release();model=createPractice(family);saved=false;});
-  const skip=add(w[3],()=>{try{if(!done)localStorage.setItem(key,'skipped');}catch{}close();});
   const exit=add(w[2],()=>close());
   function onKey(e){if(e.key.startsWith('Arrow')){e.preventDefault();e.stopPropagation();if(e.type==='keydown')keys.add(e.key);else keys.delete(e.key);}else if(e.code==='Space'&&e.target===canvas){e.preventDefault();model.launch();}}
   canvas.tabIndex=0;
@@ -62,7 +61,7 @@ export function attachPractice({host,family,allowed=()=>true,sprite}){
    if(s.misses&&!s.launched)msg=w[12]+' '+w[9];
    if(s.done&&!saved){saved=true;try{localStorage.setItem(key,'completed');done=true;label();}catch{msg+=' '+w[14];}release();}
    if(msg!==lastMessage){instruction.textContent=msg;lastMessage=msg;}
-   launch.disabled=s.step!==1||s.launched||s.done;skip.hidden=s.done;
+   launch.disabled=s.launched||s.done;
    ctx.clearRect(0,0,360,240);ctx.fillStyle='#d8edf3';ctx.fillRect(0,0,360,240);
    ctx.strokeStyle='#b9d6de';ctx.lineWidth=1;for(let x=30;x<360;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,240);ctx.stroke();}
    if(s.step>0&&(!ark||s.step===2)){ctx.beginPath();ctx.arc(s.targetX*360,s.targetY*240,15,0,Math.PI*2);ctx.fillStyle='#fffdf5';ctx.fill();ctx.strokeStyle='#426e79';ctx.stroke();ctx.fillStyle='#163c4a';ctx.font='bold 20px system-ui';ctx.textAlign='center';ctx.fillText('✓',s.targetX*360,s.targetY*240+7);}

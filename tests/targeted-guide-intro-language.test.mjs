@@ -9,9 +9,12 @@ test('startup cinematic is shown on every fresh app launch and retries autoplay 
   ]);
   assert.doesNotMatch(app, /hirundu_startup_intro_seen/);
   assert.match(app, /useState\(false\)/);
-  assert.match(intro, /autoPlay/);
-  assert.match(intro, /muted/);
-  assert.match(intro, /playsInline/);
+  assert.match(intro, /document\.createElement\("video"\)/);
+  assert.match(intro, /video\.autoplay = true/);
+  assert.match(intro, /video\.defaultMuted = true/);
+  assert.match(intro, /video\.muted = true/);
+  assert.match(intro, /video\.playsInline = true/);
+  assert.match(intro, /Attach the source only after/);
   assert.match(intro, /loadeddata/);
   assert.match(intro, /canplay/);
   assert.match(intro, /pageshow/);
@@ -47,4 +50,6 @@ test('rebound guide demo supports touch dragging and keeps standalone assets in 
   assert.match(ui, /canvas\.addEventListener\('pointerdown'/);
   assert.match(ui, /Glisse la barre ou utilise/);
   assert.match(ui, /Trascina la barra oppure usa/);
+  assert.doesNotMatch(ui, /const skip=add/);
+  assert.match(model, /if\(ark&&!s\.launched&&!s\.done\)/);
 });
