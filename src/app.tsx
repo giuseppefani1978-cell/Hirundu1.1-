@@ -99,19 +99,11 @@ function Loading() {
 
 export default function App() {
   const [, setLanguageRevision] = useState(0);
-  const [introComplete, setIntroComplete] = useState(() => {
-    try {
-      const forceIntro = new URLSearchParams(window.location.search).get("intro") === "1";
-      return !forceIntro && sessionStorage.getItem("hirundu_startup_intro_seen") === "1";
-    } catch {
-      return false;
-    }
-  });
+  // The opening cinematic is part of each fresh app launch.
+  // Do not suppress it with sessionStorage: reopening the PWA should start with the intro.
+  const [introComplete, setIntroComplete] = useState(false);
 
   const completeIntro = () => {
-    try {
-      sessionStorage.setItem("hirundu_startup_intro_seen", "1");
-    } catch {}
     setIntroComplete(true);
   };
 
