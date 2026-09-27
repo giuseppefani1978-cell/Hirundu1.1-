@@ -128,10 +128,14 @@ function LegacyLevelPage() {
     const handleWin = () => {
       if (handledWin || cancelled) return;
       handledWin = true;
+      let replayVictory = false;
+      try { replayVictory = window.localStorage.getItem(`level${level}_won`) === "true"; } catch {}
+      if (level !== 3) {
+        try { recordGameVictoryCard(bonusKey as BonusProgressEntry["key"], replayVictory); }
+        catch (error) { console.warn("Unable to record victory card", error); }
+      }
       markLevelWin(level);
       unlockBonus(bonusKey as BonusProgressEntry["key"]);
-      try { recordGameVictoryCard(bonusKey as BonusProgressEntry["key"]); }
-      catch (error) { console.warn("Unable to record victory card", error); }
       storeToast(bonusKey);
       const next = getNextLevelId(level);
       document.body.classList.add("game-level-exit");
