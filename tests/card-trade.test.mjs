@@ -185,3 +185,13 @@ test("trade page renders generated offer QR directly under the selected duplicat
   assert.match(source, /remainingLabel/);
   assert.match(source, /Generating QR|Génération du QR/);
 });
+
+
+test("modern browser path stores a non-exportable private trade key in IndexedDB", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/features/bonus/cardTrade.ts", import.meta.url), "utf8")
+  );
+  assert.match(source, /indexedDB\.open\(IDENTITY_DB/);
+  assert.match(source, /false,\s*\["sign"\]/);
+  assert.match(source, /privateKey\.extractable === false/);
+});
