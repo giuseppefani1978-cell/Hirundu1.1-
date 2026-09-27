@@ -3,6 +3,8 @@ import { getUnlockedKeys } from "./bonusStorage";
 
 const STORAGE_KEY = "hirundu_card_inventory_v1";
 const IDENTITY_KEY = "hirundu_card_identity_v2";
+const IDENTITY_DB = "hirundu_card_crypto_v2";
+const IDENTITY_STORE = "identity";
 const TRADE_PREFIX = "HIRUNDU-CARD-2.";
 const LEGACY_TRADE_PREFIX = "HIRUNDU-CARD-1.";
 const MAX_AGE = 15 * 60 * 1000;
@@ -87,7 +89,7 @@ type TradeToken = Offer | Receipt | Confirmation;
 
 type StoredIdentity = {
   version: 2;
-  privateJwk: JsonWebKey;
+  privateKey: CryptoKey;
   publicRaw: string;
 };
 
@@ -196,10 +198,83 @@ async function importPublicKey(publicRaw: string): Promise<CryptoKey> {
   );
 }
 
-async function loadDeviceIdentity(): Promise<DeviceIdentity> {
+function openIdentityDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(Error("indexeddb-unavailable"));
+      return;
+    }
+    const request = indexedDB.open(IDENTITY_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IDENTITY_STORE)) db.createObjectStore(IDENTITY_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? Error("indexeddb-open"));
+  });
+}
+
+async function readSecureIdentity(): Promise<StoredIdentity | null> {
+  const db = await openIdentityDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction(IDENTITY_STORE, "readonly").objectStore(IDENTITY_STORE).get("device");
+      request.onsuccess = () => resolve((request.result as StoredIdentity | undefined) ?? null);
+      request.onerror = () => reject(request.error ?? Error("indexeddb-read"));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function writeSecureIdentity(value: StoredIdentity): Promise<void> {
+  const db = await openIdentityDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDENTITY_STORE, "readwrite");
+      tx.objectStore(IDENTITY_STORE).put(value, "device");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? Error("indexeddb-write"));
+      tx.onabort = () => reject(tx.error ?? Error("indexeddb-abort"));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function createIdentity(): Promise<DeviceIdentity> {
+  const api = cryptoApi();
+  // Generate once as extractable so the public key can be encoded in the QR.
+  // The private key is immediately re-imported as NON-EXTRACTABLE before storage.
+  const generated = await api.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign", "verify"],
+  ) as CryptoKeyPair;
+  const privateJwk = await api.subtle.exportKey("jwk", generated.privateKey);
+  const privateKey = await api.subtle.importKey(
+    "jwk",
+    privateJwk,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+  const publicRaw = bytesToBase64Url(new Uint8Array(await api.subtle.exportKey("raw", generated.publicKey)));
+  const publicKey = await importPublicKey(publicRaw);
+  return {
+    privateKey,
+    publicKey,
+    publicRaw,
+    fingerprint: await fingerprintPublicKey(publicRaw),
+  };
+}
+
+async function loadFallbackIdentity(): Promise<DeviceIdentity> {
   const api = cryptoApi();
   try {
-    const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY) || "null") as StoredIdentity | null;
+    const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY) || "null") as
+      | { version: 2; privateJwk: JsonWebKey; publicRaw: string }
+      | null;
     if (saved?.version === 2 && saved.privateJwk && typeof saved.publicRaw === "string") {
       const privateKey = await api.subtle.importKey(
         "jwk",
@@ -208,32 +283,67 @@ async function loadDeviceIdentity(): Promise<DeviceIdentity> {
         false,
         ["sign"],
       );
-      const publicKey = await importPublicKey(saved.publicRaw);
       return {
         privateKey,
-        publicKey,
+        publicKey: await importPublicKey(saved.publicRaw),
         publicRaw: saved.publicRaw,
         fingerprint: await fingerprintPublicKey(saved.publicRaw),
       };
     }
-  } catch {
-    // Invalid identity is replaced below.
-  }
+  } catch {}
 
-  const pair = await api.subtle.generateKey(
+  const generated = await api.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
     ["sign", "verify"],
   ) as CryptoKeyPair;
-  const privateJwk = await api.subtle.exportKey("jwk", pair.privateKey);
-  const publicRaw = bytesToBase64Url(new Uint8Array(await api.subtle.exportKey("raw", pair.publicKey)));
-  localStorage.setItem(IDENTITY_KEY, JSON.stringify({ version: 2, privateJwk, publicRaw } satisfies StoredIdentity));
+  const privateJwk = await api.subtle.exportKey("jwk", generated.privateKey);
+  const privateKey = await api.subtle.importKey(
+    "jwk",
+    privateJwk,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+  const publicRaw = bytesToBase64Url(new Uint8Array(await api.subtle.exportKey("raw", generated.publicKey)));
+  localStorage.setItem(IDENTITY_KEY, JSON.stringify({ version: 2, privateJwk, publicRaw }));
   return {
-    privateKey: pair.privateKey,
-    publicKey: pair.publicKey,
+    privateKey,
+    publicKey: await importPublicKey(publicRaw),
     publicRaw,
     fingerprint: await fingerprintPublicKey(publicRaw),
   };
+}
+
+async function loadDeviceIdentity(): Promise<DeviceIdentity> {
+  try {
+    const saved = await readSecureIdentity();
+    if (
+      saved?.version === 2 &&
+      saved.privateKey?.type === "private" &&
+      saved.privateKey.extractable === false &&
+      typeof saved.publicRaw === "string"
+    ) {
+      return {
+        privateKey: saved.privateKey,
+        publicKey: await importPublicKey(saved.publicRaw),
+        publicRaw: saved.publicRaw,
+        fingerprint: await fingerprintPublicKey(saved.publicRaw),
+      };
+    }
+
+    const created = await createIdentity();
+    await writeSecureIdentity({
+      version: 2,
+      privateKey: created.privateKey,
+      publicRaw: created.publicRaw,
+    });
+    return created;
+  } catch {
+    // Test environments / legacy WebViews without IndexedDB use a compatible
+    // fallback. Modern iOS/Android browsers use the non-exportable key above.
+    return loadFallbackIdentity();
+  }
 }
 
 async function signPayload<T extends object>(payload: T, privateKey: CryptoKey): Promise<T & { sig: string }> {
