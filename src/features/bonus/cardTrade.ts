@@ -18,6 +18,7 @@ export type CardInventoryState = {
   received: Record<string, number>;
   redeemed: Record<string, number>;
   pending: Pending | null;
+  victories: Partial<Record<BonusKey, number>>;
 };
 type Offer = { type: "offer"; version: 1; id: string; card: BonusKey; sender: string; issuedAt: number };
 type Receipt = { type: "receipt"; version: 1; offerId: string; card: BonusKey; receiver: string; issuedAt: number };
@@ -77,7 +78,7 @@ function device(): string {
 }
 
 function blank(): CardInventoryState {
-  return { version: 1, cards: {}, origins: {}, received: {}, redeemed: {}, pending: null };
+  return { version: 1, cards: {}, origins: {}, received: {}, redeemed: {}, pending: null, victories: {} };
 }
 
 function positive(value: unknown): number {
@@ -141,6 +142,7 @@ export function readCardInventory(): CardInventoryState {
       state.received = saved.received;
       state.redeemed = saved.redeemed && typeof saved.redeemed === "object" ? saved.redeemed : {};
       state.pending = saved.pending ?? null;
+      state.victories = saved.victories && typeof saved.victories === "object" ? saved.victories : {};
     }
   } catch {
     // Corrupt local inventory is replaced by a safe empty state.
@@ -181,16 +183,24 @@ function grantCard(state: CardInventoryState, key: BonusKey, origin: CardOrigin)
   state.cards[key] = sumOrigins(origins);
 }
 
-export function recordGameVictoryCard(key: BonusKey, replay = false): CardInventoryState {
+export function recordGameVictoryCard(key: BonusKey): CardInventoryState {
   const state = readCardInventory();
-  if (replay) {
+  let priorVictories = positive(state.victories[key]);
+
+  // Migration: an already-unlocked game card represents at least one historic win.
+  // This makes the first replay after the upgrade produce a duplicate instead of
+  // silently re-recording the original victory.
+  if (!priorVictories && positive(state.origins[key]?.game)) priorVictories = 1;
+
+  if (priorVictories >= 1) {
     grantCard(state, key, "game");
   } else {
     const origins = { ...(state.origins[key] ?? {}) };
-    if (!positive(origins.game)) origins.game = 1;
+    origins.game = Math.max(1, positive(origins.game));
     state.origins[key] = origins;
     state.cards[key] = sumOrigins(origins);
   }
+  state.victories[key] = priorVictories + 1;
   return write(state);
 }
 
