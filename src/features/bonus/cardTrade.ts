@@ -181,6 +181,19 @@ function grantCard(state: CardInventoryState, key: BonusKey, origin: CardOrigin)
   state.cards[key] = sumOrigins(origins);
 }
 
+export function recordGameVictoryCard(key: BonusKey, replay = false): CardInventoryState {
+  const state = readCardInventory();
+  if (replay) {
+    grantCard(state, key, "game");
+  } else {
+    const origins = { ...(state.origins[key] ?? {}) };
+    if (!positive(origins.game)) origins.game = 1;
+    state.origins[key] = origins;
+    state.cards[key] = sumOrigins(origins);
+  }
+  return write(state);
+}
+
 export function addTestDuplicate(key: BonusKey = "otranto"): CardInventoryState {
   const state = readCardInventory();
   const missingCopies = Math.max(1, 2 - positive(state.cards[key]));
