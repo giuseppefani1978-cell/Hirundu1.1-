@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import type { NavigateFunction } from "react-router-dom";
 import QrScanner from "../components/QrScanner";
 import QrBadge from "../components/QrBadge";
-import { getAllQrScenarios } from "../services/qrScenarios";
 import { parseQrPayload, type QRAction } from "../services/qr";
 import {
   clearLastScan,
@@ -28,7 +27,6 @@ import { setPoiQrValidated } from "../passport/passportStorage";
 import { useAppDispatch, useAppSelector } from "../../../store";
 import "./QrHub.css";
 
-const SCENARIOS = getAllQrScenarios();
 const PARTNERS = getAllPartners();
 const PARTNER_BY_ID = new Map(PARTNERS.map((p) => [p.id, p]));
 const PARTNER_BY_NAME = new Map(PARTNERS.map((p) => [normalizeToken(p.name), p]));
@@ -206,13 +204,6 @@ export default function QrHub() {
     [dispatch]
   );
 
-  const handleScenario = useCallback(
-    (payload: string) => {
-      handlePayload(payload);
-    },
-    [handlePayload]
-  );
-
   const resetScan = useCallback(() => {
     dispatch(clearLastScan());
   }, [dispatch]);
@@ -222,7 +213,7 @@ export default function QrHub() {
       <header className="qr-hub__header">
         <div className="qr-hub__header-copy">
           <h1 className="qr-hub__title">🔍 {bt("Scanner un QR")}</h1>
-          <p className="qr-hub__subtitle">{bt("Scanne un QR HIRUNDU. Dans cette bêta, les QR fournis sont des scénarios de démonstration et ne prouvent ni partenariat ni avantage réel.")}</p>
+          <p className="qr-hub__subtitle">{bt("Scanne un QR HIRUNDU reconnu. Les codes de démonstration sont séparés du parcours public et ne valident aucune visite réelle.")}</p>
         </div>
         <div className="qr-hub__header-actions">
           <button type="button" className="app-button app-button--dark" onClick={openScanner}>📷 {bt("Lancer le scanner")}</button>
@@ -262,7 +253,7 @@ export default function QrHub() {
         </article>
       ) : (
         <article className="surface-card qr-hub__empty" role="status">
-          <p>{bt("Aucun scan pour l’instant. Lance le lecteur ou choisis un scénario dans la liste.")}</p>
+          <p>{bt("Aucun scan pour l’instant. Lance le lecteur pour scanner un QR HIRUNDU.")}</p>
           <button type="button" className="app-button app-button--dark" onClick={openScanner}>📷 {bt("Activer le scanner")}</button>
         </article>
       )}
@@ -273,31 +264,6 @@ export default function QrHub() {
           <span>{error}</span>
         </div>
       ) : null}
-
-      <section className="surface-card qr-hub__scenarios" aria-label={bt("QR fictifs disponibles")}>
-        <header className="qr-hub__scenarios-head">
-          <h2>{bt("Scénarios de test")}</h2>
-          <p>{bt("Essaie ces QR de démonstration pour explorer les cartes, partenaires et badges.")}</p>
-        </header>
-        <ul className="qr-hub__scenario-list">
-          {SCENARIOS.map((scenario) => (
-            <li key={scenario.id} className="qr-hub__scenario-item">
-              <div>
-                <div className="qr-hub__scenario-label">{bt(scenario.label)}</div>
-                <code className="qr-hub__scenario-code">{scenario.payload}</code>
-                {scenario.notes ? (
-                  <p className="qr-hub__scenario-notes">{bt(scenario.notes)}</p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                className="app-button app-button--ghost"
-                onClick={() => handleScenario(scenario.payload)}
-              >▶︎ {bt("Déclencher")}</button>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {scannerOpen ? (
         <QrScanner
