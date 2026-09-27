@@ -11,13 +11,17 @@ for(const family of ['classic','flight'])test(`${family}: only real movement and
  for(let i=0;i<17;i++)model.tick(.04,1,0);assert.equal(model.state.step,1);assert.equal(model.state.done,false);
  for(let i=0;i<15;i++)model.tick(.04,0,-1);assert.equal(model.state.done,true);
 });
-test('Arkanoid requires paddle movement, launch, actual collision and target contact; misses allow retry',()=>{
- const model=createPractice('arkanoid');model.launch();assert.equal(model.state.launched,false);
- for(let i=0;i<4;i++)model.tick(.04,1);assert.equal(model.state.step,1);model.launch();
- for(let i=0;i<50;i++)model.tick(.04,-1);assert.equal(model.state.misses,1);assert.equal(model.state.done,false);
- for(let i=0;i<18;i++)model.tick(.04,1);model.launch();
- for(let i=0;i<26;i++)model.tick(.04);assert.equal(model.state.step,2);assert.equal(model.state.done,false);assert.ok(model.state.vy<0);
- for(let i=0;i<25;i++)model.tick(.04);assert.equal(model.state.done,true);
+test('Arkanoid demo launches immediately, requires a real bounce and reaches its target',()=>{
+ const model=createPractice('arkanoid');
+ model.launch();
+ assert.equal(model.state.launched,true);
+ assert.equal(model.state.step,1);
+ for(let i=0;i<26;i++)model.tick(.04);
+ assert.equal(model.state.step,2);
+ assert.equal(model.state.done,false);
+ assert.ok(model.state.vy<0);
+ for(let i=0;i<25;i++)model.tick(.04);
+ assert.equal(model.state.done,true);
 });
 test('L3 creates and caches real music players; hunt/battle reuse and mute work',()=>{
  const src=readFileSync('public/level3-arkanoid/game.js','utf8');
