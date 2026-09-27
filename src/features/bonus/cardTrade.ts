@@ -171,6 +171,10 @@ function base64UrlToBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function bytesBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -184,14 +188,14 @@ async function digestText(value: string): Promise<string> {
 }
 
 async function fingerprintPublicKey(publicRaw: string): Promise<string> {
-  const digest = await cryptoApi().subtle.digest("SHA-256", base64UrlToBytes(publicRaw));
+  const digest = await cryptoApi().subtle.digest("SHA-256", bytesBuffer(base64UrlToBytes(publicRaw)));
   return bytesToBase64Url(new Uint8Array(digest));
 }
 
 async function importPublicKey(publicRaw: string): Promise<CryptoKey> {
   return cryptoApi().subtle.importKey(
     "raw",
-    base64UrlToBytes(publicRaw),
+    bytesBuffer(base64UrlToBytes(publicRaw)),
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["verify"],
@@ -365,7 +369,7 @@ async function verifySigned(value: TradeToken, publicRaw: string): Promise<boole
     return cryptoApi().subtle.verify(
       { name: "ECDSA", hash: "SHA-256" },
       publicKey,
-      base64UrlToBytes(signature),
+      bytesBuffer(base64UrlToBytes(signature)),
       new TextEncoder().encode(canonical(payload)),
     );
   } catch {
