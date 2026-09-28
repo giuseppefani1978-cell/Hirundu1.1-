@@ -13,6 +13,8 @@ import {
   createCardOffer,
   finalizeCardConfirmation,
   getCardOrigins,
+  getResumableOutgoingCardTrade,
+  getResumableReceiptTrade,
   inspectCardOffer,
   readCardInventory,
   takeQueuedCardQr,
@@ -69,6 +71,7 @@ export default function CardTradePage() {
   const [now, setNow] = useState(Date.now());
   const [incoming, setIncoming] = useState<{ token: string; card: BonusKey } | null>(null);
   const [receiptQr, setReceiptQr] = useState("");
+  const [receiptExpiresAt, setReceiptExpiresAt] = useState(0);
   const [message, setMessage] = useState("");
   const [workingCard, setWorkingCard] = useState<BonusKey | null>(null);
   const cards = (Object.entries(inventory.cards) as [BonusKey, number][])
@@ -86,18 +89,48 @@ export default function CardTradePage() {
   }, []);
 
   useEffect(() => {
-    if (!qrExpiresAt) return;
+    if (!qrExpiresAt && !receiptExpiresAt) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [qrExpiresAt]);
+  }, [qrExpiresAt, receiptExpiresAt]);
 
   const remainingMs = Math.max(0, qrExpiresAt - now);
   const remainingLabel = `${Math.floor(remainingMs / 60000).toString().padStart(2, "0")}:${Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, "0")}`;
 
   useEffect(() => {
     const queued = takeQueuedCardQr();
-    if (queued) processScan(queued);
-    // The queued value must be consumed exactly once on entry.
+    if (queued) {
+      void processScan(queued);
+      return;
+    }
+
+    const restore = async () => {
+      const outgoing = getResumableOutgoingCardTrade();
+      if (outgoing) {
+        try {
+          setQr(await QRCode.toDataURL(outgoing.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
+          setQrKind(outgoing.kind === "confirmation" ? "confirmation" : "offer");
+          setQrCard(outgoing.card);
+          setQrExpiresAt(outgoing.expiresAt);
+        } catch {
+          setMessage(t.invalid);
+        }
+      }
+
+      const receipt = getResumableReceiptTrade();
+      if (receipt) {
+        try {
+          setReceiptQr(await QRCode.toDataURL(receipt.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
+          setReceiptExpiresAt(receipt.expiresAt);
+        } catch {
+          setMessage(t.invalid);
+        }
+      }
+      setNow(Date.now());
+    };
+
+    void restore();
+    // Queued scans and resumable local trade state are consumed/restored once on entry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -135,12 +168,18 @@ export default function CardTradePage() {
     try {
       const result = await completeCardReceipt(text);
       setInventory(result.state);
-      setQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
       setQrKind("confirmation");
       setQrCard(result.card);
       setQrExpiresAt(result.confirmation.expiresAt);
       setNow(Date.now());
-      setMessage(t.senderConfirmed);
+      try {
+        setQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
+        setMessage(t.senderConfirmed);
+      } catch {
+        // The signed confirmation is already persisted and will be restored on reload.
+        setQr("");
+        setMessage(t.invalid);
+      }
       return;
     } catch {
       // Continue with the final receiver confirmation path.
@@ -150,6 +189,7 @@ export default function CardTradePage() {
       const result = await finalizeCardConfirmation(text);
       setInventory(result.state);
       setReceiptQr("");
+      setReceiptExpiresAt(0);
       setIncoming(null);
       setMessage(t.done);
       return;
@@ -162,9 +202,17 @@ export default function CardTradePage() {
     if (!incoming) return;
     try {
       const result = await acceptCardOffer(incoming.token);
-      setReceiptQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
+      setReceiptExpiresAt(result.receipt.expiresAt);
+      setNow(Date.now());
+      try {
+        setReceiptQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
+        setMessage(t.receiptReady);
+      } catch {
+        // The signed receipt is already persisted and will be restored on reload.
+        setReceiptQr("");
+        setMessage(t.invalid);
+      }
       setIncoming(null);
-      setMessage(t.receiptReady);
     } catch {
       setMessage(t.invalid);
     }
@@ -211,13 +259,18 @@ export default function CardTradePage() {
   }
 
   useEffect(() => {
-    if (!qrExpiresAt || Date.now() < qrExpiresAt) return;
-    if (qrKind === "offer") cancelPendingOffer();
-    setQr("");
-    setQrKind(null);
-    setQrCard(null);
-    setQrExpiresAt(0);
-  }, [now, qrExpiresAt, qrKind]);
+    if (qrExpiresAt && Date.now() >= qrExpiresAt) {
+      if (qrKind === "offer") cancelPendingOffer();
+      setQr("");
+      setQrKind(null);
+      setQrCard(null);
+      setQrExpiresAt(0);
+    }
+    if (receiptExpiresAt && Date.now() >= receiptExpiresAt) {
+      setReceiptQr("");
+      setReceiptExpiresAt(0);
+    }
+  }, [now, qrExpiresAt, qrKind, receiptExpiresAt]);
 
   const tabs = useMemo(() => [
     ["send", t.send], ["receive", t.receive],
