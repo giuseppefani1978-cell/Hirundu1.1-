@@ -1,0 +1,8 @@
+@import url('../level3-arkanoid/style.css?v=20260918-feedback-v3');
+
+/* Level 7 keeps the stabilized L3/L5 UI and uses the Nardò battle backdrop. */
+.battle-intro #battlePreview{
+  background:
+    linear-gradient(180deg,rgba(20,28,42,.08),rgba(20,28,42,.72)),
+    url('../assets/battle_bg_nardo.webp') center 55%/cover !important;
+}

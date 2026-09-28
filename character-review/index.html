@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>HIRUNDU · A05</title><link rel="stylesheet" href="style.css"></head>
+<body><main>
+<nav><a href="../index.html#/">← HIRUNDU</a><label><span data-text="language">Langue</span> <select id="language"><option value="fr">FR</option><option value="it">IT</option><option value="en">EN</option><option value="es">ES</option></select></label></nav>
+<p class="eyebrow">A05 · HIRUNDU</p><h1 data-text="title">Un peu plus de caractère.</h1><p class="lead" data-text="intro">Les mêmes personnages. Des réactions courtes, à tester avant intégration.</p>
+<div class="preferences"><label><input id="reduced" type="checkbox"><span data-text="reduced">Mouvements réduits</span></label><span id="system-preference"></span></div>
+<section class="scene" aria-label="Aracne et Tarantula">
+  <div class="scene-head"><span>ARACNE</span><span>TARANTULA</span></div>
+  <div class="characters"><div class="character"><div class="halo" id="bird-halo"></div><img id="bird" src="../level4-flight/assets/bird.png" alt="Aracne"><span class="reaction" id="bird-reaction" aria-hidden="true">·</span></div><div class="character"><div class="halo" id="spider-halo"></div><img id="spider" src="../level4-flight/assets/tarantula.png" alt="Tarantula"><span class="reaction" id="spider-reaction" aria-hidden="true">·</span></div></div>
+  <div class="caption" aria-live="polite" aria-atomic="true"><strong id="event-label"></strong><p id="event-description"></p></div>
+</section>
+<div class="events" role="group" aria-label="Réactions"><button data-event="flight" type="button"></button><button data-event="effort" type="button"></button><button data-event="impact" type="button"></button><button data-event="discovery" type="button"></button><button data-event="victory" type="button"></button></div>
+<div class="timing"><span id="duration"></span><button id="replay" type="button" data-text="replay">Revoir</button></div>
+<p class="footnote" data-text="scope">Aperçu visuel seulement. Aucun changement de paddle, collision, mouvement de combat, score ou sauvegarde. Les battements d’ailes existants restent la référence.</p>
+<a class="other" href="../design-review/" data-text="previous">Revoir A03 / A04 →</a>
+</main><script src="review.js"></script></body></html>

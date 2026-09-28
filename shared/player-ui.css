@@ -1,0 +1,18 @@
+/* A03/A04: shared visual tokens; no canvas, arena, paddle or battle geometry. */
+:root{--hirundu-sky:#bfe2f8;--hirundu-paper:#fffdf5;--hirundu-ink:#0e2b4a;--hirundu-action:#2546c1;--hirundu-gold:#c8b37a}
+body.hirundu-arkanoid,body.hirundu-flight{color:var(--hirundu-ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+.hirundu-arkanoid .question>div,.hirundu-flight .speech>div{background:var(--hirundu-paper);color:var(--hirundu-ink);border-color:#0e2b4a24;box-shadow:none}
+.hirundu-arkanoid .question .eyebrow,.hirundu-flight .speech b{color:var(--hirundu-action)}
+.hirundu-arkanoid button:focus-visible,.hirundu-flight button:focus-visible,.hirundu-arkanoid select:focus-visible,.hirundu-flight select:focus-visible{outline:3px solid var(--hirundu-action);outline-offset:2px}
+.hirundu-arkanoid .card button:disabled,.hirundu-flight article button:disabled{background:#e4e9ed;color:#566574;border-color:#9ba9b5;opacity:1}
+/* Increase the flight Pause hit box without changing header/canvas dimensions. */
+.hirundu-flight #pause{position:relative;min-width:44px;isolation:isolate}
+.hirundu-flight #pause::before{content:'';position:absolute;inset:-5px 0;min-height:44px}
+.hirundu-arkanoid .question,.hirundu-flight .speech{position:relative}
+.hirundu-question-reader{position:absolute;inset:0 8px 0 48px;z-index:1;min-height:44px;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:var(--hirundu-action)!important;cursor:pointer;border-radius:12px}
+.hirundu-question-reader span{position:absolute;right:4px;bottom:4px;font:700 10px/1.2 system-ui;background:var(--hirundu-paper);padding:2px 3px;border-radius:4px}
+.hirundu-question-reader[hidden],.battle-active .hirundu-question-reader{display:none!important}
+.hirundu-flight .hirundu-question-reader span{top:3px;bottom:auto}
+@media(prefers-reduced-motion:reduce){.hirundu-arkanoid button,.hirundu-flight button{transition:none!important}}
+/* Leave a gap below the enlarged Pause hit box; never overlap the reader. */
+.hirundu-flight .hirundu-question-reader{top:7px}
