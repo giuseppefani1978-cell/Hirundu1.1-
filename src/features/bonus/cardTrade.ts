@@ -869,7 +869,6 @@ export async function inspectCardOffer(raw: string): Promise<Offer> {
   if (offer.sender === identity.fingerprint) throw Error("self-offer");
 
   const state = readCardInventory();
-  if ((state.cards[offer.requestedCard] || 0) < 2) throw Error("missing-requested-duplicate");
   if (state.confirmed[offer.id]) throw Error("already-received");
   if (state.received[offer.id] && !state.receiving[offer.id]?.receiptToken) throw Error("already-received");
   return offer;
@@ -877,6 +876,8 @@ export async function inspectCardOffer(raw: string): Promise<Offer> {
 
 export async function acceptCardOffer(raw: string): Promise<{ offer: Offer; receipt: Receipt; token: string }> {
   const offer = await inspectCardOffer(raw);
+  const availability = readCardInventory();
+  if ((availability.cards[offer.requestedCard] || 0) < 2) throw Error("missing-requested-duplicate");
   const identity = await loadDeviceIdentity();
   const offerHash = await tokenHash(offer);
 
