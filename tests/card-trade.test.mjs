@@ -89,7 +89,7 @@ test("a complete replay grants a transferable duplicate while preserving one gam
   }
 });
 
-test("three-step QR trade credits only the receiver confirmed by the sender", async () => {
+test("four-step QR trade credits only the receiver and closes on both phones", async () => {
   const domA = new JSDOM("", { url: "https://sender.invalid/" });
   const domB = new JSDOM("", { url: "https://receiver-b.invalid/" });
   const domC = new JSDOM("", { url: "https://receiver-c.invalid/" });
@@ -134,7 +134,20 @@ test("three-step QR trade credits only the receiver confirmed by the sender", as
     receiverB = final.state;
     assert.equal(receiverB.cards.otranto, 1);
     assert.equal(receiverB.origins.otranto.exchange, 1);
-    await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
+    assert.equal(trade.getResumableCompletionAckTrade()?.token, final.token);
+
+    const repeatedFinal = await trade.finalizeCardConfirmation(completed.token);
+    assert.equal(repeatedFinal.token, final.token);
+    assert.equal(repeatedFinal.state.cards.otranto, 1);
+
+    useDom(domA);
+    const closed = await trade.finalizeSenderAcknowledgement(final.token);
+    assert.equal(closed.state.cards.otranto, 1);
+    assert.equal(trade.getResumableOutgoingCardTrade(), null);
+    await assert.rejects(() => trade.finalizeSenderAcknowledgement(final.token));
+
+    useDom(domB);
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
   } finally {
     await server.close();
     domA.window.close();
@@ -233,6 +246,11 @@ test("interrupted sender confirmation is resumable without a second debit", asyn
     const final = await trade.finalizeCardConfirmation(completed.token);
     assert.equal(final.state.cards.otranto, 1);
     assert.equal(trade.getResumableReceiptTrade(), null);
+    assert.equal(trade.getResumableCompletionAckTrade()?.token, final.token);
+
+    useDom(domA);
+    await trade.finalizeSenderAcknowledgement(final.token);
+    assert.equal(trade.getResumableOutgoingCardTrade(), null);
   } finally {
     await server.close();
     domA.window.close();
@@ -314,14 +332,17 @@ test("storage failure while finalizing leaves the transferable duplicate intact"
 });
 
 
-test("trade page restores persisted receipt and final confirmation QR after reload", async () => {
+test("trade page restores receipt, confirmation and final acknowledgement after reload", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
   );
   assert.match(source, /getResumableOutgoingCardTrade\(\)/);
   assert.match(source, /getResumableReceiptTrade\(\)/);
+  assert.match(source, /getResumableCompletionAckTrade\(\)/);
+  assert.match(source, /finalizeSenderAcknowledgement\(text\)/);
   assert.match(source, /The signed confirmation is already persisted and will be restored on reload/);
   assert.match(source, /The signed receipt is already persisted and will be restored on reload/);
+  assert.match(source, /myCards/);
 });
 
 
