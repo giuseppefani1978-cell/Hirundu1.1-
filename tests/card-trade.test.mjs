@@ -74,6 +74,7 @@ test("a complete replay grants a transferable duplicate while preserving one gam
     let inventory = trade.recordGameVictoryCard("otranto", false);
     assert.equal(inventory.cards.otranto, 1);
     assert.equal(inventory.origins.otranto.game, 1);
+    await assert.rejects(() => trade.createCardOffer("otranto"), /no-duplicate/);
 
     inventory = trade.recordGameVictoryCard("otranto", true);
     assert.equal(inventory.cards.otranto, 2);
@@ -139,6 +140,10 @@ test("four-step QR trade credits only the receiver and closes on both phones", a
     const repeatedFinal = await trade.finalizeCardConfirmation(completed.token);
     assert.equal(repeatedFinal.token, final.token);
     assert.equal(repeatedFinal.state.cards.otranto, 1);
+
+    const receiverClosed = trade.finishReceiverTrade(final.ack.offerId);
+    assert.equal(receiverClosed.cards.otranto, 1);
+    assert.equal(trade.getResumableCompletionAckTrade(), null);
 
     useDom(domA);
     const closed = await trade.finalizeSenderAcknowledgement(final.token);
@@ -340,6 +345,11 @@ test("trade page restores receipt, confirmation and final acknowledgement after 
   assert.match(source, /getResumableReceiptTrade\(\)/);
   assert.match(source, /getResumableCompletionAckTrade\(\)/);
   assert.match(source, /finalizeSenderAcknowledgement\(text\)/);
+  assert.match(source, /finishReceiverTrade\(completionOfferId\)/);
+  assert.match(source, /duplicateRule/);
+  assert.match(source, /noDuplicate/);
+  assert.match(source, /scanFinalReceipt/);
+  assert.match(source, /finishHere/);
   assert.match(source, /The signed confirmation is already persisted and will be restored on reload/);
   assert.match(source, /The signed receipt is already persisted and will be restored on reload/);
   assert.match(source, /myCards/);
