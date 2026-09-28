@@ -1,0 +1,48 @@
+name: Action 01 QR resume test
+
+on:
+  push:
+    branches:
+      - fix/action01-qr-resume-2026-09-28
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hirundu-action01-test-pages
+  cancel-in-progress: true
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Regression tests
+        run: npm test
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Build isolated test URL
+        run: npm run build -- --base /Hirundu1.1-/action01-test/
+
+      - name: Publish only isolated test subdirectory
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist
+          destination_dir: action01-test
+          keep_files: true
+          commit_message: "test: action01 QR resume ${{ github.sha }}"
