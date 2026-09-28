@@ -733,6 +733,11 @@ export function getResumableReceiptTrade(): ResumableCardTradeQr | null {
   };
 }
 
+export function hasUnresolvedExpiredOutgoingCardTrade(): boolean {
+  const now = Date.now();
+  return Object.values(readCardInventory().outgoing).some((item) => item.expiresAt <= now);
+}
+
 export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; token: string }> {
   const state = readCardInventory();
   if ((state.cards[card] || 0) < 2) throw Error("no-duplicate");
