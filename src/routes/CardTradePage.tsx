@@ -153,7 +153,7 @@ export default function CardTradePage() {
           setCompletionOfferId(completion.offerId ?? "");
           setReceivedCard(completion.card);
           setMode("receive");
-          setMessage(t.receiverDone);
+          setMessage(t.receiverStep);
         } catch {
           setMessage(t.invalid);
         }
@@ -210,7 +210,7 @@ export default function CardTradePage() {
       setNow(Date.now());
       try {
         setQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
-        setMessage(t.senderConfirmed);
+        setMessage(t.senderStep);
       } catch {
         // The signed confirmation is already persisted and will be restored on reload.
         setQr("");
@@ -234,7 +234,7 @@ export default function CardTradePage() {
       setNow(Date.now());
       try {
         setCompletionQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
-        setMessage(t.receiverDone);
+        setMessage(t.receiverStep);
       } catch {
         setCompletionQr("");
         setMessage(t.invalid);
@@ -266,7 +266,7 @@ export default function CardTradePage() {
       setNow(Date.now());
       try {
         setReceiptQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
-        setMessage(t.receiptReady);
+        setMessage(t.receiptStep);
       } catch {
         // The signed receipt is already persisted and will be restored on reload.
         setReceiptQr("");
@@ -284,7 +284,7 @@ export default function CardTradePage() {
       <div className="card-trade__qr card-trade__qr--active">
         <img src={qr} alt={qrKind === "confirmation" ? t.finalConfirm : t.create} />
         <strong className="card-trade__countdown">{t.remaining}: {remainingLabel}</strong>
-        <p>{qrKind === "confirmation" ? t.senderConfirmed : t.expires}</p>
+        <p>{qrKind === "confirmation" ? t.senderStep : t.expires}</p>
         <p><small>{t.security}</small></p>
         {qrKind === "offer" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanReceiverReceipt}</button> : null}
         {qrKind === "confirmation" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanFinalReceipt}</button> : null}
