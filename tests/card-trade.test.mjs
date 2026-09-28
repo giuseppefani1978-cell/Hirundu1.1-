@@ -264,9 +264,26 @@ test("trade page renders generated offer QR directly under the selected duplicat
   assert.match(source, /qrCard === key \? renderActiveQr\(\) : null/);
   assert.match(source, /await createCardOffer\(card, requested\)/);
   assert.match(source, /remainingLabel/);
-  assert.match(source, /Generating QR|Génération du QR/);
+  assert.match(source, /Creating offer|Création de l’offre/);
 });
 
+
+test("card exchange is reachable from home, discoveries and passport without QR branding", async () => {
+  const fs = await import("node:fs/promises");
+  const start = await fs.readFile(new URL("../src/routes/StartPage.tsx", import.meta.url), "utf8");
+  const discoveries = await fs.readFile(new URL("../src/routes/BonusHubPage.tsx", import.meta.url), "utf8");
+  const passport = await fs.readFile(new URL("../src/features/qr/routes/RealMap.tsx", import.meta.url), "utf8");
+  const card = await fs.readFile(new URL("../src/features/bonus/DiscoveryCard.tsx", import.meta.url), "utf8");
+  const tradePage = await fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8");
+
+  assert.match(start, /to="\/card-trade"/);
+  assert.match(discoveries, /navigate\('\/card-trade'\)/);
+  assert.match(passport, /navigate\('\/card-trade'\)/);
+  assert.match(card, /Échange de cartes/);
+  assert.doesNotMatch(card, /Échanges QR · 15 min/);
+  assert.match(tradePage, /title: "Échange de cartes"/);
+  assert.doesNotMatch(tradePage, /<h1>.*QR/);
+});
 
 test("modern browser path stores a non-exportable private trade key in IndexedDB", async () => {
   const source = await import("node:fs/promises").then((fs) =>
