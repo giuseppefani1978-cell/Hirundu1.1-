@@ -817,10 +817,11 @@ export function finishReceiverTrade(offerId: string): CardInventoryState {
 
 export function finishReceiverAfterReceipt(offerId: string): CardInventoryState {
   const state = readCardInventory();
-  const receiving = state.receiving[offerId];
-  if (!offerId || !receiving) throw Error("receipt-not-pending");
-  if (receiving.expiresAt <= Date.now()) throw Error("expired");
+  if (!offerId) throw Error("receipt-not-pending");
   if (state.confirmed[offerId]) return state;
+  const receiving = state.receiving[offerId];
+  if (!receiving) throw Error("receipt-not-pending");
+  if (receiving.expiresAt <= Date.now()) throw Error("expired");
 
   // Two-scan in-person barter UX: B confirms locally that A has scanned the
   // signed receipt. B's requested duplicate was already debited when the
