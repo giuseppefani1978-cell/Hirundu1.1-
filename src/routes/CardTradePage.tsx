@@ -12,8 +12,8 @@ import {
   completeCardReceipt,
   createCardOffer,
   finalizeCardConfirmation,
-  finalizeSenderAcknowledgement,
   finishReceiverTrade,
+  finishSenderTrade,
   getCardOrigins,
   getResumableCompletionAckTrade,
   getResumableOutgoingCardTrade,
@@ -51,10 +51,10 @@ const copy = {
 };
 
 const uxCopy = {
-  fr: { senderTab: "J’envoie une carte", receiverTab: "Je reçois une carte", duplicateRule: "Pour échanger une carte, il faut au moins 2 exemplaires de la même carte : 1 reste dans ta collection et le double peut être envoyé.", noDuplicate: "Aucun double disponible : il faut au moins 2 exemplaires de cette carte pour l’échanger.", senderHelp: "Tu envoies un double. Suis les boutons dans l’ordre : l’application te dit exactement quel QR scanner.", receiverHelp: "Tu reçois une carte. Commence par scanner le QR d’offre affiché sur le téléphone de l’expéditeur.", scanOffer: "Scanner le QR d’offre de l’expéditeur", scanReceiverReceipt: "Scanner le reçu du destinataire", scanSenderConfirmation: "Scanner le QR de confirmation de l’expéditeur", scanFinalReceipt: "Scanner le reçu final du destinataire", receiptStep: "Étape 2/4 — Fais scanner ce QR par l’expéditeur. Ensuite, scanne son QR de confirmation.", senderStep: "Étape 3/4 — Fais scanner ce QR par le destinataire, puis scanne son reçu final.", receiverStep: "Étape 4/4 — Carte ajoutée à ta collection. Fais scanner ce reçu final par l’expéditeur.", receiverFinishHelp: "Quand l’expéditeur affiche « Transfert terminé », termine aussi l’échange sur ce téléphone.", finishHere: "Terminer sur ce téléphone", protocol: "4 étapes : offre → reçu → confirmation → reçu final. Chaque QR reste valable 15 minutes.", qrValidity: "QR valable encore", finalReceiptValidity: "Reçu final valable encore" },
-  it: { senderTab: "Invio una carta", receiverTab: "Ricevo una carta", duplicateRule: "Per scambiare una carta servono almeno 2 copie della stessa carta: 1 resta nella collezione e il doppione può essere inviato.", noDuplicate: "Nessun doppione disponibile: servono almeno 2 copie di questa carta.", senderHelp: "Stai inviando un doppione. Segui i pulsanti nell’ordine indicato.", receiverHelp: "Stai ricevendo una carta. Inizia scansionando il QR offerta mostrato sul telefono del mittente.", scanOffer: "Scansiona il QR offerta del mittente", scanReceiverReceipt: "Scansiona la ricevuta del destinatario", scanSenderConfirmation: "Scansiona il QR di conferma del mittente", scanFinalReceipt: "Scansiona la ricevuta finale del destinatario", receiptStep: "Passo 2/4 — Fai scansionare questo QR al mittente. Poi scansiona il suo QR di conferma.", senderStep: "Passo 3/4 — Fai scansionare questo QR al destinatario, poi scansiona la sua ricevuta finale.", receiverStep: "Passo 4/4 — Carta aggiunta alla collezione. Fai scansionare questa ricevuta finale al mittente.", receiverFinishHelp: "Quando il mittente vede « Trasferimento completato », termina anche su questo telefono.", finishHere: "Termina su questo telefono", protocol: "4 passaggi: offerta → ricevuta → conferma → ricevuta finale. Ogni QR resta valido 15 minuti.", qrValidity: "QR valido ancora", finalReceiptValidity: "Ricevuta finale valida ancora" },
-  en: { senderTab: "I’m sending a card", receiverTab: "I’m receiving a card", duplicateRule: "To trade a card you need at least 2 copies of the same card: 1 stays in your collection and the duplicate can be sent.", noDuplicate: "No duplicate available: you need at least 2 copies of this card to trade it.", senderHelp: "You are sending a duplicate. Follow the buttons in order; the app tells you which QR to scan next.", receiverHelp: "You are receiving a card. Start by scanning the offer QR shown on the sender’s phone.", scanOffer: "Scan the sender’s offer QR", scanReceiverReceipt: "Scan the recipient receipt", scanSenderConfirmation: "Scan the sender confirmation QR", scanFinalReceipt: "Scan the recipient final receipt", receiptStep: "Step 2/4 — Have the sender scan this QR. Then scan their confirmation QR.", senderStep: "Step 3/4 — Have the recipient scan this QR, then scan their final receipt.", receiverStep: "Step 4/4 — Card added to your collection. Have the sender scan this final receipt.", receiverFinishHelp: "When the sender shows “Transfer complete”, finish the trade on this phone too.", finishHere: "Finish on this phone", protocol: "4 steps: offer → receipt → confirmation → final receipt. Each QR stays valid for 15 minutes.", qrValidity: "QR valid for", finalReceiptValidity: "Final receipt valid for" },
-  es: { senderTab: "Envío una tarjeta", receiverTab: "Recibo una tarjeta", duplicateRule: "Para intercambiar una tarjeta necesitas al menos 2 copias de la misma: 1 queda en tu colección y el duplicado se puede enviar.", noDuplicate: "No hay duplicado disponible: necesitas al menos 2 copias de esta tarjeta.", senderHelp: "Estás enviando un duplicado. Sigue los botones en orden; la app te indica qué QR escanear.", receiverHelp: "Estás recibiendo una tarjeta. Empieza escaneando el QR de oferta del teléfono del remitente.", scanOffer: "Escanear el QR de oferta del remitente", scanReceiverReceipt: "Escanear el recibo del destinatario", scanSenderConfirmation: "Escanear el QR de confirmación del remitente", scanFinalReceipt: "Escanear el recibo final del destinatario", receiptStep: "Paso 2/4 — Haz que el remitente escanee este QR. Luego escanea su QR de confirmación.", senderStep: "Paso 3/4 — Haz que el destinatario escanee este QR y luego escanea su recibo final.", receiverStep: "Paso 4/4 — Tarjeta añadida a tu colección. Haz que el remitente escanee este recibo final.", receiverFinishHelp: "Cuando el remitente muestre « Transferencia completada », termina también en este teléfono.", finishHere: "Terminar en este teléfono", protocol: "4 pasos: oferta → recibo → confirmación → recibo final. Cada QR es válido durante 15 minutos.", qrValidity: "QR válido durante", finalReceiptValidity: "Recibo final válido durante" },
+  fr: { senderTab: "J’envoie une carte", receiverTab: "Je reçois une carte", duplicateRule: "Pour échanger une carte, il faut au moins 2 exemplaires de la même carte : 1 reste dans ta collection et le double peut être envoyé.", noDuplicate: "Aucun double disponible : il faut au moins 2 exemplaires de cette carte pour l’échanger.", senderHelp: "Tu envoies un double. Trois scans maximum : le destinataire scanne ton offre, tu scans son reçu, puis il scanne ta confirmation.", receiverHelp: "Tu reçois une carte. Commence par scanner le QR d’offre affiché sur le téléphone de l’expéditeur.", scanOffer: "Scanner le QR d’offre de l’expéditeur", scanReceiverReceipt: "Scanner le reçu du destinataire", scanSenderConfirmation: "Scanner le QR de confirmation de l’expéditeur", receiptStep: "Étape 2/3 — Fais scanner ce QR par l’expéditeur. Ensuite, scanne son QR de confirmation.", senderStep: "Étape 3/3 — Fais scanner ce QR par le destinataire. Quand il te confirme que la carte est reçue, termine sur ce téléphone.", receiverStep: "Carte reçue ✓ Elle est maintenant dans ta collection.", receiverFinishHelp: "Aucun autre scan n’est nécessaire. Appuie simplement sur Terminer.", finishHere: "Terminer", finishSender: "Le destinataire a reçu la carte — Terminer", protocol: "3 scans : offre → reçu → confirmation. Ensuite chacun termine localement, sans quatrième scan.", qrValidity: "QR valable encore" },
+  it: { senderTab: "Invio una carta", receiverTab: "Ricevo una carta", duplicateRule: "Per scambiare una carta servono almeno 2 copie della stessa carta: 1 resta nella collezione e il doppione può essere inviato.", noDuplicate: "Nessun doppione disponibile: servono almeno 2 copie di questa carta.", senderHelp: "Invii un doppione. Massimo tre scansioni: il destinatario scansiona l’offerta, tu la sua ricevuta, poi lui la tua conferma.", receiverHelp: "Ricevi una carta. Inizia scansionando il QR offerta sul telefono del mittente.", scanOffer: "Scansiona il QR offerta del mittente", scanReceiverReceipt: "Scansiona la ricevuta del destinatario", scanSenderConfirmation: "Scansiona il QR di conferma del mittente", receiptStep: "Passo 2/3 — Fai scansionare questo QR al mittente. Poi scansiona la sua conferma.", senderStep: "Passo 3/3 — Fai scansionare questo QR al destinatario. Quando conferma di aver ricevuto la carta, termina su questo telefono.", receiverStep: "Carta ricevuta ✓ Ora è nella tua collezione.", receiverFinishHelp: "Non serve un’altra scansione. Premi semplicemente Termina.", finishHere: "Termina", finishSender: "Il destinatario ha ricevuto la carta — Termina", protocol: "3 scansioni: offerta → ricevuta → conferma. Poi ciascuno termina localmente, senza quarta scansione.", qrValidity: "QR valido ancora" },
+  en: { senderTab: "I’m sending a card", receiverTab: "I’m receiving a card", duplicateRule: "To trade a card you need at least 2 copies of the same card: 1 stays in your collection and the duplicate can be sent.", noDuplicate: "No duplicate available: you need at least 2 copies of this card to trade it.", senderHelp: "You are sending a duplicate. Three scans maximum: recipient scans your offer, you scan their receipt, then they scan your confirmation.", receiverHelp: "You are receiving a card. Start by scanning the offer QR on the sender’s phone.", scanOffer: "Scan the sender’s offer QR", scanReceiverReceipt: "Scan the recipient receipt", scanSenderConfirmation: "Scan the sender confirmation QR", receiptStep: "Step 2/3 — Have the sender scan this QR. Then scan their confirmation QR.", senderStep: "Step 3/3 — Have the recipient scan this QR. Once they confirm the card arrived, finish on this phone.", receiverStep: "Card received ✓ It is now in your collection.", receiverFinishHelp: "No more scanning is needed. Just tap Finish.", finishHere: "Finish", finishSender: "Recipient received the card — Finish", protocol: "3 scans: offer → receipt → confirmation. Then each phone finishes locally, with no fourth scan.", qrValidity: "QR valid for" },
+  es: { senderTab: "Envío una tarjeta", receiverTab: "Recibo una tarjeta", duplicateRule: "Para intercambiar una tarjeta necesitas al menos 2 copias de la misma: 1 queda en tu colección y el duplicado se puede enviar.", noDuplicate: "No hay duplicado disponible: necesitas al menos 2 copias de esta tarjeta.", senderHelp: "Envías un duplicado. Máximo tres escaneos: el destinatario escanea tu oferta, tú su recibo y luego él tu confirmación.", receiverHelp: "Recibes una tarjeta. Empieza escaneando el QR de oferta del teléfono del remitente.", scanOffer: "Escanear el QR de oferta del remitente", scanReceiverReceipt: "Escanear el recibo del destinatario", scanSenderConfirmation: "Escanear el QR de confirmación del remitente", receiptStep: "Paso 2/3 — Haz que el remitente escanee este QR. Luego escanea su confirmación.", senderStep: "Paso 3/3 — Haz que el destinatario escanee este QR. Cuando confirme que recibió la tarjeta, termina en este teléfono.", receiverStep: "Tarjeta recibida ✓ Ya está en tu colección.", receiverFinishHelp: "No hace falta otro escaneo. Solo pulsa Terminar.", finishHere: "Terminar", finishSender: "El destinatario recibió la tarjeta — Terminar", protocol: "3 escaneos: oferta → recibo → confirmación. Después cada teléfono termina localmente, sin cuarto escaneo.", qrValidity: "QR válido durante" },
 };
 const originLabels: Record<string, Record<CardOrigin, string>> = {
   fr: { game: "Jeu", partner: "Partenaire", physical: "Carte physique", exchange: "Échange", test: "Test", legacy: "Ancienne collection" },
@@ -78,11 +78,11 @@ export default function CardTradePage() {
   const [qrKind, setQrKind] = useState<"offer" | "confirmation" | null>(null);
   const [qrCard, setQrCard] = useState<BonusKey | null>(null);
   const [qrExpiresAt, setQrExpiresAt] = useState(0);
+  const [qrOfferId, setQrOfferId] = useState("");
   const [now, setNow] = useState(Date.now());
   const [incoming, setIncoming] = useState<{ token: string; card: BonusKey } | null>(null);
   const [receiptQr, setReceiptQr] = useState("");
   const [receiptExpiresAt, setReceiptExpiresAt] = useState(0);
-  const [completionQr, setCompletionQr] = useState("");
   const [completionExpiresAt, setCompletionExpiresAt] = useState(0);
   const [completionOfferId, setCompletionOfferId] = useState("");
   const [receivedCard, setReceivedCard] = useState<BonusKey | null>(null);
@@ -130,6 +130,7 @@ export default function CardTradePage() {
           setQrKind(outgoing.kind === "confirmation" ? "confirmation" : "offer");
           setQrCard(outgoing.card);
           setQrExpiresAt(outgoing.expiresAt);
+          setQrOfferId(outgoing.offerId ?? "");
         } catch {
           setMessage(t.invalid);
         }
@@ -147,16 +148,11 @@ export default function CardTradePage() {
 
       const completion = getResumableCompletionAckTrade();
       if (completion) {
-        try {
-          setCompletionQr(await QRCode.toDataURL(completion.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
-          setCompletionExpiresAt(completion.expiresAt);
-          setCompletionOfferId(completion.offerId ?? "");
-          setReceivedCard(completion.card);
-          setMode("receive");
-          setMessage(t.receiverStep);
-        } catch {
-          setMessage(t.invalid);
-        }
+        setCompletionExpiresAt(completion.expiresAt);
+        setCompletionOfferId(completion.offerId ?? "");
+        setReceivedCard(completion.card);
+        setMode("receive");
+        setMessage(t.receiverStep);
       }
 
       if (!outgoing && !receipt && !completion && hasUnresolvedExpiredOutgoingCardTrade()) {
@@ -179,6 +175,7 @@ export default function CardTradePage() {
       setQrKind("offer");
       setQrCard(card);
       setQrExpiresAt(result.offer.expiresAt);
+      setQrOfferId(result.offer.id);
       setNow(Date.now());
       setMessage("");
     } catch {
@@ -207,6 +204,7 @@ export default function CardTradePage() {
       setQrKind("confirmation");
       setQrCard(result.card);
       setQrExpiresAt(result.confirmation.expiresAt);
+      setQrOfferId(result.confirmation.offerId);
       setNow(Date.now());
       try {
         setQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
@@ -232,26 +230,7 @@ export default function CardTradePage() {
       setCompletionExpiresAt(result.ack.expiresAt);
       setCompletionOfferId(result.ack.offerId);
       setNow(Date.now());
-      try {
-        setCompletionQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
-        setMessage(t.receiverStep);
-      } catch {
-        setCompletionQr("");
-        setMessage(t.invalid);
-      }
-      return;
-    } catch {
-      // Continue with the sender-side final acknowledgement path.
-    }
-
-    try {
-      const result = await finalizeSenderAcknowledgement(text);
-      setInventory(result.state);
-      setQr("");
-      setQrKind(null);
-      setQrCard(null);
-      setQrExpiresAt(0);
-      setMessage(t.done);
+      setMessage(t.receiverStep);
       return;
     } catch {
       setMessage(t.invalid);
@@ -287,13 +266,22 @@ export default function CardTradePage() {
         <p>{qrKind === "confirmation" ? t.senderStep : t.expires}</p>
         <p><small>{t.security}</small></p>
         {qrKind === "offer" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanReceiverReceipt}</button> : null}
-        {qrKind === "confirmation" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanFinalReceipt}</button> : null}
+        {qrKind === "confirmation" ? <button className="trade-primary card-trade__main-action" onClick={() => {
+          if (qrOfferId) setInventory(finishSenderTrade(qrOfferId));
+          setQr("");
+          setQrKind(null);
+          setQrCard(null);
+          setQrExpiresAt(0);
+          setQrOfferId("");
+          setMessage(t.done);
+        }}>{t.finishSender}</button> : null}
         {qrKind === "offer" ? <button onClick={() => {
           cancelPendingOffer();
           setQr("");
           setQrKind(null);
           setQrCard(null);
           setQrExpiresAt(0);
+          setQrOfferId("");
         }}>{t.cancel}</button> : null}
       </div>
     );
@@ -326,13 +314,13 @@ export default function CardTradePage() {
       setQrKind(null);
       setQrCard(null);
       setQrExpiresAt(0);
+      setQrOfferId("");
     }
     if (receiptExpiresAt && Date.now() >= receiptExpiresAt) {
       setReceiptQr("");
       setReceiptExpiresAt(0);
     }
     if (completionExpiresAt && Date.now() >= completionExpiresAt) {
-      setCompletionQr("");
       setCompletionExpiresAt(0);
     }
   }, [now, qrExpiresAt, qrKind, receiptExpiresAt, completionExpiresAt]);
@@ -374,12 +362,11 @@ export default function CardTradePage() {
         {mode === "receive" ? (
           <section>
             <h2>{t.receiverTab}</h2>
-            {!receiptQr && !completionQr && !incoming ? <button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
+            {!receiptQr && !completionOfferId && !incoming ? <button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
             {incoming ? <div>{renderCard(incoming.card)}<button className="trade-primary card-trade__main-action" onClick={() => void accept()}>2. {t.confirm}</button></div> : null}
             {receiptQr ? <div className="card-trade__qr card-trade__qr--active"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptStep}</p><button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>3. {t.scanSenderConfirmation}</button><p><small>{t.protocol}</small></p></div> : null}
-            {completionQr ? <div className="card-trade__qr card-trade__qr--active"><img src={completionQr} alt={t.finalReceipt} /><strong className="card-trade__countdown">{t.finalReceiptValidity}: {completionRemainingLabel}</strong><p>{t.receiverStep}</p><p className="card-trade__finish-help">{t.receiverFinishHelp}</p><button className="trade-primary card-trade__main-action" onClick={() => {
+            {completionOfferId ? <div className="card-trade__qr card-trade__qr--active"><p>{t.receiverStep}</p><p className="card-trade__finish-help">{t.receiverFinishHelp}</p><button className="trade-primary card-trade__main-action" onClick={() => {
               if (completionOfferId) setInventory(finishReceiverTrade(completionOfferId));
-              setCompletionQr("");
               setCompletionExpiresAt(0);
               setCompletionOfferId("");
               setMessage(t.done);
