@@ -191,6 +191,7 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
     <main className="real-map passport-page" style={{maxWidth:840,margin:'0 auto',padding:20}}>
       <nav className="real-map__actions passport-page__navigation">
         <button className="app-button passport-page__return" onClick={goToBonusHub}>← {copy.bonus}</button>
+        <button className="app-button passport-page__trade" onClick={() => navigate('/card-trade')}>⇄ {copy.cardTrade}</button>
         {(['otranto','gallipoli','lecce','adriatico','capo','arneo','nardo','messapia','itria'] as const).map((city) => {
           const step = itinerary.find((item) => item.key === city);
           const completed = Boolean(step?.completed);
@@ -234,9 +235,10 @@ export default function RealMap({ passportOnly = false }: { passportOnly?: boole
         mapConsulted={passport.consulted}
         progress={passportProgress}
       />
-      <nav className="real-map__actions">
-        <button className="app-button" onClick={() => navigate('/qr')}>{pc.scan}</button>
+      <nav className="real-map__actions passport-page__footer-actions">
+        <button className="app-button app-button--dark" onClick={() => navigate('/card-trade')}>⇄ {copy.cardTrade}</button>
         <button className="app-button" onClick={() => navigate(`/poi/${key}/realmap`)}>{copy.maps}</button>
+        <button className="app-button app-button--ghost" onClick={() => navigate('/qr')}>{pc.scan}</button>
       </nav>
     </main>
   );

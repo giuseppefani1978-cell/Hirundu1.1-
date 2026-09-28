@@ -9,6 +9,8 @@ const TRADE_PREFIX = "HIRUNDU-CARD-2.";
 const LEGACY_TRADE_PREFIX = "HIRUNDU-CARD-1.";
 const MAX_AGE = 15 * 60 * 1000;
 const CLOCK_SKEW = 60 * 1000;
+const TRADE_LOCK_PREFIX = "hirundu_card_trade_lock_v1:";
+const TRADE_LOCK_TTL = 30 * 1000;
 export const QUEUED_CARD_QR_KEY = "hirundu_queued_card_qr_v1";
 
 export type CardOrigin = "game" | "partner" | "physical" | "exchange" | "test" | "legacy";
@@ -17,20 +19,45 @@ type OriginCounts = Partial<Record<CardOrigin, number>>;
 type Pending = {
   id: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   createdAt: number;
   expiresAt: number;
   sender: string;
   offerHash: string;
+  token?: string;
 };
 
 type Receiving = {
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   receiver: string;
   createdAt: number;
   expiresAt: number;
   offerHash: string;
   receiptHash: string;
+  receiptToken?: string;
+};
+
+type OutgoingConfirmation = {
+  card: BonusKey;
+  requestedCard: BonusKey;
+  receiver: string;
+  createdAt: number;
+  expiresAt: number;
+  receiptHash: string;
+  confirmationHash?: string;
+  token: string;
+};
+
+type CompletionAckRecord = {
+  card: BonusKey;
+  sender: string;
+  receiver: string;
+  createdAt: number;
+  expiresAt: number;
+  confirmationHash: string;
+  token: string;
 };
 
 export type CardInventoryState = {
@@ -42,6 +69,8 @@ export type CardInventoryState = {
   confirmed: Record<string, number>;
   spent: Record<string, number>;
   receiving: Record<string, Receiving>;
+  outgoing: Record<string, OutgoingConfirmation>;
+  completionAcks: Record<string, CompletionAckRecord>;
   pending: Pending | null;
 };
 
@@ -50,6 +79,7 @@ type OfferPayload = {
   version: 2;
   id: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   senderKey: string;
   issuedAt: number;
@@ -63,6 +93,7 @@ type ReceiptPayload = {
   offerId: string;
   offerHash: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   receiver: string;
   receiverKey: string;
@@ -77,6 +108,7 @@ type ConfirmationPayload = {
   offerId: string;
   receiptHash: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   senderKey: string;
   receiver: string;
@@ -85,7 +117,21 @@ type ConfirmationPayload = {
 };
 type Confirmation = ConfirmationPayload & { sig: string };
 
-type TradeToken = Offer | Receipt | Confirmation;
+type CompletionAckPayload = {
+  type: "ack";
+  version: 2;
+  offerId: string;
+  confirmationHash: string;
+  card: BonusKey;
+  sender: string;
+  receiver: string;
+  receiverKey: string;
+  issuedAt: number;
+  expiresAt: number;
+};
+type CompletionAck = CompletionAckPayload & { sig: string };
+
+type TradeToken = Offer | Receipt | Confirmation | CompletionAck;
 
 type StoredIdentity = {
   version: 2;
@@ -391,6 +437,8 @@ function blank(): CardInventoryState {
     confirmed: {},
     spent: {},
     receiving: {},
+    outgoing: {},
+    completionAcks: {},
     pending: null,
   };
 }
@@ -408,6 +456,52 @@ function write(state: CardInventoryState): CardInventoryState {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   window.dispatchEvent(new Event("hirundu:cards"));
   return state;
+}
+
+function tradeLockKey(offerId: string): string {
+  return `${TRADE_LOCK_PREFIX}${offerId}`;
+}
+
+function acquireTradeLock(offerId: string): string {
+  const key = tradeLockKey(offerId);
+  const now = Date.now();
+  const existingRaw = localStorage.getItem(key);
+  if (existingRaw) {
+    try {
+      const existing = JSON.parse(existingRaw) as { owner?: string; expiresAt?: number };
+      if (existing.owner && Number(existing.expiresAt) > now) throw Error("trade-busy");
+    } catch (error) {
+      if (error instanceof Error && error.message === "trade-busy") throw error;
+    }
+  }
+
+  const owner = makeId();
+  localStorage.setItem(key, JSON.stringify({ owner, expiresAt: now + TRADE_LOCK_TTL }));
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) || "null") as { owner?: string } | null;
+    if (stored?.owner !== owner) throw Error("trade-busy");
+  } catch (error) {
+    if (error instanceof Error && error.message === "trade-busy") throw error;
+    throw Error("trade-lock");
+  }
+  return owner;
+}
+
+function releaseTradeLock(offerId: string, owner: string): void {
+  const key = tradeLockKey(offerId);
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) || "null") as { owner?: string } | null;
+    if (stored?.owner === owner) localStorage.removeItem(key);
+  } catch {}
+}
+
+async function withTradeLock<T>(offerId: string, action: () => Promise<T>): Promise<T> {
+  const owner = acquireTradeLock(offerId);
+  try {
+    return await action();
+  } finally {
+    releaseTradeLock(offerId, owner);
+  }
 }
 
 function encode(value: TradeToken): string {
@@ -434,8 +528,9 @@ function decode(raw: string): TradeToken {
   const parsed = JSON.parse(new TextDecoder().decode(base64UrlToBytes(body))) as Record<string, unknown>;
   if (
     parsed?.version !== 2 ||
-    !["offer", "receipt", "confirmation"].includes(String(parsed.type)) ||
+    !["offer", "receipt", "confirmation", "ack"].includes(String(parsed.type)) ||
     !validKey(parsed.card) ||
+    (parsed.type !== "ack" && !validKey(parsed.requestedCard)) ||
     typeof parsed.sig !== "string"
   ) throw Error("invalid");
   validateTimes(parsed);
@@ -472,9 +567,10 @@ function sanitizePending(value: unknown): Pending | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const pending = value as Partial<Pending>;
   if (
-    typeof pending.id !== "string" || !validKey(pending.card) ||
+    typeof pending.id !== "string" || !validKey(pending.card) || !validKey(pending.requestedCard) ||
     typeof pending.createdAt !== "number" || typeof pending.expiresAt !== "number" ||
-    typeof pending.sender !== "string" || typeof pending.offerHash !== "string"
+    typeof pending.sender !== "string" || typeof pending.offerHash !== "string" ||
+    (pending.token !== undefined && typeof pending.token !== "string")
   ) return null;
   return pending as Pending;
 }
@@ -486,10 +582,43 @@ function sanitizeReceiving(value: unknown): Record<string, Receiving> {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
     const item = raw as Partial<Receiving>;
     if (
+      validKey(item.card) && validKey(item.requestedCard) && typeof item.sender === "string" && typeof item.receiver === "string" &&
+      typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
+      typeof item.offerHash === "string" && typeof item.receiptHash === "string" &&
+      (item.receiptToken === undefined || typeof item.receiptToken === "string")
+    ) result[id] = item as Receiving;
+  });
+  return result;
+}
+
+function sanitizeOutgoing(value: unknown): Record<string, OutgoingConfirmation> {
+  const result: Record<string, OutgoingConfirmation> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+  Object.entries(value as Record<string, unknown>).forEach(([id, raw]) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const item = raw as Partial<OutgoingConfirmation>;
+    if (
+      validKey(item.card) && validKey(item.requestedCard) && typeof item.receiver === "string" &&
+      typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
+      typeof item.receiptHash === "string" &&
+      (item.confirmationHash === undefined || typeof item.confirmationHash === "string") &&
+      typeof item.token === "string"
+    ) result[id] = item as OutgoingConfirmation;
+  });
+  return result;
+}
+
+function sanitizeCompletionAcks(value: unknown): Record<string, CompletionAckRecord> {
+  const result: Record<string, CompletionAckRecord> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+  Object.entries(value as Record<string, unknown>).forEach(([id, raw]) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const item = raw as Partial<CompletionAckRecord>;
+    if (
       validKey(item.card) && typeof item.sender === "string" && typeof item.receiver === "string" &&
       typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
-      typeof item.offerHash === "string" && typeof item.receiptHash === "string"
-    ) result[id] = item as Receiving;
+      typeof item.confirmationHash === "string" && typeof item.token === "string"
+    ) result[id] = item as CompletionAckRecord;
   });
   return result;
 }
@@ -506,6 +635,8 @@ export function readCardInventory(): CardInventoryState {
       state.confirmed = cleanTimestamps(saved.confirmed);
       state.spent = cleanTimestamps(saved.spent);
       state.receiving = sanitizeReceiving(saved.receiving);
+      state.outgoing = sanitizeOutgoing(saved.outgoing);
+      state.completionAcks = sanitizeCompletionAcks(saved.completionAcks);
       state.pending = sanitizePending(saved.pending);
     }
   } catch {
@@ -608,9 +739,117 @@ export function takeQueuedCardQr(): string {
   return raw;
 }
 
-export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; token: string }> {
+export type ResumableCardTradeQr = {
+  kind: "offer" | "receipt" | "confirmation" | "ack";
+  token: string;
+  card: BonusKey;
+  expiresAt: number;
+  offerId?: string;
+};
+
+export function getResumableOutgoingCardTrade(): ResumableCardTradeQr | null {
+  const state = readCardInventory();
+  const now = Date.now();
+  const confirmationEntry = Object.entries(state.outgoing)
+    .filter(([, item]) => item.expiresAt > now)
+    .sort(([, a], [, b]) => b.createdAt - a.createdAt)[0];
+  if (confirmationEntry) {
+    const [offerId, confirmation] = confirmationEntry;
+    return {
+      kind: "confirmation",
+      token: confirmation.token,
+      card: confirmation.card,
+      expiresAt: confirmation.expiresAt,
+      offerId,
+    };
+  }
+  if (state.pending?.token && state.pending.expiresAt > now) {
+    return {
+      kind: "offer",
+      token: state.pending.token,
+      card: state.pending.card,
+      expiresAt: state.pending.expiresAt,
+      offerId: state.pending.id,
+    };
+  }
+  return null;
+}
+
+export function getResumableReceiptTrade(): ResumableCardTradeQr | null {
+  const now = Date.now();
+  const receiptEntry = Object.entries(readCardInventory().receiving)
+    .filter(([, item]) => Boolean(item.receiptToken) && item.expiresAt > now)
+    .sort(([, a], [, b]) => b.createdAt - a.createdAt)[0];
+  if (!receiptEntry?.[1]?.receiptToken) return null;
+  const [offerId, receipt] = receiptEntry;
+  const token = receipt.receiptToken;
+  if (!token) return null;
+  return {
+    kind: "receipt",
+    token,
+    card: receipt.card,
+    expiresAt: receipt.expiresAt,
+    offerId,
+  };
+}
+
+export function getResumableCompletionAckTrade(): ResumableCardTradeQr | null {
+  const now = Date.now();
+  const ack = Object.values(readCardInventory().completionAcks)
+    .filter((item) => item.expiresAt > now)
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
+  if (!ack) return null;
+  const [offerId] = Object.entries(readCardInventory().completionAcks)
+    .filter(([, item]) => item === ack)[0] ?? [];
+  return {
+    kind: "ack",
+    token: ack.token,
+    card: ack.card,
+    expiresAt: ack.expiresAt,
+    offerId,
+  };
+}
+
+export function finishReceiverTrade(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  if (!offerId || !state.completionAcks[offerId]) return state;
+  delete state.completionAcks[offerId];
+  return write(state);
+}
+
+export function finishReceiverAfterReceipt(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  if (!offerId) throw Error("receipt-not-pending");
+  if (state.confirmed[offerId]) return state;
+  const receiving = state.receiving[offerId];
+  if (!receiving) throw Error("receipt-not-pending");
+  if (receiving.expiresAt <= Date.now()) throw Error("expired");
+
+  // Two-scan in-person barter UX: B confirms locally that A has scanned the
+  // signed receipt. B's requested duplicate was already debited when the
+  // receipt was created; this button credits A's offered card and closes B.
+  grantCard(state, receiving.card, "exchange");
+  state.confirmed[offerId] = Date.now();
+  delete state.receiving[offerId];
+  return write(state);
+}
+
+export function finishSenderTrade(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  if (!offerId || !state.outgoing[offerId]) return state;
+  delete state.outgoing[offerId];
+  return write(state);
+}
+
+export function hasUnresolvedExpiredOutgoingCardTrade(): boolean {
+  const now = Date.now();
+  return Object.values(readCardInventory().outgoing).some((item) => item.expiresAt <= now);
+}
+
+export async function createCardOffer(card: BonusKey, requestedCard: BonusKey): Promise<{ offer: Offer; token: string }> {
   const state = readCardInventory();
   if ((state.cards[card] || 0) < 2) throw Error("no-duplicate");
+  if (!validKey(requestedCard) || requestedCard === card) throw Error("invalid-requested-card");
 
   const identity = await loadDeviceIdentity();
   const issuedAt = Date.now();
@@ -619,22 +858,26 @@ export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; t
     version: 2,
     id: makeId(),
     card,
+    requestedCard,
     sender: identity.fingerprint,
     senderKey: identity.publicRaw,
     issuedAt,
     expiresAt: issuedAt + MAX_AGE,
   };
   const offer = await signPayload(payload, identity.privateKey);
+  const token = encode(offer);
   state.pending = {
     id: offer.id,
     card,
+    requestedCard,
     createdAt: issuedAt,
     expiresAt: offer.expiresAt,
     sender: identity.fingerprint,
     offerHash: await tokenHash(offer),
+    token,
   };
   write(state);
-  return { offer, token: encode(offer) };
+  return { offer, token };
 }
 
 export async function inspectCardOffer(raw: string): Promise<Offer> {
@@ -647,43 +890,73 @@ export async function inspectCardOffer(raw: string): Promise<Offer> {
   if (offer.sender === identity.fingerprint) throw Error("self-offer");
 
   const state = readCardInventory();
-  if (state.received[offer.id] || state.confirmed[offer.id]) throw Error("already-received");
+  if (state.confirmed[offer.id]) throw Error("already-received");
+  if (state.received[offer.id] && !state.receiving[offer.id]?.receiptToken) throw Error("already-received");
   return offer;
 }
 
 export async function acceptCardOffer(raw: string): Promise<{ offer: Offer; receipt: Receipt; token: string }> {
   const offer = await inspectCardOffer(raw);
+  const availability = readCardInventory();
+  if ((availability.cards[offer.requestedCard] || 0) < 2) throw Error("missing-requested-duplicate");
   const identity = await loadDeviceIdentity();
-  const issuedAt = Date.now();
   const offerHash = await tokenHash(offer);
-  const payload: ReceiptPayload = {
-    type: "receipt",
-    version: 2,
-    offerId: offer.id,
-    offerHash,
-    card: offer.card,
-    sender: offer.sender,
-    receiver: identity.fingerprint,
-    receiverKey: identity.publicRaw,
-    issuedAt,
-    expiresAt: offer.expiresAt,
-  };
-  const receipt = await signPayload(payload, identity.privateKey);
-  const receiptHash = await tokenHash(receipt);
 
-  const state = readCardInventory();
-  state.received[offer.id] = issuedAt;
-  state.receiving[offer.id] = {
-    card: offer.card,
-    sender: offer.sender,
-    receiver: identity.fingerprint,
-    createdAt: issuedAt,
-    expiresAt: offer.expiresAt,
-    offerHash,
-    receiptHash,
-  };
-  write(state);
-  return { offer, receipt, token: encode(receipt) };
+  return withTradeLock(offer.id, async () => {
+    const state = readCardInventory();
+    const existing = state.receiving[offer.id];
+    if (
+      existing?.receiptToken &&
+      existing.card === offer.card &&
+      existing.requestedCard === offer.requestedCard &&
+      existing.sender === offer.sender &&
+      existing.receiver === identity.fingerprint &&
+      existing.offerHash === offerHash &&
+      existing.expiresAt === offer.expiresAt &&
+      existing.expiresAt > Date.now()
+    ) {
+      const resumed = decode(existing.receiptToken);
+      if (resumed.type !== "receipt") throw Error("invalid-receipt");
+      return { offer, receipt: resumed, token: existing.receiptToken };
+    }
+    if (state.received[offer.id] || state.confirmed[offer.id]) throw Error("already-received");
+
+    const issuedAt = Date.now();
+    const payload: ReceiptPayload = {
+      type: "receipt",
+      version: 2,
+      offerId: offer.id,
+      offerHash,
+      card: offer.card,
+      requestedCard: offer.requestedCard,
+      sender: offer.sender,
+      receiver: identity.fingerprint,
+      receiverKey: identity.publicRaw,
+      issuedAt,
+      expiresAt: offer.expiresAt,
+    };
+    const receipt = await signPayload(payload, identity.privateKey);
+    const receiptHash = await tokenHash(receipt);
+    const token = encode(receipt);
+
+    // B commits the requested duplicate when creating the signed receipt.
+    // The receipt itself is the cryptographic proof that A will scan in step 2.
+    removeTransferableCopy(state, offer.requestedCard);
+    state.received[offer.id] = issuedAt;
+    state.receiving[offer.id] = {
+      card: offer.card,
+      requestedCard: offer.requestedCard,
+      sender: offer.sender,
+      receiver: identity.fingerprint,
+      createdAt: issuedAt,
+      expiresAt: offer.expiresAt,
+      offerHash,
+      receiptHash,
+      receiptToken: token,
+    };
+    write(state);
+    return { offer, receipt, token };
+  });
 }
 
 function removeTransferableCopy(state: CardInventoryState, card: BonusKey): void {
@@ -712,45 +985,86 @@ export async function completeCardReceipt(raw: string): Promise<{
 
   const identity = await loadDeviceIdentity();
   if (receipt.sender !== identity.fingerprint) throw Error("wrong-sender");
-
-  const state = readCardInventory();
-  const pending = state.pending;
-  if (
-    !pending ||
-    pending.id !== receipt.offerId ||
-    pending.card !== receipt.card ||
-    pending.sender !== identity.fingerprint ||
-    pending.offerHash !== receipt.offerHash ||
-    pending.expiresAt !== receipt.expiresAt ||
-    pending.expiresAt <= Date.now() ||
-    state.spent[receipt.offerId] ||
-    (state.cards[receipt.card] || 0) < 2
-  ) throw Error("no-pending");
-
   const receiptHash = await tokenHash(receipt);
-  removeTransferableCopy(state, receipt.card);
-  state.pending = null;
-  state.spent[receipt.offerId] = Date.now();
-  write(state);
 
-  const issuedAt = Date.now();
-  const payload: ConfirmationPayload = {
-    type: "confirmation",
-    version: 2,
-    offerId: receipt.offerId,
-    receiptHash,
-    card: receipt.card,
-    sender: identity.fingerprint,
-    senderKey: identity.publicRaw,
-    receiver: receipt.receiver,
-    issuedAt,
-    expiresAt: receipt.expiresAt,
-  };
-  const confirmation = await signPayload(payload, identity.privateKey);
-  return { card: receipt.card, state, confirmation, token: encode(confirmation) };
+  return withTradeLock(receipt.offerId, async () => {
+    const state = readCardInventory();
+    const existing = state.outgoing[receipt.offerId];
+    if (
+      existing &&
+      existing.card === receipt.card &&
+      existing.requestedCard === receipt.requestedCard &&
+      existing.receiver === receipt.receiver &&
+      existing.receiptHash === receiptHash &&
+      existing.expiresAt === receipt.expiresAt &&
+      existing.expiresAt > Date.now()
+    ) {
+      const resumed = decode(existing.token);
+      if (resumed.type !== "confirmation") throw Error("invalid-confirmation");
+      return { card: receipt.card, state, confirmation: resumed, token: existing.token };
+    }
+
+    const pending = state.pending;
+    if (
+      !pending ||
+      pending.id !== receipt.offerId ||
+      pending.card !== receipt.card ||
+      pending.requestedCard !== receipt.requestedCard ||
+      pending.sender !== identity.fingerprint ||
+      pending.offerHash !== receipt.offerHash ||
+      pending.expiresAt !== receipt.expiresAt ||
+      pending.expiresAt <= Date.now() ||
+      state.spent[receipt.offerId] ||
+      (state.cards[receipt.card] || 0) < 2
+    ) throw Error("no-pending");
+
+    const issuedAt = Date.now();
+    const payload: ConfirmationPayload = {
+      type: "confirmation",
+      version: 2,
+      offerId: receipt.offerId,
+      receiptHash,
+      card: receipt.card,
+      requestedCard: receipt.requestedCard,
+      sender: identity.fingerprint,
+      senderKey: identity.publicRaw,
+      receiver: receipt.receiver,
+      issuedAt,
+      expiresAt: receipt.expiresAt,
+    };
+
+    // Build and sign the final confirmation before any inventory debit. The
+    // debit and the resumable token are then persisted by one localStorage write.
+    const confirmation = await signPayload(payload, identity.privateKey);
+    const token = encode(confirmation);
+    const confirmationHash = await tokenHash(confirmation);
+    if (receipt.expiresAt <= Date.now()) throw Error("expired");
+
+    removeTransferableCopy(state, receipt.card);
+    grantCard(state, receipt.requestedCard, "exchange");
+    state.pending = null;
+    state.spent[receipt.offerId] = Date.now();
+    state.outgoing[receipt.offerId] = {
+      card: receipt.card,
+      requestedCard: receipt.requestedCard,
+      receiver: receipt.receiver,
+      createdAt: issuedAt,
+      expiresAt: receipt.expiresAt,
+      receiptHash,
+      confirmationHash,
+      token,
+    };
+    write(state);
+    return { card: receipt.card, state, confirmation, token };
+  });
 }
 
-export async function finalizeCardConfirmation(raw: string): Promise<{ card: BonusKey; state: CardInventoryState }> {
+export async function finalizeCardConfirmation(raw: string): Promise<{
+  card: BonusKey;
+  state: CardInventoryState;
+  ack: CompletionAck;
+  token: string;
+}> {
   const confirmation = decode(raw);
   if (confirmation.type !== "confirmation") throw Error("invalid-confirmation");
   if (await fingerprintPublicKey(confirmation.senderKey) !== confirmation.sender) throw Error("invalid-sender");
@@ -758,24 +1072,103 @@ export async function finalizeCardConfirmation(raw: string): Promise<{ card: Bon
 
   const identity = await loadDeviceIdentity();
   if (confirmation.receiver !== identity.fingerprint) throw Error("wrong-receiver");
+  const confirmationHash = await tokenHash(confirmation);
 
-  const state = readCardInventory();
-  const receiving = state.receiving[confirmation.offerId];
-  if (
-    !receiving ||
-    receiving.card !== confirmation.card ||
-    receiving.sender !== confirmation.sender ||
-    receiving.receiver !== identity.fingerprint ||
-    receiving.receiptHash !== confirmation.receiptHash ||
-    receiving.expiresAt !== confirmation.expiresAt ||
-    receiving.expiresAt <= Date.now() ||
-    state.confirmed[confirmation.offerId]
-  ) throw Error("confirmation-not-expected");
+  return withTradeLock(confirmation.offerId, async () => {
+    const state = readCardInventory();
+    const existingAck = state.completionAcks[confirmation.offerId];
+    if (
+      existingAck &&
+      existingAck.card === confirmation.card &&
+      existingAck.sender === confirmation.sender &&
+      existingAck.receiver === identity.fingerprint &&
+      existingAck.confirmationHash === confirmationHash &&
+      existingAck.expiresAt === confirmation.expiresAt &&
+      existingAck.expiresAt > Date.now()
+    ) {
+      const resumed = decode(existingAck.token);
+      if (resumed.type !== "ack") throw Error("invalid-ack");
+      return { card: confirmation.card, state, ack: resumed, token: existingAck.token };
+    }
 
-  grantCard(state, confirmation.card, "exchange");
-  state.confirmed[confirmation.offerId] = Date.now();
-  delete state.receiving[confirmation.offerId];
-  return { card: confirmation.card, state: write(state) };
+    const receiving = state.receiving[confirmation.offerId];
+    if (
+      !receiving ||
+      receiving.card !== confirmation.card ||
+      receiving.requestedCard !== confirmation.requestedCard ||
+      receiving.sender !== confirmation.sender ||
+      receiving.receiver !== identity.fingerprint ||
+      receiving.receiptHash !== confirmation.receiptHash ||
+      receiving.expiresAt !== confirmation.expiresAt ||
+      receiving.expiresAt <= Date.now() ||
+      state.confirmed[confirmation.offerId]
+    ) throw Error("confirmation-not-expected");
+
+    const issuedAt = Date.now();
+    const ackPayload: CompletionAckPayload = {
+      type: "ack",
+      version: 2,
+      offerId: confirmation.offerId,
+      confirmationHash,
+      card: confirmation.card,
+      sender: confirmation.sender,
+      receiver: identity.fingerprint,
+      receiverKey: identity.publicRaw,
+      issuedAt,
+      expiresAt: confirmation.expiresAt,
+    };
+    const ack = await signPayload(ackPayload, identity.privateKey);
+    const token = encode(ack);
+
+    // The received card and its signed closure receipt are persisted together.
+    grantCard(state, confirmation.card, "exchange");
+    state.confirmed[confirmation.offerId] = Date.now();
+    delete state.receiving[confirmation.offerId];
+    state.completionAcks[confirmation.offerId] = {
+      card: confirmation.card,
+      sender: confirmation.sender,
+      receiver: identity.fingerprint,
+      createdAt: issuedAt,
+      expiresAt: confirmation.expiresAt,
+      confirmationHash,
+      token,
+    };
+    return { card: confirmation.card, state: write(state), ack, token };
+  });
+}
+
+export async function finalizeSenderAcknowledgement(raw: string): Promise<{ card: BonusKey; state: CardInventoryState }> {
+  const ack = decode(raw);
+  if (ack.type !== "ack") throw Error("invalid-ack");
+  if (await fingerprintPublicKey(ack.receiverKey) !== ack.receiver) throw Error("invalid-receiver");
+  if (!await verifySigned(ack, ack.receiverKey)) throw Error("bad-signature");
+
+  const identity = await loadDeviceIdentity();
+  if (ack.sender !== identity.fingerprint) throw Error("wrong-sender");
+
+  return withTradeLock(ack.offerId, async () => {
+    const state = readCardInventory();
+    const outgoing = state.outgoing[ack.offerId];
+    if (!outgoing) throw Error("ack-not-expected");
+
+    let expectedConfirmationHash = outgoing.confirmationHash;
+    if (!expectedConfirmationHash) {
+      const legacyConfirmation = decode(outgoing.token);
+      if (legacyConfirmation.type !== "confirmation") throw Error("ack-not-expected");
+      expectedConfirmationHash = await tokenHash(legacyConfirmation);
+    }
+
+    if (
+      outgoing.card !== ack.card ||
+      outgoing.receiver !== ack.receiver ||
+      expectedConfirmationHash !== ack.confirmationHash ||
+      outgoing.expiresAt !== ack.expiresAt ||
+      outgoing.expiresAt <= Date.now()
+    ) throw Error("ack-not-expected");
+
+    delete state.outgoing[ack.offerId];
+    return { card: ack.card, state: write(state) };
+  });
 }
 
 export function cancelPendingOffer(): CardInventoryState {
