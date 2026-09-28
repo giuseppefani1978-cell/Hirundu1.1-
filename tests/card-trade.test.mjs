@@ -74,13 +74,13 @@ test("a complete replay grants a transferable duplicate while preserving one gam
     let inventory = trade.recordGameVictoryCard("otranto", false);
     assert.equal(inventory.cards.otranto, 1);
     assert.equal(inventory.origins.otranto.game, 1);
-    await assert.rejects(() => trade.createCardOffer("otranto"), /no-duplicate/);
+    await assert.rejects(() => trade.createCardOffer("otranto", "lecce"), /no-duplicate/);
 
     inventory = trade.recordGameVictoryCard("otranto", true);
     assert.equal(inventory.cards.otranto, 2);
     assert.equal(inventory.origins.otranto.game, 2);
 
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
     assert.ok(offer.token.startsWith("HIRUNDU-CARD-2."));
     assert.ok(offer.offer.expiresAt - offer.offer.issuedAt <= 15 * 60 * 1000);
   } finally {
@@ -103,19 +103,25 @@ test("three-scan QR trade credits only the receiver and both phones finish local
 
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
     assert.equal(trade.readCardInventory().cards.otranto, 2);
 
     useDom(domB);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const acceptedB = await trade.acceptCardOffer(offer.token);
     let receiverB = trade.readCardInventory();
     assert.equal(receiverB.cards.otranto ?? 0, 0);
+    assert.equal(receiverB.cards.lecce, 1);
     assert.ok(receiverB.received[offer.offer.id]);
 
     useDom(domC);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const acceptedC = await trade.acceptCardOffer(offer.token);
     let receiverC = trade.readCardInventory();
     assert.equal(receiverC.cards.otranto ?? 0, 0);
+    assert.equal(receiverC.cards.lecce, 1);
     assert.ok(receiverC.received[offer.offer.id]);
 
     useDom(domA);
@@ -123,18 +129,22 @@ test("three-scan QR trade credits only the receiver and both phones finish local
     const sender = trade.readCardInventory();
     assert.equal(sender.cards.otranto, 1);
     assert.equal(sender.origins.otranto.game, 1);
+    assert.equal(sender.cards.lecce, 1);
+    assert.equal(sender.origins.lecce.exchange, 1);
     await assert.rejects(() => trade.completeCardReceipt(acceptedC.token));
 
     useDom(domC);
     await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
     receiverC = trade.readCardInventory();
     assert.equal(receiverC.cards.otranto ?? 0, 0);
+    assert.equal(receiverC.cards.lecce, 1);
 
     useDom(domB);
     const final = await trade.finalizeCardConfirmation(completed.token);
     receiverB = final.state;
     assert.equal(receiverB.cards.otranto, 1);
     assert.equal(receiverB.origins.otranto.exchange, 1);
+    assert.equal(receiverB.cards.lecce, 1);
     assert.equal(trade.getResumableCompletionAckTrade()?.token, final.token);
 
     const repeatedFinal = await trade.finalizeCardConfirmation(completed.token);
@@ -175,7 +185,7 @@ test("signed QR offers reject tampering and expire after 15 minutes", async () =
     trade.recordGameVictoryCard("otranto", true);
     const base = realNow();
     Date.now = () => base;
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
 
     useDom(domB);
     const last = offer.token.at(-1);
@@ -193,12 +203,40 @@ test("signed QR offers reject tampering and expire after 15 minutes", async () =
   }
 });
 
+test("barter offer is visible but cannot be accepted without the requested duplicate", async () => {
+  const domA = new JSDOM("", { url: "https://barter-sender.invalid/" });
+  const domB = new JSDOM("", { url: "https://barter-receiver.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const offer = await trade.createCardOffer("otranto", "lecce");
+
+    useDom(domB);
+    const inspected = await trade.inspectCardOffer(offer.token);
+    assert.equal(inspected.card, "otranto");
+    assert.equal(inspected.requestedCard, "lecce");
+    await assert.rejects(() => trade.acceptCardOffer(offer.token), /missing-requested-duplicate/);
+    assert.equal(trade.readCardInventory().cards.otranto ?? 0, 0);
+    assert.equal(trade.readCardInventory().cards.lecce ?? 0, 0);
+  } finally {
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
+
 test("trade page renders generated offer QR directly under the selected duplicate", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
   );
   assert.match(source, /qrCard === key \? renderActiveQr\(\) : null/);
-  assert.match(source, /await createCardOffer\(card\)/);
+  assert.match(source, /await createCardOffer\(card, requested\)/);
   assert.match(source, /remainingLabel/);
   assert.match(source, /Generating QR|Génération du QR/);
 });
@@ -226,9 +264,11 @@ test("interrupted sender confirmation is resumable without a second debit", asyn
     const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
 
     useDom(domB);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const accepted = await trade.acceptCardOffer(offer.token);
     const receiptResume = trade.getResumableReceiptTrade();
     assert.equal(receiptResume?.kind, "receipt");
@@ -275,9 +315,11 @@ test("concurrent sender confirmation never debits the same duplicate twice", asy
     const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
 
     useDom(domB);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const accepted = await trade.acceptCardOffer(offer.token);
 
     useDom(domA);
@@ -310,9 +352,11 @@ test("storage failure while finalizing leaves the transferable duplicate intact"
     const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
 
     useDom(domB);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const accepted = await trade.acceptCardOffer(offer.token);
 
     useDom(domA);
@@ -371,9 +415,11 @@ test("expired debited confirmation stays explicit and is never auto-refunded", a
 
     trade.recordGameVictoryCard("otranto", false);
     trade.recordGameVictoryCard("otranto", true);
-    const offer = await trade.createCardOffer("otranto");
+    const offer = await trade.createCardOffer("otranto", "lecce");
 
     useDom(domB);
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
     const accepted = await trade.acceptCardOffer(offer.token);
 
     useDom(domA);
