@@ -737,6 +737,7 @@ export type ResumableCardTradeQr = {
   token: string;
   card: BonusKey;
   expiresAt: number;
+  offerId?: string;
 };
 
 export function getResumableOutgoingCardTrade(): ResumableCardTradeQr | null {
@@ -784,12 +785,22 @@ export function getResumableCompletionAckTrade(): ResumableCardTradeQr | null {
     .filter((item) => item.expiresAt > now)
     .sort((a, b) => b.createdAt - a.createdAt)[0];
   if (!ack) return null;
+  const [offerId] = Object.entries(readCardInventory().completionAcks)
+    .filter(([, item]) => item === ack)[0] ?? [];
   return {
     kind: "ack",
     token: ack.token,
     card: ack.card,
     expiresAt: ack.expiresAt,
+    offerId,
   };
+}
+
+export function finishReceiverTrade(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  if (!offerId || !state.completionAcks[offerId]) return state;
+  delete state.completionAcks[offerId];
+  return write(state);
 }
 
 export function hasUnresolvedExpiredOutgoingCardTrade(): boolean {
