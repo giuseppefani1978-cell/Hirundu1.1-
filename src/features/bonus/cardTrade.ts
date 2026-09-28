@@ -743,15 +743,17 @@ export type ResumableCardTradeQr = {
 export function getResumableOutgoingCardTrade(): ResumableCardTradeQr | null {
   const state = readCardInventory();
   const now = Date.now();
-  const confirmation = Object.values(state.outgoing)
-    .filter((item) => item.expiresAt > now)
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  if (confirmation) {
+  const confirmationEntry = Object.entries(state.outgoing)
+    .filter(([, item]) => item.expiresAt > now)
+    .sort(([, a], [, b]) => b.createdAt - a.createdAt)[0];
+  if (confirmationEntry) {
+    const [offerId, confirmation] = confirmationEntry;
     return {
       kind: "confirmation",
       token: confirmation.token,
       card: confirmation.card,
       expiresAt: confirmation.expiresAt,
+      offerId,
     };
   }
   if (state.pending?.token && state.pending.expiresAt > now) {
@@ -760,6 +762,7 @@ export function getResumableOutgoingCardTrade(): ResumableCardTradeQr | null {
       token: state.pending.token,
       card: state.pending.card,
       expiresAt: state.pending.expiresAt,
+      offerId: state.pending.id,
     };
   }
   return null;
@@ -800,6 +803,13 @@ export function finishReceiverTrade(offerId: string): CardInventoryState {
   const state = readCardInventory();
   if (!offerId || !state.completionAcks[offerId]) return state;
   delete state.completionAcks[offerId];
+  return write(state);
+}
+
+export function finishSenderTrade(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  if (!offerId || !state.outgoing[offerId]) return state;
+  delete state.outgoing[offerId];
   return write(state);
 }
 
