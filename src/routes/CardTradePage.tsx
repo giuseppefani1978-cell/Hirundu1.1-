@@ -170,6 +170,7 @@ export default function CardTradePage() {
       if (requestedCard && b === requestedCard) return 1;
       return 0;
     });
+  const tradeableCards = cards.filter(([, count]) => count > 1);
 
   useEffect(() => {
     const refresh = () => setInventory(readCardInventory());
@@ -425,21 +426,20 @@ export default function CardTradePage() {
             <h2>{t.senderTab}</h2>
             <p className="card-trade__duplicate-rule"><strong>⇄</strong> {t.duplicateRule}</p>
             {!cards.length ? <p>{t.noCards}</p> : null}
-            {cards.map(([key, count]) => (
+            {cards.length > 0 && !tradeableCards.length ? <p className="card-trade__no-duplicate">🔒 {t.noDuplicate}</p> : null}
+            {tradeableCards.map(([key, count]) => (
               <div key={key} className="card-trade__item">
                 {renderCard(key, count)}
-                {count > 1 ? <>
-                  <label className="card-trade__wanted">
-                    <strong>{t.chooseWanted}</strong>
-                    <select value={wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard} onChange={(event) => setWantedCard(event.target.value as BonusKey)}>
-                      {(Object.keys(BONUS_MAPS) as BonusKey[]).filter((candidate) => candidate !== key).map((candidate) => (
-                        <option key={candidate} value={candidate}>{BONUS_MAPS[candidate].title}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="card-trade__swap-summary"><span>{t.giveLabel}: <strong>{BONUS_MAPS[key].title}</strong></span><span>⇄</span><span>{t.receiveLabel}: <strong>{BONUS_MAPS[wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard].title}</strong></span></div>
-                  <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
-                </> : <p className="card-trade__no-duplicate">🔒 {t.noDuplicate}</p>}
+                <label className="card-trade__wanted">
+                  <strong>{t.chooseWanted}</strong>
+                  <select value={wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard} onChange={(event) => setWantedCard(event.target.value as BonusKey)}>
+                    {(Object.keys(BONUS_MAPS) as BonusKey[]).filter((candidate) => candidate !== key).map((candidate) => (
+                      <option key={candidate} value={candidate}>{BONUS_MAPS[candidate].title}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="card-trade__swap-summary"><span>{t.giveLabel}: <strong>{BONUS_MAPS[key].title}</strong></span><span>⇄</span><span>{t.receiveLabel}: <strong>{BONUS_MAPS[wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard].title}</strong></span></div>
+                <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
                 {qrCard === key ? renderActiveQr() : null}
               </div>
             ))}
