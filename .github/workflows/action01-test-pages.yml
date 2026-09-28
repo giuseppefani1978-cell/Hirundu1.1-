@@ -35,8 +35,8 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
-      - name: Build isolated test URL
-        run: npm run build -- --base /Hirundu1.1-/action01-test/
+      - name: Build isolated portable test URL
+        run: npm run build -- --base ./
 
       - name: Publish only isolated test subdirectory
         uses: peaceiris/actions-gh-pages@v4
