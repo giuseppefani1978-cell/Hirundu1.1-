@@ -19,6 +19,7 @@ type OriginCounts = Partial<Record<CardOrigin, number>>;
 type Pending = {
   id: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   createdAt: number;
   expiresAt: number;
   sender: string;
@@ -28,6 +29,7 @@ type Pending = {
 
 type Receiving = {
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   receiver: string;
   createdAt: number;
@@ -39,6 +41,7 @@ type Receiving = {
 
 type OutgoingConfirmation = {
   card: BonusKey;
+  requestedCard: BonusKey;
   receiver: string;
   createdAt: number;
   expiresAt: number;
@@ -76,6 +79,7 @@ type OfferPayload = {
   version: 2;
   id: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   senderKey: string;
   issuedAt: number;
@@ -89,6 +93,7 @@ type ReceiptPayload = {
   offerId: string;
   offerHash: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   receiver: string;
   receiverKey: string;
@@ -103,6 +108,7 @@ type ConfirmationPayload = {
   offerId: string;
   receiptHash: string;
   card: BonusKey;
+  requestedCard: BonusKey;
   sender: string;
   senderKey: string;
   receiver: string;
@@ -524,6 +530,7 @@ function decode(raw: string): TradeToken {
     parsed?.version !== 2 ||
     !["offer", "receipt", "confirmation", "ack"].includes(String(parsed.type)) ||
     !validKey(parsed.card) ||
+    (parsed.type !== "ack" && !validKey(parsed.requestedCard)) ||
     typeof parsed.sig !== "string"
   ) throw Error("invalid");
   validateTimes(parsed);
@@ -560,7 +567,7 @@ function sanitizePending(value: unknown): Pending | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const pending = value as Partial<Pending>;
   if (
-    typeof pending.id !== "string" || !validKey(pending.card) ||
+    typeof pending.id !== "string" || !validKey(pending.card) || !validKey(pending.requestedCard) ||
     typeof pending.createdAt !== "number" || typeof pending.expiresAt !== "number" ||
     typeof pending.sender !== "string" || typeof pending.offerHash !== "string" ||
     (pending.token !== undefined && typeof pending.token !== "string")
@@ -575,7 +582,7 @@ function sanitizeReceiving(value: unknown): Record<string, Receiving> {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
     const item = raw as Partial<Receiving>;
     if (
-      validKey(item.card) && typeof item.sender === "string" && typeof item.receiver === "string" &&
+      validKey(item.card) && validKey(item.requestedCard) && typeof item.sender === "string" && typeof item.receiver === "string" &&
       typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
       typeof item.offerHash === "string" && typeof item.receiptHash === "string" &&
       (item.receiptToken === undefined || typeof item.receiptToken === "string")
@@ -591,7 +598,7 @@ function sanitizeOutgoing(value: unknown): Record<string, OutgoingConfirmation> 
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
     const item = raw as Partial<OutgoingConfirmation>;
     if (
-      validKey(item.card) && typeof item.receiver === "string" &&
+      validKey(item.card) && validKey(item.requestedCard) && typeof item.receiver === "string" &&
       typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
       typeof item.receiptHash === "string" &&
       (item.confirmationHash === undefined || typeof item.confirmationHash === "string") &&
@@ -818,9 +825,10 @@ export function hasUnresolvedExpiredOutgoingCardTrade(): boolean {
   return Object.values(readCardInventory().outgoing).some((item) => item.expiresAt <= now);
 }
 
-export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; token: string }> {
+export async function createCardOffer(card: BonusKey, requestedCard: BonusKey): Promise<{ offer: Offer; token: string }> {
   const state = readCardInventory();
   if ((state.cards[card] || 0) < 2) throw Error("no-duplicate");
+  if (!validKey(requestedCard) || requestedCard === card) throw Error("invalid-requested-card");
 
   const identity = await loadDeviceIdentity();
   const issuedAt = Date.now();
@@ -829,6 +837,7 @@ export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; t
     version: 2,
     id: makeId(),
     card,
+    requestedCard,
     sender: identity.fingerprint,
     senderKey: identity.publicRaw,
     issuedAt,
@@ -839,6 +848,7 @@ export async function createCardOffer(card: BonusKey): Promise<{ offer: Offer; t
   state.pending = {
     id: offer.id,
     card,
+    requestedCard,
     createdAt: issuedAt,
     expiresAt: offer.expiresAt,
     sender: identity.fingerprint,
@@ -859,6 +869,7 @@ export async function inspectCardOffer(raw: string): Promise<Offer> {
   if (offer.sender === identity.fingerprint) throw Error("self-offer");
 
   const state = readCardInventory();
+  if ((state.cards[offer.requestedCard] || 0) < 2) throw Error("missing-requested-duplicate");
   if (state.confirmed[offer.id]) throw Error("already-received");
   if (state.received[offer.id] && !state.receiving[offer.id]?.receiptToken) throw Error("already-received");
   return offer;
@@ -875,6 +886,7 @@ export async function acceptCardOffer(raw: string): Promise<{ offer: Offer; rece
     if (
       existing?.receiptToken &&
       existing.card === offer.card &&
+      existing.requestedCard === offer.requestedCard &&
       existing.sender === offer.sender &&
       existing.receiver === identity.fingerprint &&
       existing.offerHash === offerHash &&
@@ -894,6 +906,7 @@ export async function acceptCardOffer(raw: string): Promise<{ offer: Offer; rece
       offerId: offer.id,
       offerHash,
       card: offer.card,
+      requestedCard: offer.requestedCard,
       sender: offer.sender,
       receiver: identity.fingerprint,
       receiverKey: identity.publicRaw,
@@ -904,9 +917,13 @@ export async function acceptCardOffer(raw: string): Promise<{ offer: Offer; rece
     const receiptHash = await tokenHash(receipt);
     const token = encode(receipt);
 
+    // B commits the requested duplicate when creating the signed receipt.
+    // The receipt itself is the cryptographic proof that A will scan in step 2.
+    removeTransferableCopy(state, offer.requestedCard);
     state.received[offer.id] = issuedAt;
     state.receiving[offer.id] = {
       card: offer.card,
+      requestedCard: offer.requestedCard,
       sender: offer.sender,
       receiver: identity.fingerprint,
       createdAt: issuedAt,
@@ -954,6 +971,7 @@ export async function completeCardReceipt(raw: string): Promise<{
     if (
       existing &&
       existing.card === receipt.card &&
+      existing.requestedCard === receipt.requestedCard &&
       existing.receiver === receipt.receiver &&
       existing.receiptHash === receiptHash &&
       existing.expiresAt === receipt.expiresAt &&
@@ -969,6 +987,7 @@ export async function completeCardReceipt(raw: string): Promise<{
       !pending ||
       pending.id !== receipt.offerId ||
       pending.card !== receipt.card ||
+      pending.requestedCard !== receipt.requestedCard ||
       pending.sender !== identity.fingerprint ||
       pending.offerHash !== receipt.offerHash ||
       pending.expiresAt !== receipt.expiresAt ||
@@ -984,6 +1003,7 @@ export async function completeCardReceipt(raw: string): Promise<{
       offerId: receipt.offerId,
       receiptHash,
       card: receipt.card,
+      requestedCard: receipt.requestedCard,
       sender: identity.fingerprint,
       senderKey: identity.publicRaw,
       receiver: receipt.receiver,
@@ -999,10 +1019,12 @@ export async function completeCardReceipt(raw: string): Promise<{
     if (receipt.expiresAt <= Date.now()) throw Error("expired");
 
     removeTransferableCopy(state, receipt.card);
+    grantCard(state, receipt.requestedCard, "exchange");
     state.pending = null;
     state.spent[receipt.offerId] = Date.now();
     state.outgoing[receipt.offerId] = {
       card: receipt.card,
+      requestedCard: receipt.requestedCard,
       receiver: receipt.receiver,
       createdAt: issuedAt,
       expiresAt: receipt.expiresAt,
@@ -1051,6 +1073,7 @@ export async function finalizeCardConfirmation(raw: string): Promise<{
     if (
       !receiving ||
       receiving.card !== confirmation.card ||
+      receiving.requestedCard !== confirmation.requestedCard ||
       receiving.sender !== confirmation.sender ||
       receiving.receiver !== identity.fingerprint ||
       receiving.receiptHash !== confirmation.receiptHash ||
