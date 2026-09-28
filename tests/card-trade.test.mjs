@@ -90,7 +90,7 @@ test("a complete replay grants a transferable duplicate while preserving one gam
   }
 });
 
-test("three-scan QR trade credits only the receiver and both phones finish locally", async () => {
+test("two-scan barter completes with a local finish button on the receiver", async () => {
   const domA = new JSDOM("", { url: "https://sender.invalid/" });
   const domB = new JSDOM("", { url: "https://receiver-b.invalid/" });
   const domC = new JSDOM("", { url: "https://receiver-c.invalid/" });
@@ -126,42 +126,29 @@ test("three-scan QR trade credits only the receiver and both phones finish local
 
     useDom(domA);
     const completed = await trade.completeCardReceipt(acceptedB.token);
-    const sender = trade.readCardInventory();
+    let sender = trade.readCardInventory();
     assert.equal(sender.cards.otranto, 1);
     assert.equal(sender.origins.otranto.game, 1);
     assert.equal(sender.cards.lecce, 1);
     assert.equal(sender.origins.lecce.exchange, 1);
     await assert.rejects(() => trade.completeCardReceipt(acceptedC.token));
 
-    useDom(domC);
-    await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
-    receiverC = trade.readCardInventory();
-    assert.equal(receiverC.cards.otranto ?? 0, 0);
-    assert.equal(receiverC.cards.lecce, 1);
-
-    useDom(domB);
-    const final = await trade.finalizeCardConfirmation(completed.token);
-    receiverB = final.state;
-    assert.equal(receiverB.cards.otranto, 1);
-    assert.equal(receiverB.origins.otranto.exchange, 1);
-    assert.equal(receiverB.cards.lecce, 1);
-    assert.equal(trade.getResumableCompletionAckTrade()?.token, final.token);
-
-    const repeatedFinal = await trade.finalizeCardConfirmation(completed.token);
-    assert.equal(repeatedFinal.token, final.token);
-    assert.equal(repeatedFinal.state.cards.otranto, 1);
-
-    const receiverClosed = trade.finishReceiverTrade(final.ack.offerId);
-    assert.equal(receiverClosed.cards.otranto, 1);
-    assert.equal(trade.getResumableCompletionAckTrade(), null);
-
-    useDom(domA);
-    const senderClosed = trade.finishSenderTrade(final.ack.offerId);
-    assert.equal(senderClosed.cards.otranto, 1);
+    sender = trade.finishSenderTrade(completed.confirmation.offerId);
+    assert.equal(sender.cards.otranto, 1);
+    assert.equal(sender.cards.lecce, 1);
     assert.equal(trade.getResumableOutgoingCardTrade(), null);
 
     useDom(domB);
-    assert.equal(trade.readCardInventory().cards.otranto, 1);
+    receiverB = trade.finishReceiverAfterReceipt(offer.offer.id);
+    assert.equal(receiverB.cards.otranto, 1);
+    assert.equal(receiverB.origins.otranto.exchange, 1);
+    assert.equal(receiverB.cards.lecce, 1);
+    assert.equal(trade.getResumableReceiptTrade(), null);
+
+    useDom(domC);
+    receiverC = trade.readCardInventory();
+    assert.equal(receiverC.cards.otranto ?? 0, 0);
+    assert.equal(receiverC.cards.lecce, 1);
   } finally {
     await server.close();
     domA.window.close();
@@ -171,6 +158,45 @@ test("three-scan QR trade credits only the receiver and both phones finish local
   }
 });
 
+
+test("receiver local finish after receipt is idempotent and credits only once", async () => {
+  const domA = new JSDOM("", { url: "https://two-scan-a.invalid/" });
+  const domB = new JSDOM("", { url: "https://two-scan-b.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("lecce", false);
+    trade.recordGameVictoryCard("lecce", true);
+    const offer = await trade.createCardOffer("lecce", "nardo");
+
+    useDom(domB);
+    trade.recordGameVictoryCard("nardo", false);
+    trade.recordGameVictoryCard("nardo", true);
+    const accepted = await trade.acceptCardOffer(offer.token);
+    assert.equal(trade.readCardInventory().cards.nardo, 1);
+
+    useDom(domA);
+    const completed = await trade.completeCardReceipt(accepted.token);
+    trade.finishSenderTrade(completed.confirmation.offerId);
+    assert.equal(trade.readCardInventory().cards.lecce, 1);
+    assert.equal(trade.readCardInventory().cards.nardo, 1);
+
+    useDom(domB);
+    const first = trade.finishReceiverAfterReceipt(offer.offer.id);
+    assert.equal(first.cards.nardo, 1);
+    assert.equal(first.cards.lecce, 1);
+    const second = trade.finishReceiverAfterReceipt(offer.offer.id);
+    assert.equal(second.cards.nardo, 1);
+    assert.equal(second.cards.lecce, 1);
+  } finally {
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
 
 test("signed QR offers reject tampering and expire after 15 minutes", async () => {
   const domA = new JSDOM("", { url: "https://sender-expiry.invalid/" });
@@ -253,7 +279,7 @@ test("modern browser path stores a non-exportable private trade key in IndexedDB
 
 
 
-test("interrupted sender confirmation is resumable without a second debit", async () => {
+test("legacy signed confirmation remains resumable without a second debit", async () => {
   const domA = new JSDOM("", { url: "https://sender-resume.invalid/" });
   const domB = new JSDOM("", { url: "https://receiver-resume.invalid/" });
   const prior = snapshotGlobals();
@@ -380,21 +406,21 @@ test("storage failure while finalizing leaves the transferable duplicate intact"
 });
 
 
-test("trade page restores pending QR state and finishes after three scans without a fourth scan", async () => {
+test("trade page restores pending QR state and finishes the normal barter after two scans", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
   );
   assert.match(source, /getResumableOutgoingCardTrade\(\)/);
   assert.match(source, /getResumableReceiptTrade\(\)/);
   assert.match(source, /getResumableCompletionAckTrade\(\)/);
-  assert.match(source, /finishSenderTrade\(qrOfferId\)/);
+  assert.match(source, /finishSenderTrade\(result\.confirmation\.offerId\)/);
+  assert.match(source, /finishReceiverAfterReceipt\(receiptOfferId\)/);
   assert.match(source, /finishReceiverTrade\(completionOfferId\)/);
   assert.match(source, /duplicateRule/);
   assert.match(source, /noDuplicate/);
-  assert.doesNotMatch(source, /scanFinalReceipt/);
-  assert.match(source, /finishHere/);
-  assert.match(source, /3 scans|3 scansions|3 escaneos/);
-  assert.match(source, /The signed confirmation is already persisted and will be restored on reload/);
+  assert.doesNotMatch(source, />3\. /);
+  assert.match(source, /finishAfterSenderScan/);
+  assert.match(source, /2 scans|2 scansions|2 escaneos/);
   assert.match(source, /The signed receipt is already persisted and will be restored on reload/);
   assert.match(source, /myCards/);
 });
