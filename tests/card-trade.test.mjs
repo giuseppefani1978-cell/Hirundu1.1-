@@ -301,7 +301,9 @@ test("storage failure while finalizing leaves the transferable duplicate intact"
 
     await assert.rejects(() => trade.completeCardReceipt(accepted.token), /quota/);
     assert.equal(trade.readCardInventory().cards.otranto, 2);
-    assert.equal(trade.getResumableOutgoingCardTrade(), null);
+    const resumable = trade.getResumableOutgoingCardTrade();
+    assert.equal(resumable?.kind, "offer");
+    assert.equal(resumable?.token, offer.token);
   } finally {
     domA.window.Storage.prototype.setItem = originalSetItem;
     await server.close();
