@@ -777,15 +777,17 @@ export function getResumableOutgoingCardTrade(): ResumableCardTradeQr | null {
 
 export function getResumableReceiptTrade(): ResumableCardTradeQr | null {
   const now = Date.now();
-  const receipt = Object.values(readCardInventory().receiving)
-    .filter((item) => Boolean(item.receiptToken) && item.expiresAt > now)
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  if (!receipt?.receiptToken) return null;
+  const receiptEntry = Object.entries(readCardInventory().receiving)
+    .filter(([, item]) => Boolean(item.receiptToken) && item.expiresAt > now)
+    .sort(([, a], [, b]) => b.createdAt - a.createdAt)[0];
+  if (!receiptEntry?.[1]?.receiptToken) return null;
+  const [offerId, receipt] = receiptEntry;
   return {
     kind: "receipt",
     token: receipt.receiptToken,
     card: receipt.card,
     expiresAt: receipt.expiresAt,
+    offerId,
   };
 }
 
@@ -810,6 +812,22 @@ export function finishReceiverTrade(offerId: string): CardInventoryState {
   const state = readCardInventory();
   if (!offerId || !state.completionAcks[offerId]) return state;
   delete state.completionAcks[offerId];
+  return write(state);
+}
+
+export function finishReceiverAfterReceipt(offerId: string): CardInventoryState {
+  const state = readCardInventory();
+  const receiving = state.receiving[offerId];
+  if (!offerId || !receiving) throw Error("receipt-not-pending");
+  if (receiving.expiresAt <= Date.now()) throw Error("expired");
+  if (state.confirmed[offerId]) return state;
+
+  // Two-scan in-person barter UX: B confirms locally that A has scanned the
+  // signed receipt. B's requested duplicate was already debited when the
+  // receipt was created; this button credits A's offered card and closes B.
+  grantCard(state, receiving.card, "exchange");
+  state.confirmed[offerId] = Date.now();
+  delete state.receiving[offerId];
   return write(state);
 }
 
