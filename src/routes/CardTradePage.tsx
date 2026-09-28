@@ -51,10 +51,74 @@ const copy = {
 };
 
 const uxCopy = {
-  fr: { senderTab: "J’envoie une carte", receiverTab: "Je reçois une carte", duplicateRule: "Pour échanger une carte, il faut au moins 2 exemplaires de la même carte : 1 reste dans ta collection et le double peut être envoyé.", noDuplicate: "Aucun double disponible : il faut au moins 2 exemplaires de cette carte pour l’échanger.", senderHelp: "Tu envoies un double. Trois scans maximum : le destinataire scanne ton offre, tu scans son reçu, puis il scanne ta confirmation.", receiverHelp: "Tu reçois une carte. Commence par scanner le QR d’offre affiché sur le téléphone de l’expéditeur.", scanOffer: "Scanner le QR d’offre de l’expéditeur", scanReceiverReceipt: "Scanner le reçu du destinataire", scanSenderConfirmation: "Scanner le QR de confirmation de l’expéditeur", receiptStep: "Étape 2/3 — Fais scanner ce QR par l’expéditeur. Ensuite, scanne son QR de confirmation.", senderStep: "Étape 3/3 — Fais scanner ce QR par le destinataire. Quand il te confirme que la carte est reçue, termine sur ce téléphone.", receiverStep: "Carte reçue ✓ Elle est maintenant dans ta collection.", receiverFinishHelp: "Aucun autre scan n’est nécessaire. Appuie simplement sur Terminer.", finishHere: "Terminer", finishSender: "Le destinataire a reçu la carte — Terminer", protocol: "3 scans : offre → reçu → confirmation. Ensuite chacun termine localement, sans quatrième scan.", qrValidity: "QR valable encore" },
-  it: { senderTab: "Invio una carta", receiverTab: "Ricevo una carta", duplicateRule: "Per scambiare una carta servono almeno 2 copie della stessa carta: 1 resta nella collezione e il doppione può essere inviato.", noDuplicate: "Nessun doppione disponibile: servono almeno 2 copie di questa carta.", senderHelp: "Invii un doppione. Massimo tre scansioni: il destinatario scansiona l’offerta, tu la sua ricevuta, poi lui la tua conferma.", receiverHelp: "Ricevi una carta. Inizia scansionando il QR offerta sul telefono del mittente.", scanOffer: "Scansiona il QR offerta del mittente", scanReceiverReceipt: "Scansiona la ricevuta del destinatario", scanSenderConfirmation: "Scansiona il QR di conferma del mittente", receiptStep: "Passo 2/3 — Fai scansionare questo QR al mittente. Poi scansiona la sua conferma.", senderStep: "Passo 3/3 — Fai scansionare questo QR al destinatario. Quando conferma di aver ricevuto la carta, termina su questo telefono.", receiverStep: "Carta ricevuta ✓ Ora è nella tua collezione.", receiverFinishHelp: "Non serve un’altra scansione. Premi semplicemente Termina.", finishHere: "Termina", finishSender: "Il destinatario ha ricevuto la carta — Termina", protocol: "3 scansioni: offerta → ricevuta → conferma. Poi ciascuno termina localmente, senza quarta scansione.", qrValidity: "QR valido ancora" },
-  en: { senderTab: "I’m sending a card", receiverTab: "I’m receiving a card", duplicateRule: "To trade a card you need at least 2 copies of the same card: 1 stays in your collection and the duplicate can be sent.", noDuplicate: "No duplicate available: you need at least 2 copies of this card to trade it.", senderHelp: "You are sending a duplicate. Three scans maximum: recipient scans your offer, you scan their receipt, then they scan your confirmation.", receiverHelp: "You are receiving a card. Start by scanning the offer QR on the sender’s phone.", scanOffer: "Scan the sender’s offer QR", scanReceiverReceipt: "Scan the recipient receipt", scanSenderConfirmation: "Scan the sender confirmation QR", receiptStep: "Step 2/3 — Have the sender scan this QR. Then scan their confirmation QR.", senderStep: "Step 3/3 — Have the recipient scan this QR. Once they confirm the card arrived, finish on this phone.", receiverStep: "Card received ✓ It is now in your collection.", receiverFinishHelp: "No more scanning is needed. Just tap Finish.", finishHere: "Finish", finishSender: "Recipient received the card — Finish", protocol: "3 scans: offer → receipt → confirmation. Then each phone finishes locally, with no fourth scan.", qrValidity: "QR valid for" },
-  es: { senderTab: "Envío una tarjeta", receiverTab: "Recibo una tarjeta", duplicateRule: "Para intercambiar una tarjeta necesitas al menos 2 copias de la misma: 1 queda en tu colección y el duplicado se puede enviar.", noDuplicate: "No hay duplicado disponible: necesitas al menos 2 copias de esta tarjeta.", senderHelp: "Envías un duplicado. Máximo tres escaneos: el destinatario escanea tu oferta, tú su recibo y luego él tu confirmación.", receiverHelp: "Recibes una tarjeta. Empieza escaneando el QR de oferta del teléfono del remitente.", scanOffer: "Escanear el QR de oferta del remitente", scanReceiverReceipt: "Escanear el recibo del destinatario", scanSenderConfirmation: "Escanear el QR de confirmación del remitente", receiptStep: "Paso 2/3 — Haz que el remitente escanee este QR. Luego escanea su confirmación.", senderStep: "Paso 3/3 — Haz que el destinatario escanee este QR. Cuando confirme que recibió la tarjeta, termina en este teléfono.", receiverStep: "Tarjeta recibida ✓ Ya está en tu colección.", receiverFinishHelp: "No hace falta otro escaneo. Solo pulsa Terminar.", finishHere: "Terminar", finishSender: "El destinatario recibió la tarjeta — Terminar", protocol: "3 escaneos: oferta → recibo → confirmación. Después cada teléfono termina localmente, sin cuarto escaneo.", qrValidity: "QR válido durante" },
+  fr: {
+    senderTab: "Je propose un échange", receiverTab: "Je réponds à une offre",
+    duplicateRule: "Un échange est toujours carte contre carte. Il faut au moins 2 exemplaires de la carte que tu donnes : 1 reste dans ta collection et le double est échangé.",
+    noDuplicate: "Aucun double disponible : il faut au moins 2 exemplaires de cette carte pour l’échanger.",
+    senderHelp: "Choisis la carte que tu donnes et celle que tu veux recevoir. Puis génère l’offre.",
+    receiverHelp: "Scanne l’offre. L’échange n’est possible que si tu possèdes au moins 2 exemplaires de la carte demandée.",
+    scanOffer: "Scanner l’offre", scanReceiverReceipt: "Scanner la réponse de l’autre joueur", scanSenderConfirmation: "Scanner la confirmation finale",
+    receiptStep: "Étape 2/3 — Ton double est engagé. Fais scanner ce QR par l’autre joueur, puis scanne sa confirmation.",
+    senderStep: "Étape 3/3 — Tu as reçu la carte demandée. Fais scanner cette confirmation par l’autre joueur.",
+    receiverStep: "Échange réussi ✓ Tu as reçu la carte proposée et ton double a été échangé.",
+    receiverFinishHelp: "Aucun autre scan n’est nécessaire. Appuie sur Terminer.",
+    finishHere: "Terminer", finishSender: "L’autre joueur a reçu sa carte — Terminer",
+    protocol: "Troc en 3 scans : offre → réponse avec la carte demandée → confirmation finale. Aucun don dans le parcours standard.",
+    qrValidity: "QR valable encore", chooseWanted: "Je veux recevoir", giveLabel: "Tu donnes", receiveLabel: "Tu reçois",
+    acceptTrade: "Accepter cet échange", missingWanted: "Échange impossible : tu n’as pas de double de la carte demandée.",
+    offerReady: "Offre prête : le QR contient la carte proposée et la carte demandée."
+  },
+  it: {
+    senderTab: "Propongo uno scambio", receiverTab: "Rispondo a un’offerta",
+    duplicateRule: "Lo scambio è sempre carta contro carta. Servono almeno 2 copie della carta che dai: 1 resta nella collezione e il doppione viene scambiato.",
+    noDuplicate: "Nessun doppione disponibile: servono almeno 2 copie della carta.",
+    senderHelp: "Scegli la carta che dai e quella che vuoi ricevere, poi genera l’offerta.",
+    receiverHelp: "Scansiona l’offerta. Lo scambio è possibile solo se possiedi almeno 2 copie della carta richiesta.",
+    scanOffer: "Scansiona l’offerta", scanReceiverReceipt: "Scansiona la risposta dell’altro giocatore", scanSenderConfirmation: "Scansiona la conferma finale",
+    receiptStep: "Passo 2/3 — Il tuo doppione è impegnato. Fai scansionare questo QR all’altro giocatore, poi scansiona la sua conferma.",
+    senderStep: "Passo 3/3 — Hai ricevuto la carta richiesta. Fai scansionare questa conferma all’altro giocatore.",
+    receiverStep: "Scambio riuscito ✓ Hai ricevuto la carta proposta e il tuo doppione è stato scambiato.",
+    receiverFinishHelp: "Non serve un’altra scansione. Premi Termina.",
+    finishHere: "Termina", finishSender: "L’altro giocatore ha ricevuto la carta — Termina",
+    protocol: "Baratto in 3 scansioni: offerta → risposta con la carta richiesta → conferma finale. Nessun regalo nel percorso standard.",
+    qrValidity: "QR valido ancora", chooseWanted: "Voglio ricevere", giveLabel: "Dai", receiveLabel: "Ricevi",
+    acceptTrade: "Accetta questo scambio", missingWanted: "Scambio impossibile: non hai un doppione della carta richiesta.",
+    offerReady: "Offerta pronta: il QR contiene la carta proposta e quella richiesta."
+  },
+  en: {
+    senderTab: "I propose a trade", receiverTab: "I respond to an offer",
+    duplicateRule: "A trade is always card-for-card. You need at least 2 copies of the card you give: 1 stays in your collection and the duplicate is traded.",
+    noDuplicate: "No duplicate available: you need at least 2 copies of this card.",
+    senderHelp: "Choose the card you give and the card you want back, then generate the offer.",
+    receiverHelp: "Scan the offer. The trade can continue only if you own at least 2 copies of the requested card.",
+    scanOffer: "Scan the offer", scanReceiverReceipt: "Scan the other player’s response", scanSenderConfirmation: "Scan the final confirmation",
+    receiptStep: "Step 2/3 — Your duplicate is committed. Have the other player scan this QR, then scan their confirmation.",
+    senderStep: "Step 3/3 — You received the requested card. Have the other player scan this confirmation.",
+    receiverStep: "Trade complete ✓ You received the offered card and your duplicate was exchanged.",
+    receiverFinishHelp: "No more scanning is needed. Tap Finish.",
+    finishHere: "Finish", finishSender: "The other player received the card — Finish",
+    protocol: "3-scan barter: offer → response carrying the requested card → final confirmation. No gifting in the standard flow.",
+    qrValidity: "QR valid for", chooseWanted: "I want to receive", giveLabel: "You give", receiveLabel: "You receive",
+    acceptTrade: "Accept this trade", missingWanted: "Trade impossible: you do not have a duplicate of the requested card.",
+    offerReady: "Offer ready: the QR contains both the offered card and the requested card."
+  },
+  es: {
+    senderTab: "Propongo un intercambio", receiverTab: "Respondo a una oferta",
+    duplicateRule: "El intercambio es siempre tarjeta por tarjeta. Necesitas al menos 2 copias de la tarjeta que das: 1 queda en tu colección y el duplicado se intercambia.",
+    noDuplicate: "No hay duplicado disponible: necesitas al menos 2 copias de esta tarjeta.",
+    senderHelp: "Elige la tarjeta que das y la que quieres recibir, y genera la oferta.",
+    receiverHelp: "Escanea la oferta. El intercambio solo puede continuar si tienes al menos 2 copias de la tarjeta solicitada.",
+    scanOffer: "Escanear la oferta", scanReceiverReceipt: "Escanear la respuesta del otro jugador", scanSenderConfirmation: "Escanear la confirmación final",
+    receiptStep: "Paso 2/3 — Tu duplicado queda comprometido. Haz que el otro jugador escanee este QR y luego escanea su confirmación.",
+    senderStep: "Paso 3/3 — Has recibido la tarjeta solicitada. Haz que el otro jugador escanee esta confirmación.",
+    receiverStep: "Intercambio completado ✓ Has recibido la tarjeta ofrecida y tu duplicado se ha intercambiado.",
+    receiverFinishHelp: "No hace falta otro escaneo. Pulsa Terminar.",
+    finishHere: "Terminar", finishSender: "El otro jugador recibió la tarjeta — Terminar",
+    protocol: "Trueque en 3 escaneos: oferta → respuesta con la tarjeta solicitada → confirmación final. Sin regalos en el flujo estándar.",
+    qrValidity: "QR válido durante", chooseWanted: "Quiero recibir", giveLabel: "Das", receiveLabel: "Recibes",
+    acceptTrade: "Aceptar este intercambio", missingWanted: "Intercambio imposible: no tienes un duplicado de la tarjeta solicitada.",
+    offerReady: "Oferta lista: el QR contiene la tarjeta ofrecida y la solicitada."
+  },
 };
 const originLabels: Record<string, Record<CardOrigin, string>> = {
   fr: { game: "Jeu", partner: "Partenaire", physical: "Carte physique", exchange: "Échange", test: "Test", legacy: "Ancienne collection" },
@@ -80,7 +144,7 @@ export default function CardTradePage() {
   const [qrExpiresAt, setQrExpiresAt] = useState(0);
   const [qrOfferId, setQrOfferId] = useState("");
   const [now, setNow] = useState(Date.now());
-  const [incoming, setIncoming] = useState<{ token: string; card: BonusKey } | null>(null);
+  const [incoming, setIncoming] = useState<{ token: string; card: BonusKey; requestedCard: BonusKey } | null>(null);
   const [receiptQr, setReceiptQr] = useState("");
   const [receiptExpiresAt, setReceiptExpiresAt] = useState(0);
   const [completionExpiresAt, setCompletionExpiresAt] = useState(0);
@@ -88,6 +152,7 @@ export default function CardTradePage() {
   const [receivedCard, setReceivedCard] = useState<BonusKey | null>(null);
   const [message, setMessage] = useState("");
   const [workingCard, setWorkingCard] = useState<BonusKey | null>(null);
+  const [wantedCard, setWantedCard] = useState<BonusKey>("lecce");
   const cards = (Object.entries(inventory.cards) as [BonusKey, number][])
     .filter(([, count]) => count > 0)
     .sort(([a], [b]) => {
@@ -169,7 +234,10 @@ export default function CardTradePage() {
   async function makeOffer(card: BonusKey) {
     setWorkingCard(card);
     try {
-      const result = await createCardOffer(card);
+      const requested = wantedCard === card
+        ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((key) => key !== card) ?? "lecce")
+        : wantedCard;
+      const result = await createCardOffer(card, requested);
       const image = await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" });
       setQr(image);
       setQrKind("offer");
@@ -177,7 +245,7 @@ export default function CardTradePage() {
       setQrExpiresAt(result.offer.expiresAt);
       setQrOfferId(result.offer.id);
       setNow(Date.now());
-      setMessage("");
+      setMessage(t.offerReady);
     } catch {
       setMessage(t.invalid);
     } finally {
@@ -190,7 +258,7 @@ export default function CardTradePage() {
 
     try {
       const offer = await inspectCardOffer(text);
-      setIncoming({ token: text, card: offer.card });
+      setIncoming({ token: text, card: offer.card, requestedCard: offer.requestedCard });
       setMode("receive");
       setMessage("");
       return;
@@ -239,6 +307,10 @@ export default function CardTradePage() {
 
   async function accept() {
     if (!incoming) return;
+    if ((inventory.cards[incoming.requestedCard] || 0) < 2) {
+      setMessage(t.missingWanted);
+      return;
+    }
     try {
       const result = await acceptCardOffer(incoming.token);
       setReceiptExpiresAt(result.receipt.expiresAt);
@@ -350,9 +422,18 @@ export default function CardTradePage() {
             {cards.map(([key, count]) => (
               <div key={key} className="card-trade__item">
                 {renderCard(key, count)}
-                {count > 1
-                  ? <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
-                  : <p className="card-trade__no-duplicate">🔒 {t.noDuplicate}</p>}
+                {count > 1 ? <>
+                  <label className="card-trade__wanted">
+                    <strong>{t.chooseWanted}</strong>
+                    <select value={wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard} onChange={(event) => setWantedCard(event.target.value as BonusKey)}>
+                      {(Object.keys(BONUS_MAPS) as BonusKey[]).filter((candidate) => candidate !== key).map((candidate) => (
+                        <option key={candidate} value={candidate}>{BONUS_MAPS[candidate].title}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="card-trade__swap-summary"><span>{t.giveLabel}: <strong>{BONUS_MAPS[key].title}</strong></span><span>⇄</span><span>{t.receiveLabel}: <strong>{BONUS_MAPS[wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard].title}</strong></span></div>
+                  <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
+                </> : <p className="card-trade__no-duplicate">🔒 {t.noDuplicate}</p>}
                 {qrCard === key ? renderActiveQr() : null}
               </div>
             ))}
@@ -363,7 +444,17 @@ export default function CardTradePage() {
           <section>
             <h2>{t.receiverTab}</h2>
             {!receiptQr && !completionOfferId && !incoming ? <button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
-            {incoming ? <div>{renderCard(incoming.card)}<button className="trade-primary card-trade__main-action" onClick={() => void accept()}>2. {t.confirm}</button></div> : null}
+            {incoming ? <div className="card-trade__incoming">
+              <div className="card-trade__swap-summary card-trade__swap-summary--large">
+                <span>{t.receiveLabel}: <strong>{BONUS_MAPS[incoming.card].title}</strong></span>
+                <span>⇄</span>
+                <span>{t.giveLabel}: <strong>{BONUS_MAPS[incoming.requestedCard].title}</strong></span>
+              </div>
+              {renderCard(incoming.card)}
+              {(inventory.cards[incoming.requestedCard] || 0) >= 2
+                ? <button className="trade-primary card-trade__main-action" onClick={() => void accept()}>2. {t.acceptTrade}</button>
+                : <p className="card-trade__no-duplicate">🔒 {t.missingWanted}</p>}
+            </div> : null}
             {receiptQr ? <div className="card-trade__qr card-trade__qr--active"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptStep}</p><button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>3. {t.scanSenderConfirmation}</button><p><small>{t.protocol}</small></p></div> : null}
             {completionOfferId ? <div className="card-trade__qr card-trade__qr--active"><p>{t.receiverStep}</p><p className="card-trade__finish-help">{t.receiverFinishHelp}</p><button className="trade-primary card-trade__main-action" onClick={() => {
               if (completionOfferId) setInventory(finishReceiverTrade(completionOfferId));
