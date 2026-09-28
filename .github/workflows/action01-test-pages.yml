@@ -53,9 +53,11 @@ jobs:
             const q = new URLSearchParams(location.search);
             const inventoryKey = "hirundu_card_inventory_v1";
             const markerKey = "hirundu_action01_test_seeded_v1";
+            let oneShot = false;
             if (q.get("clear") === "1") {
               localStorage.removeItem(inventoryKey);
               localStorage.removeItem(markerKey);
+              oneShot = true;
             }
             if (q.get("seed") === "1" && localStorage.getItem(markerKey) !== "1") {
               localStorage.setItem(inventoryKey, JSON.stringify({
@@ -68,9 +70,16 @@ jobs:
                 spent: {},
                 receiving: {},
                 outgoing: {},
+                completionAcks: {},
                 pending: null
               }));
               localStorage.setItem(markerKey, "1");
+              oneShot = true;
+            }
+            if (oneShot) {
+              q.delete("clear");
+              q.delete("seed");
+              history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q.toString() : "") + location.hash);
             }
           })();
           </script>`;
