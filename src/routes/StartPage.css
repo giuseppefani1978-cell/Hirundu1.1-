@@ -119,3 +119,17 @@
 .start-page--player .start-page__links a span:last-child {margin-left:auto;}
 .start-page--player :is(button,a,select):focus-visible {outline:3px solid #ffe259;outline-offset:4px;}
 @media(max-width:360px){.start-page--player .start-page__content{padding:22px;}.start-page--player .start-page__hero{padding-inline:12px;}}
+
+.start-page--player .start-page__links a.start-page__trade-link{
+  margin-top:6px;
+  padding:11px 12px;
+  border:1px solid rgba(167,220,255,.28);
+  border-radius:14px;
+  background:linear-gradient(135deg,rgba(36,85,130,.78),rgba(24,59,100,.82));
+  color:#fff;
+  font-weight:750;
+  box-shadow:0 8px 22px rgba(0,0,0,.18);
+}
+.start-page--player .start-page__links a.start-page__trade-link span:first-child{
+  display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.10);font-size:18px;
+}

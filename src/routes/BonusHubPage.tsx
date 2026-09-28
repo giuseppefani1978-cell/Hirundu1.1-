@@ -34,6 +34,18 @@ export default function BonusHubPage() {
         ▶ {copy.continue} · {copy.level} {next.id}
       </button> : <><p>{copy.complete}</p><button className="app-button" onClick={() => navigate('/level/1')}>{copy.replay}</button></>}
     </section>
+    <section className="discoveries__collection-nav" aria-label={copy.cardTrade}>
+      <button className="discoveries__collection-action discoveries__collection-action--trade" onClick={() => navigate('/card-trade')}>
+        <span className="discoveries__collection-icon" aria-hidden="true">⇄</span>
+        <span><strong>{copy.cardTrade}</strong><small>{copy.cardTradeHint}</small></span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <button className="discoveries__collection-action" onClick={() => navigate('/passport')}>
+        <span className="discoveries__collection-icon" aria-hidden="true">▤</span>
+        <span><strong>{copy.passport}</strong><small>{copy.passportHint}</small></span>
+        <span aria-hidden="true">›</span>
+      </button>
+    </section>
     {featured && <section className="discoveries__spotlight">
       <h2>{featured.key===unlockedKey ? collection[0] : collection[14]}</h2>
       <DiscoveryCard mapKey={featured.key} earned/>

@@ -177,3 +177,14 @@ html, body { overflow-x: hidden; }
   .discoveries__card button { grid-column:2; grid-row:1 / 3; }
   .discoveries__passport { align-items:stretch; flex-direction:column; }
 }
+
+.discoveries__collection-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.discoveries__collection-action{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;min-height:76px;padding:14px 16px;border:1px solid #cbd9e8;border-radius:18px;background:#fff;color:#10243e;text-align:left;box-shadow:0 8px 24px rgba(16,45,80,.08);cursor:pointer}
+.discoveries__collection-action--trade{background:linear-gradient(135deg,#173d61,#245a86);color:#fff;border-color:#2c658f}
+.discoveries__collection-action span:nth-child(2){display:grid;gap:3px}
+.discoveries__collection-action strong{font-size:1rem}
+.discoveries__collection-action small{font-size:.82rem;line-height:1.35;opacity:.78}
+.discoveries__collection-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#edf5ff;font-size:21px;font-weight:800;color:#173d61}
+.discoveries__collection-action--trade .discoveries__collection-icon{background:#ffffff18;color:#fff}
+.discoveries__collection-action:active{transform:translateY(1px)}
+@media(max-width:600px){.discoveries__collection-nav{grid-template-columns:1fr}}
