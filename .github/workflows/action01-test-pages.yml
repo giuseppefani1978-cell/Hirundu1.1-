@@ -1,4 +1,5 @@
 name: Action 01 QR resume test
+# Isolated test deployment only; never publishes the production root.
 
 on:
   push:
