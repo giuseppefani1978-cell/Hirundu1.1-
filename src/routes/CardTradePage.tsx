@@ -351,16 +351,20 @@ export default function CardTradePage() {
         <div className="card-trade__tabs">
           {tabs.map(([id, label]) => <button key={id} aria-pressed={mode === id} onClick={() => setMode(id)}>{label}</button>)}
         </div>
+        <p className="card-trade__guide">{mode === "send" ? t.senderHelp : t.receiverHelp}</p>
         {message ? <p className="card-trade__status" role="status">{message}</p> : null}
 
         {mode === "send" ? (
           <section>
-            <h2>{t.send}</h2>
+            <h2>{t.senderTab}</h2>
+            <p className="card-trade__duplicate-rule">{t.duplicateRule}</p>
             {!cards.length ? <p>{t.noCards}</p> : null}
             {cards.map(([key, count]) => (
               <div key={key} className="card-trade__item">
                 {renderCard(key, count)}
-                {count > 1 ? <button className="trade-primary" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : t.create}</button> : null}
+                {count > 1
+                  ? <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
+                  : <p className="card-trade__no-duplicate">🔒 {t.noDuplicate}</p>}
                 {qrCard === key ? renderActiveQr() : null}
               </div>
             ))}
@@ -369,11 +373,17 @@ export default function CardTradePage() {
 
         {mode === "receive" ? (
           <section>
-            <h2>{t.receive}</h2>
-            <button className="trade-primary" onClick={() => setScannerOpen(true)}>{t.scan}</button>
-            {incoming ? <div>{renderCard(incoming.card)}<button className="trade-primary" onClick={() => void accept()}>{t.confirm}</button></div> : null}
-            {receiptQr ? <div className="card-trade__qr"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptReady}</p><p><small>{t.protocol}</small></p></div> : null}
-            {completionQr ? <div className="card-trade__qr card-trade__qr--active"><img src={completionQr} alt={t.finalReceipt} /><strong className="card-trade__countdown">{t.remaining}: {completionRemainingLabel}</strong><p>{t.receiverDone}</p></div> : null}
+            <h2>{t.receiverTab}</h2>
+            {!receiptQr && !completionQr && !incoming ? <button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
+            {incoming ? <div>{renderCard(incoming.card)}<button className="trade-primary card-trade__main-action" onClick={() => void accept()}>2. {t.confirm}</button></div> : null}
+            {receiptQr ? <div className="card-trade__qr card-trade__qr--active"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptStep}</p><button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>3. {t.scanSenderConfirmation}</button><p><small>{t.protocol}</small></p></div> : null}
+            {completionQr ? <div className="card-trade__qr card-trade__qr--active"><img src={completionQr} alt={t.finalReceipt} /><strong className="card-trade__countdown">{t.remaining}: {completionRemainingLabel}</strong><p>{t.receiverStep}</p><p className="card-trade__finish-help">{t.receiverFinishHelp}</p><button className="trade-primary card-trade__main-action" onClick={() => {
+              if (completionOfferId) setInventory(finishReceiverTrade(completionOfferId));
+              setCompletionQr("");
+              setCompletionExpiresAt(0);
+              setCompletionOfferId("");
+              setMessage(t.done);
+            }}>{t.finishHere}</button></div> : null}
             {cards.length ? <div className="card-trade__owned"><h3>{t.myCards}</h3>{cards.map(([key, count]) => <div key={key} className="card-trade__item">{renderCard(key, count)}</div>)}</div> : null}
           </section>
         ) : null}
