@@ -38,6 +38,10 @@ jobs:
       - name: Build isolated portable test URL
         run: npm run build -- --base ./
 
+      - name: Keep portable index on third-party static preview
+        run: |
+          node -e "const fs=require('fs'); const p='dist/index.html'; let s=fs.readFileSync(p,'utf8'); s=s.replace('if (p.endsWith(\"/index.html\") || p === \"/index.html\") {','if (false) {'); fs.writeFileSync(p,s);"
+
       - name: Publish only isolated test subdirectory
         uses: peaceiris/actions-gh-pages@v4
         with:
