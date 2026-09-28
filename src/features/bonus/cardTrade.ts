@@ -782,9 +782,11 @@ export function getResumableReceiptTrade(): ResumableCardTradeQr | null {
     .sort(([, a], [, b]) => b.createdAt - a.createdAt)[0];
   if (!receiptEntry?.[1]?.receiptToken) return null;
   const [offerId, receipt] = receiptEntry;
+  const token = receipt.receiptToken;
+  if (!token) return null;
   return {
     kind: "receipt",
-    token: receipt.receiptToken,
+    token,
     card: receipt.card,
     expiresAt: receipt.expiresAt,
     offerId,
