@@ -195,3 +195,129 @@ test("modern browser path stores a non-exportable private trade key in IndexedDB
   assert.match(source, /false,\s*\["sign"\]/);
   assert.match(source, /privateKey\.extractable === false/);
 });
+
+
+
+test("interrupted sender confirmation is resumable without a second debit", async () => {
+  const domA = new JSDOM("", { url: "https://sender-resume.invalid/" });
+  const domB = new JSDOM("", { url: "https://receiver-resume.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const offer = await trade.createCardOffer("otranto");
+
+    useDom(domB);
+    const accepted = await trade.acceptCardOffer(offer.token);
+    const receiptResume = trade.getResumableReceiptTrade();
+    assert.equal(receiptResume?.kind, "receipt");
+    assert.equal(receiptResume?.token, accepted.token);
+
+    useDom(domA);
+    const completed = await trade.completeCardReceipt(accepted.token);
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
+
+    const confirmationResume = trade.getResumableOutgoingCardTrade();
+    assert.equal(confirmationResume?.kind, "confirmation");
+    assert.equal(confirmationResume?.token, completed.token);
+
+    const repeated = await trade.completeCardReceipt(accepted.token);
+    assert.equal(repeated.token, completed.token);
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
+
+    useDom(domB);
+    const final = await trade.finalizeCardConfirmation(completed.token);
+    assert.equal(final.state.cards.otranto, 1);
+    assert.equal(trade.getResumableReceiptTrade(), null);
+  } finally {
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
+
+
+test("concurrent sender confirmation never debits the same duplicate twice", async () => {
+  const domA = new JSDOM("", { url: "https://sender-concurrent.invalid/" });
+  const domB = new JSDOM("", { url: "https://receiver-concurrent.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const offer = await trade.createCardOffer("otranto");
+
+    useDom(domB);
+    const accepted = await trade.acceptCardOffer(offer.token);
+
+    useDom(domA);
+    const results = await Promise.allSettled([
+      trade.completeCardReceipt(accepted.token),
+      trade.completeCardReceipt(accepted.token),
+    ]);
+
+    assert.ok(results.some((result) => result.status === "fulfilled"));
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
+    assert.ok(trade.getResumableOutgoingCardTrade()?.token);
+  } finally {
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
+
+
+test("storage failure while finalizing leaves the transferable duplicate intact", async () => {
+  const domA = new JSDOM("", { url: "https://sender-storage.invalid/" });
+  const domB = new JSDOM("", { url: "https://receiver-storage.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  const originalSetItem = domA.window.Storage.prototype.setItem;
+
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const offer = await trade.createCardOffer("otranto");
+
+    useDom(domB);
+    const accepted = await trade.acceptCardOffer(offer.token);
+
+    useDom(domA);
+    domA.window.Storage.prototype.setItem = function setItem(key, value) {
+      if (key === "hirundu_card_inventory_v1") throw Error("quota");
+      return originalSetItem.call(this, key, value);
+    };
+
+    await assert.rejects(() => trade.completeCardReceipt(accepted.token), /quota/);
+    assert.equal(trade.readCardInventory().cards.otranto, 2);
+    assert.equal(trade.getResumableOutgoingCardTrade(), null);
+  } finally {
+    domA.window.Storage.prototype.setItem = originalSetItem;
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
+
+
+test("trade page restores persisted receipt and final confirmation QR after reload", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
+  );
+  assert.match(source, /getResumableOutgoingCardTrade\(\)/);
+  assert.match(source, /getResumableReceiptTrade\(\)/);
+  assert.match(source, /The signed confirmation is already persisted and will be restored on reload/);
+  assert.match(source, /The signed receipt is already persisted and will be restored on reload/);
+});
