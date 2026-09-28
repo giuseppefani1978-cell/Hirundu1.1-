@@ -84,6 +84,7 @@ export default function CardTradePage() {
   const [receiptExpiresAt, setReceiptExpiresAt] = useState(0);
   const [completionQr, setCompletionQr] = useState("");
   const [completionExpiresAt, setCompletionExpiresAt] = useState(0);
+  const [completionOfferId, setCompletionOfferId] = useState("");
   const [receivedCard, setReceivedCard] = useState<BonusKey | null>(null);
   const [message, setMessage] = useState("");
   const [workingCard, setWorkingCard] = useState<BonusKey | null>(null);
@@ -149,6 +150,7 @@ export default function CardTradePage() {
         try {
           setCompletionQr(await QRCode.toDataURL(completion.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
           setCompletionExpiresAt(completion.expiresAt);
+          setCompletionOfferId(completion.offerId ?? "");
           setReceivedCard(completion.card);
           setMode("receive");
           setMessage(t.receiverDone);
@@ -228,6 +230,7 @@ export default function CardTradePage() {
       setReceivedCard(result.card);
       setMode("receive");
       setCompletionExpiresAt(result.ack.expiresAt);
+      setCompletionOfferId(result.ack.offerId);
       setNow(Date.now());
       try {
         setCompletionQr(await QRCode.toDataURL(result.token, { width: 360, margin: 2, errorCorrectionLevel: "L" }));
@@ -283,7 +286,8 @@ export default function CardTradePage() {
         <strong className="card-trade__countdown">{t.remaining}: {remainingLabel}</strong>
         <p>{qrKind === "confirmation" ? t.senderConfirmed : t.expires}</p>
         <p><small>{t.security}</small></p>
-        {qrKind === "offer" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>{t.scanReceipt}</button> : null}
+        {qrKind === "offer" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanReceiverReceipt}</button> : null}
+        {qrKind === "confirmation" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanFinalReceipt}</button> : null}
         {qrKind === "offer" ? <button onClick={() => {
           cancelPendingOffer();
           setQr("");
@@ -334,7 +338,7 @@ export default function CardTradePage() {
   }, [now, qrExpiresAt, qrKind, receiptExpiresAt, completionExpiresAt]);
 
   const tabs = useMemo(() => [
-    ["send", t.send], ["receive", t.receive],
+    ["send", t.senderTab], ["receive", t.receiverTab],
   ] as const, [t]);
 
   return (
