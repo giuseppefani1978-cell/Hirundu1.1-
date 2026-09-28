@@ -43,7 +43,7 @@ type OutgoingConfirmation = {
   createdAt: number;
   expiresAt: number;
   receiptHash: string;
-  confirmationHash: string;
+  confirmationHash?: string;
   token: string;
 };
 
@@ -593,7 +593,8 @@ function sanitizeOutgoing(value: unknown): Record<string, OutgoingConfirmation> 
     if (
       validKey(item.card) && typeof item.receiver === "string" &&
       typeof item.createdAt === "number" && typeof item.expiresAt === "number" &&
-      typeof item.receiptHash === "string" && typeof item.confirmationHash === "string" &&
+      typeof item.receiptHash === "string" &&
+      (item.confirmationHash === undefined || typeof item.confirmationHash === "string") &&
       typeof item.token === "string"
     ) result[id] = item as OutgoingConfirmation;
   });
@@ -1082,11 +1083,19 @@ export async function finalizeSenderAcknowledgement(raw: string): Promise<{ card
   return withTradeLock(ack.offerId, async () => {
     const state = readCardInventory();
     const outgoing = state.outgoing[ack.offerId];
+    if (!outgoing) throw Error("ack-not-expected");
+
+    let expectedConfirmationHash = outgoing.confirmationHash;
+    if (!expectedConfirmationHash) {
+      const legacyConfirmation = decode(outgoing.token);
+      if (legacyConfirmation.type !== "confirmation") throw Error("ack-not-expected");
+      expectedConfirmationHash = await tokenHash(legacyConfirmation);
+    }
+
     if (
-      !outgoing ||
       outgoing.card !== ack.card ||
       outgoing.receiver !== ack.receiver ||
-      outgoing.confirmationHash !== ack.confirmationHash ||
+      expectedConfirmationHash !== ack.confirmationHash ||
       outgoing.expiresAt !== ack.expiresAt ||
       outgoing.expiresAt <= Date.now()
     ) throw Error("ack-not-expected");
