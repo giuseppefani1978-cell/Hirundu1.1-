@@ -321,3 +321,45 @@ test("trade page restores persisted receipt and final confirmation QR after relo
   assert.match(source, /The signed confirmation is already persisted and will be restored on reload/);
   assert.match(source, /The signed receipt is already persisted and will be restored on reload/);
 });
+
+
+test("expired debited confirmation stays explicit and is never auto-refunded", async () => {
+  const domA = new JSDOM("", { url: "https://sender-expired-final.invalid/" });
+  const domB = new JSDOM("", { url: "https://receiver-expired-final.invalid/" });
+  const prior = snapshotGlobals();
+  const realNow = Date.now;
+  const base = realNow();
+  useDom(domA);
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    Date.now = () => base;
+
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    const offer = await trade.createCardOffer("otranto");
+
+    useDom(domB);
+    const accepted = await trade.acceptCardOffer(offer.token);
+
+    useDom(domA);
+    const completed = await trade.completeCardReceipt(accepted.token);
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
+
+    Date.now = () => base + 16 * 60 * 1000;
+    assert.equal(trade.getResumableOutgoingCardTrade(), null);
+    assert.equal(trade.hasUnresolvedExpiredOutgoingCardTrade(), true);
+    assert.equal(trade.readCardInventory().cards.otranto, 1);
+
+    useDom(domB);
+    await assert.rejects(() => trade.finalizeCardConfirmation(completed.token));
+    assert.equal(trade.readCardInventory().cards.otranto ?? 0, 0);
+  } finally {
+    Date.now = realNow;
+    await server.close();
+    domA.window.close();
+    domB.window.close();
+    restoreGlobals(prior);
+  }
+});
