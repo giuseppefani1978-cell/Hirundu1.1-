@@ -42,6 +42,42 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const p='dist/index.html'; let s=fs.readFileSync(p,'utf8'); s=s.replace('if (p.endsWith(\"/index.html\") || p === \"/index.html\") {','if (false) {'); fs.writeFileSync(p,s);"
 
+      - name: Add test-only duplicate seeder
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = 'dist/index.html';
+          let s = fs.readFileSync(p, 'utf8');
+          const helper = `<script>
+          (() => {
+            const q = new URLSearchParams(location.search);
+            const inventoryKey = "hirundu_card_inventory_v1";
+            const markerKey = "hirundu_action01_test_seeded_v1";
+            if (q.get("clear") === "1") {
+              localStorage.removeItem(inventoryKey);
+              localStorage.removeItem(markerKey);
+            }
+            if (q.get("seed") === "1" && localStorage.getItem(markerKey) !== "1") {
+              localStorage.setItem(inventoryKey, JSON.stringify({
+                version: 1,
+                cards: { otranto: 2 },
+                origins: { otranto: { test: 2 } },
+                received: {},
+                redeemed: {},
+                confirmed: {},
+                spent: {},
+                receiving: {},
+                outgoing: {},
+                pending: null
+              }));
+              localStorage.setItem(markerKey, "1");
+            }
+          })();
+          </script>`;
+          s = s.replace('<div id="root"></div>', helper + '<div id="root"></div>');
+          fs.writeFileSync(p, s);
+          NODE
+
       - name: Publish only isolated test subdirectory
         uses: peaceiris/actions-gh-pages@v4
         with:
