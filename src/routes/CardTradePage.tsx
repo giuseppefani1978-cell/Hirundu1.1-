@@ -83,6 +83,8 @@ export default function CardTradePage() {
   const cards = (Object.entries(inventory.cards) as [BonusKey, number][])
     .filter(([, count]) => count > 0)
     .sort(([a], [b]) => {
+      if (receivedCard && a === receivedCard) return -1;
+      if (receivedCard && b === receivedCard) return 1;
       if (requestedCard && a === requestedCard) return -1;
       if (requestedCard && b === requestedCard) return 1;
       return 0;
@@ -361,7 +363,6 @@ export default function CardTradePage() {
             {incoming ? <div>{renderCard(incoming.card)}<button className="trade-primary" onClick={() => void accept()}>{t.confirm}</button></div> : null}
             {receiptQr ? <div className="card-trade__qr"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptReady}</p><p><small>{t.protocol}</small></p></div> : null}
             {completionQr ? <div className="card-trade__qr card-trade__qr--active"><img src={completionQr} alt={t.finalReceipt} /><strong className="card-trade__countdown">{t.remaining}: {completionRemainingLabel}</strong><p>{t.receiverDone}</p></div> : null}
-            {receivedCard ? <div className="card-trade__item">{renderCard(receivedCard, inventory.cards[receivedCard] || 1)}</div> : null}
             {cards.length ? <div className="card-trade__owned"><h3>{t.myCards}</h3>{cards.map(([key, count]) => <div key={key} className="card-trade__item">{renderCard(key, count)}</div>)}</div> : null}
           </section>
         ) : null}
