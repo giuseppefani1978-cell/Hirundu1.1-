@@ -48,7 +48,6 @@ export default function StartupIntro({ onComplete }: Props) {
 
     video.addEventListener("timeupdate", updateFinalAction);
     video.addEventListener("ended", ended);
-    video.addEventListener("error", onComplete);
 
     host.replaceChildren(video);
 
@@ -62,12 +61,16 @@ export default function StartupIntro({ onComplete }: Props) {
     let fallbackStart = 0;
     let fallbackBaseTime = 0;
     let fallbackImage: HTMLImageElement | null = null;
+    let fallbackRequested = false;
     let fallbackDoneTimer = 0;
+    let fallbackProbeTimer = 0;
 
     const stopManualFallback = () => {
       manualFallback = false;
       if (fallbackFrame) cancelAnimationFrame(fallbackFrame);
       fallbackFrame = 0;
+      if (fallbackProbeTimer) window.clearTimeout(fallbackProbeTimer);
+      fallbackProbeTimer = 0;
     };
 
     const runManualFallback = (now: number) => {
@@ -102,7 +105,8 @@ export default function StartupIntro({ onComplete }: Props) {
     };
 
     const showAnimatedFallback = () => {
-      if (cancelled || fallbackImage) return;
+      if (cancelled || fallbackRequested || fallbackImage) return;
+      fallbackRequested = true;
       const image = document.createElement("img");
       image.className = "startup-intro__video";
       image.alt = "";
@@ -122,7 +126,10 @@ export default function StartupIntro({ onComplete }: Props) {
           Math.max(1000, durationMs),
         );
       };
-      image.onerror = () => image.remove();
+      image.onerror = () => {
+        image.remove();
+        fallbackRequested = false;
+      };
       image.src = withBase("assets/hirundu_intro.webp");
       host.appendChild(image);
     };
@@ -134,11 +141,30 @@ export default function StartupIntro({ onComplete }: Props) {
       fallbackStart = 0;
       fallbackBaseTime = video.currentTime || 0;
       fallbackFrame = requestAnimationFrame(runManualFallback);
-      // Animated WebP is derived from the same MP4 and is not subject to
-      // Safari's media-autoplay permission. It replaces manual seeking as soon
-      // as it has loaded, while manual seeking keeps the first frames moving.
+
+      // Do not immediately download the 4.3 MB animated WebP. On iOS Low
+      // Power Mode, play() may be forbidden while muted seeking still works.
+      // Give that MP4-only path time to prove it can advance. The original
+      // full WebP remains the hard fallback if the video cannot visibly move.
+      const probeFrom = fallbackBaseTime;
+      fallbackProbeTimer = window.setTimeout(() => {
+        fallbackProbeTimer = 0;
+        if (cancelled || !manualFallback || video.ended) return;
+        const progressed = Math.max(0, (video.currentTime || 0) - probeFrom);
+        if (!Number.isFinite(video.duration) || video.duration <= 0 || progressed < 0.35) {
+          showAnimatedFallback();
+        }
+      }, 1800);
+    };
+
+    const onVideoError = () => {
+      // Preserve the approved cinematic instead of skipping it when the MP4
+      // itself cannot be used. Only this hard failure requests the full WebP.
+      stopManualFallback();
       showAnimatedFallback();
     };
+
+    video.addEventListener("error", onVideoError);
 
     const tryPlay = () => {
       if (cancelled || manualFallback || video.ended || !video.paused) return;
@@ -186,7 +212,7 @@ export default function StartupIntro({ onComplete }: Props) {
       video.pause();
       video.removeEventListener("timeupdate", updateFinalAction);
       video.removeEventListener("ended", ended);
-      video.removeEventListener("error", onComplete);
+      video.removeEventListener("error", onVideoError);
       video.removeEventListener("loadedmetadata", onReady);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("canplay", onReady);
