@@ -185,8 +185,9 @@ export default function CardTradePage() {
   };
 
   const handleTradeError = (error: unknown) => {
-    const reason = error instanceof Error ? error.message as CardTradeSecurityReason : "";
-    if (["crypto-unavailable", "secure-storage-unavailable", "local-storage-unavailable", "legacy-identity-invalid"].includes(reason)) {
+    const message = error instanceof Error ? error.message : "";
+    if (["crypto-unavailable", "secure-storage-unavailable", "local-storage-unavailable", "legacy-identity-invalid"].includes(message)) {
+      const reason = message as CardTradeSecurityReason;
       const status: CardTradeSecurityStatus = { available: false, reason };
       setSecurityStatus(status);
       setMessage(securityMessage(reason));
