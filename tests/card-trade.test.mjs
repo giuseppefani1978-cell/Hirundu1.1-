@@ -268,6 +268,21 @@ test("trade page renders generated offer QR directly under the selected duplicat
 });
 
 
+test("discoveries collection keeps exchanged cards visible and filterable by origin", async () => {
+  const fs = await import("node:fs/promises");
+  const hub = await fs.readFile(new URL("../src/routes/BonusHubPage.tsx", import.meta.url), "utf8");
+  const card = await fs.readFile(new URL("../src/features/bonus/DiscoveryCard.tsx", import.meta.url), "utf8");
+
+  assert.match(hub, /readCardInventory/);
+  assert.match(hub, /getCardOrigins/);
+  assert.match(hub, /Gagnées dans le jeu/);
+  assert.match(hub, /Acquises par échange/);
+  assert.match(hub, /origins\.exchange/);
+  assert.match(hub, /<DiscoveryCard[^>]*acquiredBy=/);
+  assert.match(card, /Acquis par échange/);
+  assert.match(card, /acquiredBy\.includes\('exchange'\)/);
+});
+
 test("card exchange is reachable from home, discoveries and passport without QR branding", async () => {
   const fs = await import("node:fs/promises");
   const start = await fs.readFile(new URL("../src/routes/StartPage.tsx", import.meta.url), "utf8");
