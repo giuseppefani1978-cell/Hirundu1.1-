@@ -146,6 +146,24 @@ type DeviceIdentity = {
   fingerprint: string;
 };
 
+type LegacyStoredIdentity = {
+  version: 2;
+  privateJwk: JsonWebKey;
+  publicRaw: string;
+};
+
+export type CardTradeSecurityReason =
+  | "crypto-unavailable"
+  | "secure-storage-unavailable"
+  | "local-storage-unavailable"
+  | "legacy-identity-invalid";
+
+export type CardTradeSecurityStatus =
+  | { available: true; migratedLegacyIdentity: boolean }
+  | { available: false; reason: CardTradeSecurityReason };
+
+const testIdentityByStorage = new WeakMap<Storage, DeviceIdentity>();
+
 export type FieldCardScenario = {
   id: string;
   token: string;
@@ -294,8 +312,8 @@ async function writeSecureIdentity(value: StoredIdentity): Promise<void> {
 
 async function createIdentity(): Promise<DeviceIdentity> {
   const api = cryptoApi();
-  // Generate once as extractable so the public key can be encoded in the QR.
-  // The private key is immediately re-imported as NON-EXTRACTABLE before storage.
+  // The temporary generated key is extractable only long enough to encode the
+  // public key and re-import the private key as non-exportable.
   const generated = await api.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
@@ -319,80 +337,194 @@ async function createIdentity(): Promise<DeviceIdentity> {
   };
 }
 
-async function loadFallbackIdentity(): Promise<DeviceIdentity> {
+function assertLocalStorageAvailable(): void {
+  try {
+    const probe = `hirundu_card_storage_probe_${makeId()}`;
+    localStorage.setItem(probe, "1");
+    if (localStorage.getItem(probe) !== "1") throw Error("local-storage-unavailable");
+    localStorage.removeItem(probe);
+  } catch {
+    throw Error("local-storage-unavailable");
+  }
+}
+
+function readLegacyIdentityRecord(): LegacyStoredIdentity | null {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(IDENTITY_KEY);
+  } catch {
+    throw Error("local-storage-unavailable");
+  }
+  if (!raw) return null;
+  try {
+    const saved = JSON.parse(raw) as Partial<LegacyStoredIdentity>;
+    if (
+      saved?.version !== 2 ||
+      !saved.privateJwk ||
+      typeof saved.privateJwk !== "object" ||
+      typeof saved.publicRaw !== "string" ||
+      !saved.publicRaw
+    ) throw Error("legacy-identity-invalid");
+    return saved as LegacyStoredIdentity;
+  } catch (error) {
+    if (error instanceof Error && error.message === "legacy-identity-invalid") throw error;
+    throw Error("legacy-identity-invalid");
+  }
+}
+
+async function importLegacyIdentity(saved: LegacyStoredIdentity): Promise<DeviceIdentity> {
   const api = cryptoApi();
   try {
-    const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY) || "null") as
-      | { version: 2; privateJwk: JsonWebKey; publicRaw: string }
-      | null;
-    if (saved?.version === 2 && saved.privateJwk && typeof saved.publicRaw === "string") {
-      const privateKey = await api.subtle.importKey(
-        "jwk",
-        saved.privateJwk,
-        { name: "ECDSA", namedCurve: "P-256" },
-        false,
-        ["sign"],
-      );
-      return {
-        privateKey,
-        publicKey: await importPublicKey(saved.publicRaw),
-        publicRaw: saved.publicRaw,
-        fingerprint: await fingerprintPublicKey(saved.publicRaw),
-      };
-    }
-  } catch {}
+    const privateKey = await api.subtle.importKey(
+      "jwk",
+      saved.privateJwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"],
+    );
+    const publicKey = await importPublicKey(saved.publicRaw);
+    const probe = new TextEncoder().encode("HIRUNDU identity migration");
+    const signature = await api.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey, probe);
+    const matches = await api.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      publicKey,
+      signature,
+      probe,
+    );
+    if (!matches) throw Error("legacy-identity-invalid");
+    return {
+      privateKey,
+      publicKey,
+      publicRaw: saved.publicRaw,
+      fingerprint: await fingerprintPublicKey(saved.publicRaw),
+    };
+  } catch {
+    throw Error("legacy-identity-invalid");
+  }
+}
 
-  const generated = await api.subtle.generateKey(
-    { name: "ECDSA", namedCurve: "P-256" },
-    true,
-    ["sign", "verify"],
-  ) as CryptoKeyPair;
-  const privateJwk = await api.subtle.exportKey("jwk", generated.privateKey);
-  const privateKey = await api.subtle.importKey(
-    "jwk",
-    privateJwk,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
+function clearLegacyIdentityStrict(): void {
+  try {
+    if (localStorage.getItem(IDENTITY_KEY) === null) return;
+    localStorage.removeItem(IDENTITY_KEY);
+    if (localStorage.getItem(IDENTITY_KEY) !== null) throw Error("legacy-identity-invalid");
+  } catch (error) {
+    if (error instanceof Error && error.message === "legacy-identity-invalid") throw error;
+    throw Error("local-storage-unavailable");
+  }
+}
+
+function isUsableSecureIdentity(saved: StoredIdentity | null): saved is StoredIdentity {
+  return Boolean(
+    saved?.version === 2 &&
+    saved.privateKey?.type === "private" &&
+    saved.privateKey.extractable === false &&
+    typeof saved.publicRaw === "string" &&
+    saved.publicRaw
   );
-  const publicRaw = bytesToBase64Url(new Uint8Array(await api.subtle.exportKey("raw", generated.publicKey)));
-  localStorage.setItem(IDENTITY_KEY, JSON.stringify({ version: 2, privateJwk, publicRaw }));
-  return {
-    privateKey,
-    publicKey: await importPublicKey(publicRaw),
-    publicRaw,
-    fingerprint: await fingerprintPublicKey(publicRaw),
-  };
+}
+
+async function verifyPersistedSecureIdentity(expectedPublicRaw: string): Promise<StoredIdentity> {
+  let saved: StoredIdentity | null;
+  try {
+    saved = await readSecureIdentity();
+  } catch {
+    throw Error("secure-storage-unavailable");
+  }
+  if (!isUsableSecureIdentity(saved) || saved.publicRaw !== expectedPublicRaw) {
+    throw Error("secure-storage-unavailable");
+  }
+  return saved;
+}
+
+async function loadTestIdentity(): Promise<DeviceIdentity> {
+  const storage = localStorage;
+  const existing = testIdentityByStorage.get(storage);
+  if (existing) return existing;
+  const created = await createIdentity();
+  testIdentityByStorage.set(storage, created);
+  return created;
 }
 
 async function loadDeviceIdentity(): Promise<DeviceIdentity> {
-  try {
-    const saved = await readSecureIdentity();
-    if (
-      saved?.version === 2 &&
-      saved.privateKey?.type === "private" &&
-      saved.privateKey.extractable === false &&
-      typeof saved.publicRaw === "string"
-    ) {
-      return {
-        privateKey: saved.privateKey,
-        publicKey: await importPublicKey(saved.publicRaw),
-        publicRaw: saved.publicRaw,
-        fingerprint: await fingerprintPublicKey(saved.publicRaw),
-      };
-    }
+  cryptoApi();
+  assertLocalStorageAvailable();
 
-    const created = await createIdentity();
+  const testMode = Boolean(
+    (globalThis as typeof globalThis & { __HIRUNDU_TEST_EPHEMERAL_IDENTITY__?: boolean })
+      .__HIRUNDU_TEST_EPHEMERAL_IDENTITY__
+  );
+  if (testMode && typeof indexedDB === "undefined") return loadTestIdentity();
+
+  let saved: StoredIdentity | null;
+  try {
+    saved = await readSecureIdentity();
+  } catch {
+    throw Error("secure-storage-unavailable");
+  }
+
+  if (isUsableSecureIdentity(saved)) {
+    // A previous fallback copy must not remain beside the protected key.
+    clearLegacyIdentityStrict();
+    return {
+      privateKey: saved.privateKey,
+      publicKey: await importPublicKey(saved.publicRaw),
+      publicRaw: saved.publicRaw,
+      fingerprint: await fingerprintPublicKey(saved.publicRaw),
+    };
+  }
+
+  const legacy = readLegacyIdentityRecord();
+  if (legacy) {
+    const migrated = await importLegacyIdentity(legacy);
+    try {
+      await writeSecureIdentity({
+        version: 2,
+        privateKey: migrated.privateKey,
+        publicRaw: migrated.publicRaw,
+      });
+    } catch {
+      throw Error("secure-storage-unavailable");
+    }
+    await verifyPersistedSecureIdentity(migrated.publicRaw);
+    // Delete the exportable JWK only after the protected copy has been
+    // successfully written and read back.
+    clearLegacyIdentityStrict();
+    return migrated;
+  }
+
+  const created = await createIdentity();
+  try {
     await writeSecureIdentity({
       version: 2,
       privateKey: created.privateKey,
       publicRaw: created.publicRaw,
     });
-    return created;
   } catch {
-    // Test environments / legacy WebViews without IndexedDB use a compatible
-    // fallback. Modern iOS/Android browsers use the non-exportable key above.
-    return loadFallbackIdentity();
+    throw Error("secure-storage-unavailable");
+  }
+  await verifyPersistedSecureIdentity(created.publicRaw);
+  return created;
+}
+
+function normalizeSecurityReason(error: unknown): CardTradeSecurityReason {
+  const message = error instanceof Error ? error.message : "";
+  if (message === "crypto-unavailable") return "crypto-unavailable";
+  if (message === "local-storage-unavailable") return "local-storage-unavailable";
+  if (message === "legacy-identity-invalid") return "legacy-identity-invalid";
+  return "secure-storage-unavailable";
+}
+
+export async function prepareCardTradeSecurity(): Promise<CardTradeSecurityStatus> {
+  let hadLegacy = false;
+  try {
+    cryptoApi();
+    assertLocalStorageAvailable();
+    hadLegacy = localStorage.getItem(IDENTITY_KEY) !== null;
+    await loadDeviceIdentity();
+    return { available: true, migratedLegacyIdentity: hadLegacy && localStorage.getItem(IDENTITY_KEY) === null };
+  } catch (error) {
+    return { available: false, reason: normalizeSecurityReason(error) };
   }
 }
 
@@ -847,11 +979,10 @@ export function hasUnresolvedExpiredOutgoingCardTrade(): boolean {
 }
 
 export async function createCardOffer(card: BonusKey, requestedCard: BonusKey): Promise<{ offer: Offer; token: string }> {
+  const identity = await loadDeviceIdentity();
   const state = readCardInventory();
   if ((state.cards[card] || 0) < 2) throw Error("no-duplicate");
   if (!validKey(requestedCard) || requestedCard === card) throw Error("invalid-requested-card");
-
-  const identity = await loadDeviceIdentity();
   const issuedAt = Date.now();
   const payload: OfferPayload = {
     type: "offer",
@@ -883,10 +1014,9 @@ export async function createCardOffer(card: BonusKey, requestedCard: BonusKey): 
 export async function inspectCardOffer(raw: string): Promise<Offer> {
   const offer = decode(raw);
   if (offer.type !== "offer") throw Error("invalid-offer");
+  const identity = await loadDeviceIdentity();
   if (await fingerprintPublicKey(offer.senderKey) !== offer.sender) throw Error("invalid-sender");
   if (!await verifySigned(offer, offer.senderKey)) throw Error("bad-signature");
-
-  const identity = await loadDeviceIdentity();
   if (offer.sender === identity.fingerprint) throw Error("self-offer");
 
   const state = readCardInventory();
@@ -980,10 +1110,9 @@ export async function completeCardReceipt(raw: string): Promise<{
 }> {
   const receipt = decode(raw);
   if (receipt.type !== "receipt") throw Error("invalid-receipt");
+  const identity = await loadDeviceIdentity();
   if (await fingerprintPublicKey(receipt.receiverKey) !== receipt.receiver) throw Error("invalid-receiver");
   if (!await verifySigned(receipt, receipt.receiverKey)) throw Error("bad-signature");
-
-  const identity = await loadDeviceIdentity();
   if (receipt.sender !== identity.fingerprint) throw Error("wrong-sender");
   const receiptHash = await tokenHash(receipt);
 
@@ -1067,10 +1196,9 @@ export async function finalizeCardConfirmation(raw: string): Promise<{
 }> {
   const confirmation = decode(raw);
   if (confirmation.type !== "confirmation") throw Error("invalid-confirmation");
+  const identity = await loadDeviceIdentity();
   if (await fingerprintPublicKey(confirmation.senderKey) !== confirmation.sender) throw Error("invalid-sender");
   if (!await verifySigned(confirmation, confirmation.senderKey)) throw Error("bad-signature");
-
-  const identity = await loadDeviceIdentity();
   if (confirmation.receiver !== identity.fingerprint) throw Error("wrong-receiver");
   const confirmationHash = await tokenHash(confirmation);
 
@@ -1140,10 +1268,9 @@ export async function finalizeCardConfirmation(raw: string): Promise<{
 export async function finalizeSenderAcknowledgement(raw: string): Promise<{ card: BonusKey; state: CardInventoryState }> {
   const ack = decode(raw);
   if (ack.type !== "ack") throw Error("invalid-ack");
+  const identity = await loadDeviceIdentity();
   if (await fingerprintPublicKey(ack.receiverKey) !== ack.receiver) throw Error("invalid-receiver");
   if (!await verifySigned(ack, ack.receiverKey)) throw Error("bad-signature");
-
-  const identity = await loadDeviceIdentity();
   if (ack.sender !== identity.fingerprint) throw Error("wrong-sender");
 
   return withTradeLock(ack.offerId, async () => {
