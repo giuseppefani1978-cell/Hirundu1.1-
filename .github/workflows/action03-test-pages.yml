@@ -81,10 +81,10 @@ jobs:
             const seed = q.get("seed");
             if (seed && localStorage.getItem(markerKey) !== seed) {
               const seeded = seed === "nardo"
-                ? { cards: { nardo: 2 }, origins: { nardo: { test: 2 } } }
+                ? { cards: { nardo: 2 }, origins: { nardo: { game: 2 } } }
                 : seed === "lecce"
-                  ? { cards: { lecce: 2 }, origins: { lecce: { test: 2 } } }
-                  : { cards: { otranto: 2 }, origins: { otranto: { test: 2 } } };
+                  ? { cards: { lecce: 2 }, origins: { lecce: { game: 2 } } }
+                  : { cards: { otranto: 2 }, origins: { otranto: { game: 2 } } };
               localStorage.setItem(inventoryKey, JSON.stringify({
                 version: 1,
                 ...seeded,
