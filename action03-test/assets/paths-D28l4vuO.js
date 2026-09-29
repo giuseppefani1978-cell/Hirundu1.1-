@@ -1,0 +1,1 @@
+const e="http://localhost",i=()=>{var n;const t="./";if(/^https?:/i.test(t))return t;try{const o=typeof window<"u"&&((n=window.location)!=null&&n.origin)?window.location.origin:e;return new URL(t,o).toString()}catch{return t}},r=i(),s=t=>{const n=t??"";return n?new URL(n,r).toString():r};export{s as w};

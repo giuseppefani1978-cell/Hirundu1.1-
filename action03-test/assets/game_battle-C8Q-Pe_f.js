@@ -1,0 +1,308 @@
+// src/game_battle.js
+// Couche "battle" autonome : inputs, callbacks, tick+render, viewport bas-centré
+import { withBase } from './paths';
+import {
+  setupBattleInputs,
+  setBattleCallbacks as setCallbacksRaw,
+  setBattleAmmo as setAmmoRaw,
+  startBattle as startBattleRaw,
+  tickBattle,
+  renderBattle,
+  isBattleActive as isActiveRaw
+} from './battle.js';
+
+const BTL_BG_SRC = withBase('assets/battle_bg_salento.webp');
+
+// ---------------------------
+// Config assets (sprites)
+// ---------------------------
+// NB: on duplique ici les chemins pour rendre game_battle.js autonome.
+// Si tu veux garder le cache-busting, tu peux ajouter ?v=... à la fin.
+const SPRITES_SRC = {
+  bird:         withBase('assets/aracne .PNG'),      // (oui, il y a un espace dans le nom)
+  spider:       withBase('assets/tarantula .PNG'),
+  crow:         withBase('assets/crow.PNG'),
+  jelly:        withBase('assets/jellyfish_boss.PNG'),
+  caffe:        withBase('assets/caffeleccese .PNG'),
+  rustico:      withBase('assets/rustico.PNG'),
+  pasticciotto: withBase('assets/bonus-pasticciotto.PNG')
+};
+
+// --- Taille logique (aspect) utilisée par battle.js (16:9 conseillé)
+const BTL_VIRTUAL = { W: 800, H: 450 };
+
+// ---------------------------
+// État interne (privé)
+// ---------------------------
+let _canvas = null;
+let _ctx = null;
+let _raf = 0;
+let _generation = 0;
+let _lastTS = 0;
+let _bottomExtra = 16;
+let _sprites = null;
+const _spriteCache = new Map();
+let _onWin = null;
+let _onLose = null;
+
+function _pickDPR(){ return Math.max(1, Math.min(2, window.devicePixelRatio || 1)); }
+
+// --- Helpers safe-area lus depuis :root (si présents)
+function getSafeInset(pxName) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(pxName).trim();
+    const n = parseFloat(v || '0');
+    return Number.isFinite(n) ? n : 0;
+  } catch { return 0; }
+}
+
+// Viewport bas-centré : remplit au max sans déformer, collé au bas de l’écran
+export function computeBattleViewportBottom(W, H, { sideExtra = 0, bottomExtra = 0 } = {}) {
+  const safeBottom = getSafeInset('--safe-bottom');
+  const safeLeft   = getSafeInset('--safe-left');
+  const safeRight  = getSafeInset('--safe-right');
+
+  const targetAR = BTL_VIRTUAL.W / BTL_VIRTUAL.H;
+  const availW = Math.max(1, W - safeLeft - safeRight - sideExtra * 2);
+  const availH = Math.max(1, H - safeBottom - bottomExtra);
+
+  let dw = availW;
+  let dh = Math.round(dw / targetAR);
+  if (dh > availH) { dh = availH; dw = Math.round(availH * targetAR); }
+
+  const ox = Math.floor((W - dw) / 2);
+  const oy = Math.floor(H - safeBottom - bottomExtra - dh);
+  return { ox, oy, dw, dh };
+}
+
+function _sizeCanvas() {
+  if (!_canvas) return;
+  // Mesurer la taille réelle affichée (après CSS .mode-battle / fixed / 100dvh)
+  const rect = _canvas.getBoundingClientRect();
+  const cssW = Math.max(1, Math.round(rect.width));
+  const cssH = Math.max(1, Math.round(rect.height));
+  const dpr  = _pickDPR(); // (1..2) chez toi
+
+  // Backing store = CSS * DPR (pour un rendu net)
+  const pxW = Math.max(1, Math.floor(cssW * dpr));
+  const pxH = Math.max(1, Math.floor(cssH * dpr));
+
+  if (_canvas.width  !== pxW) _canvas.width  = pxW;
+  if (_canvas.height !== pxH) _canvas.height = pxH;
+
+  // Le CSS (fixed/inset:0) contrôle déjà la taille visible, on ne touche pas style.width/height ici
+  _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function _onResize() {
+  _sizeCanvas();
+  // double nudge iOS après rotation
+  try {
+    window.scrollTo(0,0);
+    requestAnimationFrame(()=>window.scrollTo(0,0));
+  } catch {}
+}
+
+function _loadSprites({ bossSprite, backdrop } = {}) {
+  const bossSrc = bossSprite || SPRITES_SRC.jelly;
+  const backdropSrc = backdrop || BTL_BG_SRC;
+  const webpBackdrop = /\.png$/i.test(backdropSrc) ? backdropSrc.replace(/\.png$/i, '.webp') : backdropSrc;
+  const cacheKey = `${bossSrc}|${webpBackdrop}`;
+  if (_spriteCache.has(cacheKey)) return _spriteCache.get(cacheKey);
+
+  const pending = new Promise((resolve) => {
+    const birdImg         = new Image();
+    const spiderImg       = new Image();
+    const crowImg         = new Image();
+    const jellyImg        = new Image();
+    const caffeImg        = new Image();
+    const rusticoImg      = new Image();
+    const pasticciottoImg = new Image();
+    const bgImg           = new Image();
+
+    let left = 8;
+    const done = () => {
+      if(--left===0) resolve({
+        birdImg, spiderImg, crowImg, jellyImg, bgImg,
+        caffeImg, rusticoImg, pasticciottoImg
+      });
+    };
+
+    birdImg.onload = done;         birdImg.onerror = done;         birdImg.src = SPRITES_SRC.bird;
+    spiderImg.onload = done;       spiderImg.onerror = done;       spiderImg.src = SPRITES_SRC.spider;
+    crowImg.onload = done;         crowImg.onerror = done;         crowImg.src = SPRITES_SRC.crow;
+    jellyImg.onload = done;        jellyImg.onerror = done;        jellyImg.src = bossSrc;
+    caffeImg.onload = done;        caffeImg.onerror = done;        caffeImg.src = SPRITES_SRC.caffe;
+    rusticoImg.onload = done;      rusticoImg.onerror = done;      rusticoImg.src = SPRITES_SRC.rustico;
+    pasticciottoImg.onload = done; pasticciottoImg.onerror = done; pasticciottoImg.src = SPRITES_SRC.pasticciotto;
+    bgImg.onload = done;
+    bgImg.onerror = () => {
+      if (bgImg.src !== backdropSrc) {
+        bgImg.onerror = done;
+        bgImg.src = backdropSrc;
+      } else done();
+    };
+    bgImg.src = webpBackdrop;
+  });
+  _spriteCache.set(cacheKey, pending);
+  return pending;
+}
+
+export function preloadBattleAssets(options = {}) {
+  return _loadSprites(options);
+}
+
+// ---------------------------
+// Boucle & rendu battle
+// ---------------------------
+function _loop(ts) {
+  _raf = requestAnimationFrame(_loop);
+
+  const now = performance.now();
+  if (!_lastTS) _lastTS = now;
+  const dt = Math.min(0.05, (now - _lastTS) / 1000);
+  _lastTS = now;
+
+  // ticks internes de la battle
+  tickBattle(dt, _ctx);
+
+  // viewport bas-centré, collé au bas de l’écran
+  const rect = _canvas.getBoundingClientRect();
+  const W = Math.max(1, Math.round(rect.width));
+  const H = Math.max(1, Math.round(rect.height));
+  // viewport plein écran sans bandes
+const vp = { ox:0, oy:0, dw:W, dh:H };
+
+  // One render per animation frame. Rendering twice created needless GPU/CPU work.
+  renderBattle(_ctx, vp, _sprites);
+}
+
+// ------------------------------------------------------------------
+// Helpers plein-écran du canvas (ajoutés pour corriger le cadrage)
+// ------------------------------------------------------------------
+function _enterCanvasFullscreen() {
+  if (!_canvas) return;
+  // on sauvegarde le style pour pouvoir le restaurer ensuite
+  _canvas.__prevStyle = _canvas.getAttribute('style') || '';
+  _canvas.style.position = 'fixed';
+  _canvas.style.left = '0';
+  _canvas.style.top = '0';
+  _canvas.style.right = '0';
+  _canvas.style.bottom = '0';
+  _canvas.style.margin = '0';
+  _canvas.style.zIndex = '10002'; // sous les pads (10003)
+  // width/height sont gérées par _sizeCanvas() via _onResize()
+}
+
+function _exitCanvasFullscreen() {
+  if (!_canvas) return;
+  if (_canvas.__prevStyle != null) {
+    _canvas.setAttribute('style', _canvas.__prevStyle);
+    delete _canvas.__prevStyle;
+  } else {
+    _canvas.removeAttribute('style');
+  }
+}
+
+// ---------------------------
+// API publique (utilisée par battle_intro.js)
+// ---------------------------
+export async function startBattleFlow(
+  ammo,
+  { onWin = ()=>{}, onLose = ()=>{}, bottomExtra = 0, bossSprite, backdrop, foeType = 'jelly' } = {}
+){
+  // Canvas / contexte
+  const generation = ++_generation;
+  _canvas = document.getElementById('c');
+  if (!_canvas) { alert("Canvas #c introuvable pour la battle."); return; }
+  _ctx = _canvas.getContext('2d', { alpha:true });
+
+  // 1) Activer le CSS battle AVANT toute mesure
+  try { document.body.classList.add('mode-battle'); } catch {}
+
+  // 2) Assurer le plein écran du canvas (helper style inline)
+  _enterCanvasFullscreen();
+
+  _bottomExtra = bottomExtra;
+  _lastTS = 0;
+
+  // 3) Inputs battle
+  setupBattleInputs();
+
+  // 4) Callbacks (on injecte notre nettoyage + ceux fournis)
+  _onWin  = onWin;
+  _onLose = onLose;
+ setCallbacksRaw({
+  onWin: () => {
+    console.log('[battle] onWin triggered');
+    try {
+      stopBattleFlow(); // Arrête proprement la boucle
+      document.body.classList.remove('mode-battle');
+      // ✅ Empêche écran blanc en s’assurant que le canvas reste en place
+      const c = document.getElementById('c');
+      if (c) {
+        c.style.position = 'absolute';
+        c.style.inset = '0';
+        c.style.zIndex = '1';
+      }
+    } catch (e) {
+      console.warn('[battle] cleanup onWin failed', e);
+    }
+    // ✅ Laisse game.js reprendre la main
+    try {
+      _onWin && _onWin();
+    } catch (e) {
+      console.error('[battle] _onWin() failed', e);
+    }
+  },
+  onLose: () => {
+    console.log('[battle] onLose triggered');
+    try {
+      stopBattleFlow();
+      document.body.classList.remove('mode-battle');
+    } catch (e) {
+      console.warn('[battle] cleanup onLose failed', e);
+    }
+    try {
+      _onLose && _onLose();
+    } catch (e) {
+      console.error('[battle] _onLose() failed', e);
+    }
+  }
+});
+
+  // munitions
+  setAmmoRaw(ammo || {});
+
+  // sprites
+  _sprites = await preloadBattleAssets({ bossSprite, backdrop });
+  if (generation !== _generation) return;
+
+  // sizing + listeners
+  _onResize();
+  window.addEventListener('resize', _onResize, { passive:true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', _onResize, { passive:true });
+  }
+  window.addEventListener('orientationchange', _onResize, { passive:true });
+
+  // go!
+  startBattleRaw(foeType);
+  cancelAnimationFrame(_raf);
+  _raf = requestAnimationFrame(_loop);
+}
+
+export function stopBattleFlow() {
+  ++_generation;
+  window.removeEventListener('orientationchange', _onResize);
+  cancelAnimationFrame(_raf); _raf = 0;
+  _lastTS = 0;
+  if (window.visualViewport) {
+    try { window.visualViewport.removeEventListener('resize', _onResize); } catch {}
+  }
+  try { window.removeEventListener('resize', _onResize); } catch {}
+
+  // --- AJOUT : on restaure le style initial du canvas
+  _exitCanvasFullscreen();
+}
+
+export function isBattleActive() { return isActiveRaw(); }
