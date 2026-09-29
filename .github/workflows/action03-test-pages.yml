@@ -1,0 +1,123 @@
+name: Action 03 strict security test
+# Isolated A03 test deployment only; never publishes the production root.
+
+on:
+  push:
+    branches:
+      - work/action03-strict-card-security-2026-09-29
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hirundu-action03-test-pages
+  cancel-in-progress: true
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout A03 branch
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Regression tests
+        run: npm test
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build isolated portable test URL
+        run: npm run build -- --base ./
+
+      - name: Keep portable index on third-party static preview
+        run: |
+          node -e "const fs=require('fs'); const p='dist/index.html'; let s=fs.readFileSync(p,'utf8'); s=s.replace('if (p.endsWith(\"/index.html\") || p === \"/index.html\") {','if (false) {'); fs.writeFileSync(p,s);"
+
+      - name: Add A03 test helpers
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = 'dist/index.html';
+          let s = fs.readFileSync(p, 'utf8');
+          const helper = `<script>
+          (() => {
+            const q = new URLSearchParams(location.search);
+            const inventoryKey = "hirundu_card_inventory_v1";
+            const markerKey = "hirundu_action03_test_seeded_v1";
+            let oneShot = false;
+
+            // Test-only simulator for A03 strict mode: the game still loads,
+            // but card trading must report secure storage as unavailable.
+            if (q.get("noidb") === "1") {
+              try {
+                Object.defineProperty(window, "indexedDB", {
+                  configurable: true,
+                  value: undefined
+                });
+              } catch {}
+              q.delete("noidb");
+              oneShot = true;
+            }
+
+            if (q.get("clear") === "1") {
+              localStorage.removeItem(inventoryKey);
+              localStorage.removeItem(markerKey);
+              oneShot = true;
+            }
+
+            const seed = q.get("seed");
+            if (seed && localStorage.getItem(markerKey) !== seed) {
+              const seeded = seed === "nardo"
+                ? { cards: { nardo: 2 }, origins: { nardo: { game: 2 } } }
+                : seed === "lecce"
+                  ? { cards: { lecce: 2 }, origins: { lecce: { game: 2 } } }
+                  : { cards: { otranto: 2 }, origins: { otranto: { game: 2 } } };
+              localStorage.setItem(inventoryKey, JSON.stringify({
+                version: 1,
+                ...seeded,
+                received: {},
+                redeemed: {},
+                confirmed: {},
+                spent: {},
+                receiving: {},
+                outgoing: {},
+                completionAcks: {},
+                pending: null
+              }));
+              localStorage.setItem(markerKey, seed);
+              oneShot = true;
+            }
+
+            if (oneShot) {
+              q.delete("clear");
+              q.delete("seed");
+              history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q.toString() : "") + location.hash);
+            }
+          })();
+          </script>`;
+          s = s.replace('<div id="root"></div>', helper + '<div id="root"></div>');
+          fs.writeFileSync(p, s);
+          NODE
+
+      - name: Publish only isolated A03 test subdirectory
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist
+          destination_dir: action03-test
+          keep_files: true
+          commit_message: "test: action03 strict security ${{ github.sha }}"

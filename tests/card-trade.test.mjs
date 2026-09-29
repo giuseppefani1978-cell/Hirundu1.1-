@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { createServer } from "vite";
 
-const GLOBAL_KEYS = ["window", "document", "localStorage", "sessionStorage", "CustomEvent", "Event"];
+const GLOBAL_KEYS = ["window", "document", "localStorage", "sessionStorage", "CustomEvent", "Event", "__HIRUNDU_TEST_EPHEMERAL_IDENTITY__"];
 
 function snapshotGlobals() {
   const prior = {};
@@ -14,7 +14,7 @@ function snapshotGlobals() {
 function useDom(dom) {
   for (const key of GLOBAL_KEYS) {
     Object.defineProperty(globalThis, key, {
-      value: key === "window" ? dom.window : key === "document" ? dom.window.document : dom.window[key],
+      value: key === "__HIRUNDU_TEST_EPHEMERAL_IDENTITY__" ? true : key === "window" ? dom.window : key === "document" ? dom.window.document : dom.window[key],
       configurable: true,
       writable: true,
     });
@@ -268,6 +268,21 @@ test("trade page renders generated offer QR directly under the selected duplicat
 });
 
 
+test("discoveries collection keeps exchanged cards visible and filterable by origin", async () => {
+  const fs = await import("node:fs/promises");
+  const hub = await fs.readFile(new URL("../src/routes/BonusHubPage.tsx", import.meta.url), "utf8");
+  const card = await fs.readFile(new URL("../src/features/bonus/DiscoveryCard.tsx", import.meta.url), "utf8");
+
+  assert.match(hub, /readCardInventory/);
+  assert.match(hub, /getCardOrigins/);
+  assert.match(hub, /Gagnées dans le jeu/);
+  assert.match(hub, /Acquises par échange/);
+  assert.match(hub, /origins\.exchange/);
+  assert.match(hub, /<DiscoveryCard[^>]*acquiredBy=/);
+  assert.match(card, /Acquis par échange/);
+  assert.match(card, /acquiredBy\.includes\('exchange'\)/);
+});
+
 test("card exchange is reachable from home, discoveries and passport without QR branding", async () => {
   const fs = await import("node:fs/promises");
   const start = await fs.readFile(new URL("../src/routes/StartPage.tsx", import.meta.url), "utf8");
@@ -283,6 +298,56 @@ test("card exchange is reachable from home, discoveries and passport without QR 
   assert.doesNotMatch(card, /Échanges QR · 15 min/);
   assert.match(tradePage, /title: "Échange de cartes"/);
   assert.doesNotMatch(tradePage, /<h1>.*QR/);
+});
+
+test("strict card-trade security never persists a private JWK fallback", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/features/bonus/cardTrade.ts", import.meta.url), "utf8")
+  );
+  assert.match(source, /writeSecureIdentity/);
+  assert.match(source, /clearLegacyIdentityStrict/);
+  assert.match(source, /localStorage\.removeItem\(IDENTITY_KEY\)/);
+  assert.doesNotMatch(source, /localStorage\.setItem\(IDENTITY_KEY/);
+  assert.doesNotMatch(source, /return loadFallbackIdentity\(\)/);
+});
+
+test("strict mode blocks card trades when IndexedDB is unavailable", async () => {
+  const dom = new JSDOM("", { url: "https://strict-storage.invalid/" });
+  const prior = snapshotGlobals();
+  useDom(dom);
+  Object.defineProperty(globalThis, "__HIRUNDU_TEST_EPHEMERAL_IDENTITY__", {
+    configurable: true,
+    writable: true,
+    value: false,
+  });
+  const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  try {
+    const trade = await server.ssrLoadModule("/src/features/bonus/cardTrade.ts");
+    const status = await trade.prepareCardTradeSecurity();
+    assert.equal(status.available, false);
+    assert.equal(status.reason, "secure-storage-unavailable");
+    trade.recordGameVictoryCard("otranto", false);
+    trade.recordGameVictoryCard("otranto", true);
+    await assert.rejects(
+      () => trade.createCardOffer("otranto", "lecce"),
+      /secure-storage-unavailable/
+    );
+    assert.equal(trade.readCardInventory().cards.otranto, 2);
+  } finally {
+    await server.close();
+    dom.window.close();
+    restoreGlobals(prior);
+  }
+});
+
+test("card exchange explains browser-bound storage and strict incompatibility", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/routes/CardTradePage.tsx", import.meta.url), "utf8")
+  );
+  assert.match(source, /Effacer les données du site ou changer de téléphone peut les rendre irrécupérables/);
+  assert.match(source, /prepareCardTradeSecurity\(\)/);
+  assert.match(source, /securityBlocked/);
+  assert.match(source, /secureStorageUnavailable/);
 });
 
 test("modern browser path stores a non-exportable private trade key in IndexedDB", async () => {

@@ -21,9 +21,12 @@ import {
   getResumableReceiptTrade,
   hasUnresolvedExpiredOutgoingCardTrade,
   inspectCardOffer,
+  prepareCardTradeSecurity,
   readCardInventory,
   takeQueuedCardQr,
   type CardOrigin,
+  type CardTradeSecurityReason,
+  type CardTradeSecurityStatus,
 } from "../features/bonus/cardTrade";
 import { withBase } from "../utils/basePath.js";
 import "./CardTradePage.css";
@@ -32,22 +35,22 @@ const copy = {
   fr: {
     title: "Échange de cartes", intro: "Échange un double contre une carte qui te manque. Chacun garde toujours son premier exemplaire.",
     send: "Proposer", receive: "Accepter", field: "Cartes sur place", copies: "exemplaires", create: "Créer l’offre", scan: "Scanner", scanReceipt: "Scanner la réponse", confirm: "Accepter l’échange", cancel: "Annuler", done: "Échange terminé.", received: "Carte reçue.",
-    test: "Créer un double de test", testHelp: "Essai uniquement : aucune visite réelle n’est validée.", invalid: "Échange invalide ou expiré.", expires: "Offre valable 15 minutes.", back: "Retour aux découvertes", origins: "Provenance", already: "Ce code a déjà été utilisé sur ce téléphone.", partnerAdded: "Carte partenaire ajoutée et visite QR inscrite dans le passeport de test.", physicalAdded: "Carte physique ajoutée. Aucune visite n’a été validée.", fieldIntro: "Affiche un QR sur un téléphone, puis scanne-le avec l’autre. Ces deux codes sont des prototypes réservés à la branche de test.", visitYes: "Valide la visite QR", visitNo: "Ne valide pas une visite", collectionRule: "Posséder une carte ne prouve jamais une visite. Seul un QR partenaire autorisé peut aussi compléter le passeport réel.", noCards: "Joue un niveau ou scanne une carte pour commencer la collection.", receiptReady: "Demande enregistrée. Montre ce reçu à l’expéditeur. La carte ne sera ajoutée qu’après sa confirmation.", senderConfirmed: "Double débité. Montre ce QR final au destinataire pour créditer sa carte.", receiverDone: "Carte ajoutée à ta collection. Montre ce reçu final à l’expéditeur pour fermer l’échange sur les deux téléphones.", finalConfirm: "Confirmation finale", finalReceipt: "Reçu final", myCards: "Mes cartes", protocol: "Échange sécurisé en 4 étapes : offre signée → reçu signé → confirmation du transfert → reçu final du destinataire. Validité maximale : 15 minutes.", remaining: "Temps restant", generating: "Création de l’offre…", security: "Le QR final ne peut être crédité que sur le téléphone ayant créé le reçu. Sans serveur, cela protège contre le transfert ordinaire du QR mais ne constitue pas un DRM inviolable.", expiredUncertain: "Une confirmation d’échange a expiré après le débit. Ce téléphone ne peut pas savoir si le destinataire l’a déjà finalisée. Aucun remboursement automatique n’est effectué.",
+    test: "Créer un double de test", testHelp: "Essai uniquement : aucune visite réelle n’est validée.", invalid: "Échange invalide ou expiré.", expires: "Offre valable 15 minutes.", back: "Retour aux découvertes", origins: "Provenance", already: "Ce code a déjà été utilisé sur ce téléphone.", partnerAdded: "Carte partenaire ajoutée et visite QR inscrite dans le passeport de test.", physicalAdded: "Carte physique ajoutée. Aucune visite n’a été validée.", fieldIntro: "Affiche un QR sur un téléphone, puis scanne-le avec l’autre. Ces deux codes sont des prototypes réservés à la branche de test.", visitYes: "Valide la visite QR", visitNo: "Ne valide pas une visite", collectionRule: "Posséder une carte ne prouve jamais une visite. Seul un QR partenaire autorisé peut aussi compléter le passeport réel.", noCards: "Joue un niveau ou scanne une carte pour commencer la collection.", receiptReady: "Demande enregistrée. Montre ce reçu à l’expéditeur. La carte ne sera ajoutée qu’après sa confirmation.", senderConfirmed: "Double débité. Montre ce QR final au destinataire pour créditer sa carte.", receiverDone: "Carte ajoutée à ta collection. Montre ce reçu final à l’expéditeur pour fermer l’échange sur les deux téléphones.", finalConfirm: "Confirmation finale", finalReceipt: "Reçu final", myCards: "Mes cartes", protocol: "Échange sécurisé en 4 étapes : offre signée → reçu signé → confirmation du transfert → reçu final du destinataire. Validité maximale : 15 minutes.", remaining: "Temps restant", generating: "Création de l’offre…", security: "Le QR final ne peut être crédité que sur le téléphone ayant créé le reçu. Sans serveur, cela protège contre le transfert ordinaire du QR mais ne constitue pas un DRM inviolable.", expiredUncertain: "Une confirmation d’échange a expiré après le débit. Ce téléphone ne peut pas savoir si le destinataire l’a déjà finalisée. Aucun remboursement automatique n’est effectué.", browserStorageWarning: "Tes cartes et échanges sont enregistrés sur ce navigateur. Effacer les données du site ou changer de téléphone peut les rendre irrécupérables. Il n’existe pas encore de sauvegarde de compte.", secureCryptoUnavailable: "Échange indisponible : les fonctions de sécurité de ce navigateur ne sont pas compatibles.", secureStorageUnavailable: "Échange indisponible : ce navigateur ne permet pas de protéger correctement l’identité d’échange.", localStorageUnavailable: "Échange indisponible : le navigateur bloque l’enregistrement local nécessaire.", legacyIdentityInvalid: "Échange indisponible : l’ancienne identité locale ne peut pas être migrée en sécurité. Tes cartes n’ont pas été supprimées.",
   },
   it: {
     title: "Scambio di carte", intro: "Scambia un doppione con una carta che ti manca. Il primo esemplare resta sempre nella collezione.",
     send: "Proponi", receive: "Accetta", field: "Carte sul posto", copies: "copie", create: "Crea l’offerta", scan: "Scansiona", scanReceipt: "Scansiona la risposta", confirm: "Accetta lo scambio", cancel: "Annulla", done: "Scambio completato.", received: "Carta ricevuta.",
-    test: "Crea un doppione di prova", testHelp: "Solo prova: nessuna visita reale viene convalidata.", invalid: "Scambio non valido o scaduto.", expires: "Offerta valida per 15 minuti.", back: "Torna alle scoperte", origins: "Provenienza", already: "Questo codice è già stato usato su questo telefono.", partnerAdded: "Carta partner aggiunta e visita QR registrata nel passaporto di prova.", physicalAdded: "Carta fisica aggiunta. Nessuna visita è stata convalidata.", fieldIntro: "Mostra un QR su un telefono e scansionalo con l’altro. Questi codici sono prototipi del ramo di test.", visitYes: "Convalida la visita QR", visitNo: "Non convalida una visita", collectionRule: "Possedere una carta non prova mai una visita. Solo un QR partner autorizzato può completare anche il passaporto reale.", noCards: "Gioca un livello o scansiona una carta per iniziare la collezione.", receiptReady: "Richiesta registrata. Mostra questa ricevuta al mittente. La carta verrà aggiunta solo dopo la sua conferma.", senderConfirmed: "Doppione addebitato. Mostra questo QR finale al destinatario per accreditare la carta.", receiverDone: "Carta aggiunta alla tua collezione. Mostra questa ricevuta finale al mittente per chiudere lo scambio su entrambi i telefoni.", finalConfirm: "Conferma finale", finalReceipt: "Ricevuta finale", myCards: "Le mie carte", protocol: "Scambio sicuro in 4 passaggi: offerta firmata → ricevuta firmata → conferma del trasferimento → ricevuta finale del destinatario. Validità massima: 15 minuti.", remaining: "Tempo rimanente", generating: "Creazione dell’offerta…", security: "Il QR finale può essere accreditato solo sul telefono che ha creato la ricevuta. Senza server protegge dalla normale condivisione del QR, ma non è un DRM inviolabile.", expiredUncertain: "Una conferma di scambio è scaduta dopo l’addebito. Questo telefono non può sapere se il destinatario l’ha già finalizzata. Non viene effettuato alcun rimborso automatico.",
+    test: "Crea un doppione di prova", testHelp: "Solo prova: nessuna visita reale viene convalidata.", invalid: "Scambio non valido o scaduto.", expires: "Offerta valida per 15 minuti.", back: "Torna alle scoperte", origins: "Provenienza", already: "Questo codice è già stato usato su questo telefono.", partnerAdded: "Carta partner aggiunta e visita QR registrata nel passaporto di prova.", physicalAdded: "Carta fisica aggiunta. Nessuna visita è stata convalidata.", fieldIntro: "Mostra un QR su un telefono e scansionalo con l’altro. Questi codici sono prototipi del ramo di test.", visitYes: "Convalida la visita QR", visitNo: "Non convalida una visita", collectionRule: "Possedere una carta non prova mai una visita. Solo un QR partner autorizzato può completare anche il passaporto reale.", noCards: "Gioca un livello o scansiona una carta per iniziare la collezione.", receiptReady: "Richiesta registrata. Mostra questa ricevuta al mittente. La carta verrà aggiunta solo dopo la sua conferma.", senderConfirmed: "Doppione addebitato. Mostra questo QR finale al destinatario per accreditare la carta.", receiverDone: "Carta aggiunta alla tua collezione. Mostra questa ricevuta finale al mittente per chiudere lo scambio su entrambi i telefoni.", finalConfirm: "Conferma finale", finalReceipt: "Ricevuta finale", myCards: "Le mie carte", protocol: "Scambio sicuro in 4 passaggi: offerta firmata → ricevuta firmata → conferma del trasferimento → ricevuta finale del destinatario. Validità massima: 15 minuti.", remaining: "Tempo rimanente", generating: "Creazione dell’offerta…", security: "Il QR finale può essere accreditato solo sul telefono che ha creato la ricevuta. Senza server protegge dalla normale condivisione del QR, ma non è un DRM inviolabile.", expiredUncertain: "Una conferma di scambio è scaduta dopo l’addebito. Questo telefono non può sapere se il destinatario l’ha già finalizzata. Non viene effettuato alcun rimborso automatico.", browserStorageWarning: "Le carte e gli scambi sono salvati in questo browser. Cancellare i dati del sito o cambiare telefono può renderli irrecuperabili. Non esiste ancora un backup dell’account.", secureCryptoUnavailable: "Scambio non disponibile: le funzioni di sicurezza di questo browser non sono compatibili.", secureStorageUnavailable: "Scambio non disponibile: questo browser non può proteggere correttamente l’identità di scambio.", localStorageUnavailable: "Scambio non disponibile: il browser blocca il salvataggio locale necessario.", legacyIdentityInvalid: "Scambio non disponibile: la vecchia identità locale non può essere migrata in sicurezza. Le tue carte non sono state eliminate.",
   },
   en: {
     title: "Trade cards", intro: "Trade a duplicate for a card you are missing. Your first copy always stays in your collection.",
     send: "Offer", receive: "Accept", field: "On-site cards", copies: "copies", create: "Create offer", scan: "Scan", scanReceipt: "Scan response", confirm: "Accept trade", cancel: "Cancel", done: "Trade complete.", received: "Card received.",
-    test: "Create a test duplicate", testHelp: "Test only: no real visit is validated.", invalid: "Trade invalid or expired.", expires: "Offer valid for 15 minutes.", back: "Back to discoveries", origins: "Origin", already: "This code has already been used on this phone.", partnerAdded: "Partner card added and QR visit recorded in the test passport.", physicalAdded: "Physical card added. No visit was validated.", fieldIntro: "Show a QR on one phone and scan it with the other. These two codes are test-branch prototypes.", visitYes: "Validates the QR visit", visitNo: "Does not validate a visit", collectionRule: "Owning a card never proves a visit. Only an authorised partner QR can also complete the real-world passport.", noCards: "Play a level or scan a card to start the collection.", receiptReady: "Request recorded. Show this receipt to the sender. The card is added only after sender confirmation.", senderConfirmed: "Duplicate deducted. Show this final QR to the recipient to credit the card.", receiverDone: "Card added to your collection. Show this final receipt to the sender to close the trade on both phones.", finalConfirm: "Final confirmation", finalReceipt: "Final receipt", myCards: "My cards", protocol: "Secure four-step trade: signed offer → signed receipt → transfer confirmation → recipient final receipt. Maximum validity: 15 minutes.", remaining: "Time left", generating: "Creating offer…", security: "The final QR can only credit the phone that created the receipt. Without a server this blocks ordinary QR forwarding, but it is not unbreakable DRM.", expiredUncertain: "A trade confirmation expired after the duplicate was deducted. This phone cannot know whether the recipient already finalized it. No automatic refund is performed.",
+    test: "Create a test duplicate", testHelp: "Test only: no real visit is validated.", invalid: "Trade invalid or expired.", expires: "Offer valid for 15 minutes.", back: "Back to discoveries", origins: "Origin", already: "This code has already been used on this phone.", partnerAdded: "Partner card added and QR visit recorded in the test passport.", physicalAdded: "Physical card added. No visit was validated.", fieldIntro: "Show a QR on one phone and scan it with the other. These two codes are test-branch prototypes.", visitYes: "Validates the QR visit", visitNo: "Does not validate a visit", collectionRule: "Owning a card never proves a visit. Only an authorised partner QR can also complete the real-world passport.", noCards: "Play a level or scan a card to start the collection.", receiptReady: "Request recorded. Show this receipt to the sender. The card is added only after sender confirmation.", senderConfirmed: "Duplicate deducted. Show this final QR to the recipient to credit the card.", receiverDone: "Card added to your collection. Show this final receipt to the sender to close the trade on both phones.", finalConfirm: "Final confirmation", finalReceipt: "Final receipt", myCards: "My cards", protocol: "Secure four-step trade: signed offer → signed receipt → transfer confirmation → recipient final receipt. Maximum validity: 15 minutes.", remaining: "Time left", generating: "Creating offer…", security: "The final QR can only credit the phone that created the receipt. Without a server this blocks ordinary QR forwarding, but it is not unbreakable DRM.", expiredUncertain: "A trade confirmation expired after the duplicate was deducted. This phone cannot know whether the recipient already finalized it. No automatic refund is performed.", browserStorageWarning: "Your cards and trades are stored in this browser. Clearing site data or changing phones can make them unrecoverable. There is no account backup yet.", secureCryptoUnavailable: "Trading unavailable: this browser does not support the required security features.", secureStorageUnavailable: "Trading unavailable: this browser cannot securely protect the trade identity.", localStorageUnavailable: "Trading unavailable: the browser is blocking the required local storage.", legacyIdentityInvalid: "Trading unavailable: the previous local identity cannot be migrated safely. Your cards were not deleted.",
   },
   es: {
     title: "Intercambio de tarjetas", intro: "Intercambia un duplicado por una tarjeta que te falta. Tu primera copia siempre queda en la colección.",
     send: "Proponer", receive: "Aceptar", field: "Tarjetas in situ", copies: "copias", create: "Crear oferta", scan: "Escanear", scanReceipt: "Escanear respuesta", confirm: "Aceptar intercambio", cancel: "Cancelar", done: "Intercambio completado.", received: "Tarjeta recibida.",
-    test: "Crear un duplicado de prueba", testHelp: "Solo prueba: no se valida ninguna visita real.", invalid: "Intercambio inválido o caducado.", expires: "Oferta válida durante 15 minutos.", back: "Volver a descubrimientos", origins: "Procedencia", already: "Este código ya se utilizó en este teléfono.", partnerAdded: "Tarjeta de socio añadida y visita QR registrada en el pasaporte de prueba.", physicalAdded: "Tarjeta física añadida. No se validó ninguna visita.", fieldIntro: "Muestra un QR en un teléfono y escanéalo con el otro. Estos códigos son prototipos de la rama de prueba.", visitYes: "Valida la visita QR", visitNo: "No valida una visita", collectionRule: "Tener una tarjeta nunca demuestra una visita. Solo un QR de socio autorizado puede completar también el pasaporte real.", noCards: "Juega un nivel o escanea una tarjeta para empezar la colección.", receiptReady: "Solicitud registrada. Muestra este recibo al remitente. La tarjeta solo se añadirá tras su confirmación.", senderConfirmed: "Duplicado descontado. Muestra este QR final al destinatario para acreditar la tarjeta.", receiverDone: "Tarjeta añadida a tu colección. Muestra este recibo final al remitente para cerrar el intercambio en ambos teléfonos.", finalConfirm: "Confirmación final", finalReceipt: "Recibo final", myCards: "Mis tarjetas", protocol: "Intercambio seguro en 4 pasos: oferta firmada → recibo firmado → confirmación de transferencia → recibo final del destinatario. Validez máxima: 15 minutos.", remaining: "Tiempo restante", generating: "Creando oferta…", security: "El QR final solo puede acreditarse en el teléfono que creó el recibo. Sin servidor bloquea el reenvío normal del QR, pero no es un DRM inviolable.", expiredUncertain: "Una confirmación de intercambio caducó después de descontar el duplicado. Este teléfono no puede saber si el destinatario ya la finalizó. No se realiza ningún reembolso automático.",
+    test: "Crear un duplicado de prueba", testHelp: "Solo prueba: no se valida ninguna visita real.", invalid: "Intercambio inválido o caducado.", expires: "Oferta válida durante 15 minutos.", back: "Volver a descubrimientos", origins: "Procedencia", already: "Este código ya se utilizó en este teléfono.", partnerAdded: "Tarjeta de socio añadida y visita QR registrada en el pasaporte de prueba.", physicalAdded: "Tarjeta física añadida. No se validó ninguna visita.", fieldIntro: "Muestra un QR en un teléfono y escanéalo con el otro. Estos códigos son prototipos de la rama de prueba.", visitYes: "Valida la visita QR", visitNo: "No valida una visita", collectionRule: "Tener una tarjeta nunca demuestra una visita. Solo un QR de socio autorizado puede completar también el pasaporte real.", noCards: "Juega un nivel o escanea una tarjeta para empezar la colección.", receiptReady: "Solicitud registrada. Muestra este recibo al remitente. La tarjeta solo se añadirá tras su confirmación.", senderConfirmed: "Duplicado descontado. Muestra este QR final al destinatario para acreditar la tarjeta.", receiverDone: "Tarjeta añadida a tu colección. Muestra este recibo final al remitente para cerrar el intercambio en ambos teléfonos.", finalConfirm: "Confirmación final", finalReceipt: "Recibo final", myCards: "Mis tarjetas", protocol: "Intercambio seguro en 4 pasos: oferta firmada → recibo firmado → confirmación de transferencia → recibo final del destinatario. Validez máxima: 15 minutos.", remaining: "Tiempo restante", generating: "Creando oferta…", security: "El QR final solo puede acreditarse en el teléfono que creó el recibo. Sin servidor bloquea el reenvío normal del QR, pero no es un DRM inviolable.", expiredUncertain: "Una confirmación de intercambio caducó después de descontar el duplicado. Este teléfono no puede saber si el destinatario ya la finalizó. No se realiza ningún reembolso automático.", browserStorageWarning: "Tus tarjetas e intercambios se guardan en este navegador. Borrar los datos del sitio o cambiar de teléfono puede hacerlos irrecuperables. Todavía no existe una copia de seguridad de cuenta.", secureCryptoUnavailable: "Intercambio no disponible: este navegador no admite las funciones de seguridad necesarias.", secureStorageUnavailable: "Intercambio no disponible: este navegador no puede proteger correctamente la identidad de intercambio.", localStorageUnavailable: "Intercambio no disponible: el navegador bloquea el almacenamiento local necesario.", legacyIdentityInvalid: "Intercambio no disponible: la identidad local anterior no puede migrarse de forma segura. Tus tarjetas no se han eliminado.",
   },
 };
 
@@ -161,6 +164,7 @@ export default function CardTradePage() {
   const [message, setMessage] = useState("");
   const [workingCard, setWorkingCard] = useState<BonusKey | null>(null);
   const [wantedCard, setWantedCard] = useState<BonusKey>("lecce");
+  const [securityStatus, setSecurityStatus] = useState<CardTradeSecurityStatus | null>(null);
   const cards = (Object.entries(inventory.cards) as [BonusKey, number][])
     .filter(([, count]) => count > 0)
     .sort(([a], [b]) => {
@@ -171,6 +175,27 @@ export default function CardTradePage() {
       return 0;
     });
   const tradeableCards = cards.filter(([, count]) => count > 1);
+  const securityBlocked = securityStatus?.available === false;
+
+  const securityMessage = (reason: CardTradeSecurityReason) => {
+    if (reason === "crypto-unavailable") return t.secureCryptoUnavailable;
+    if (reason === "local-storage-unavailable") return t.localStorageUnavailable;
+    if (reason === "legacy-identity-invalid") return t.legacyIdentityInvalid;
+    return t.secureStorageUnavailable;
+  };
+
+  const handleTradeError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : "";
+    if (["crypto-unavailable", "secure-storage-unavailable", "local-storage-unavailable", "legacy-identity-invalid"].includes(message)) {
+      const reason = message as CardTradeSecurityReason;
+      const status: CardTradeSecurityStatus = { available: false, reason };
+      setSecurityStatus(status);
+      setMessage(securityMessage(reason));
+      return true;
+    }
+    setMessage(t.invalid);
+    return false;
+  };
 
   useEffect(() => {
     const refresh = () => setInventory(readCardInventory());
@@ -190,13 +215,20 @@ export default function CardTradePage() {
   const completionRemainingLabel = `${Math.floor(completionRemainingMs / 60000).toString().padStart(2, "0")}:${Math.floor((completionRemainingMs % 60000) / 1000).toString().padStart(2, "0")}`;
 
   useEffect(() => {
-    const queued = takeQueuedCardQr();
-    if (queued) {
-      void processScan(queued);
-      return;
-    }
-
     const restore = async () => {
+      const security = await prepareCardTradeSecurity();
+      setSecurityStatus(security);
+
+      if (security.available) {
+        const queued = takeQueuedCardQr();
+        if (queued) {
+          await processScan(queued);
+          return;
+        }
+      }
+
+      // Existing signed/resumable state remains visible even when new crypto
+      // operations are blocked, so an interrupted local exchange is not erased.
       const outgoing = getResumableOutgoingCardTrade();
       if (outgoing) {
         try {
@@ -256,8 +288,8 @@ export default function CardTradePage() {
       setQrOfferId(result.offer.id);
       setNow(Date.now());
       setMessage(t.offerReady);
-    } catch {
-      setMessage(t.invalid);
+    } catch (error) {
+      handleTradeError(error);
     } finally {
       setWorkingCard(null);
     }
@@ -272,7 +304,8 @@ export default function CardTradePage() {
       setMode("receive");
       setMessage("");
       return;
-    } catch {
+    } catch (error) {
+      if (handleTradeError(error)) return;
       // Continue: the QR may be a receiver receipt or the final confirmation.
     }
 
@@ -287,7 +320,8 @@ export default function CardTradePage() {
       setNow(Date.now());
       setMessage(t.senderDoneAfterReceipt);
       return;
-    } catch {
+    } catch (error) {
+      if (handleTradeError(error)) return;
       // Continue with legacy final-confirmation compatibility.
     }
 
@@ -305,8 +339,8 @@ export default function CardTradePage() {
       setNow(Date.now());
       setMessage(t.receiverStep);
       return;
-    } catch {
-      setMessage(t.invalid);
+    } catch (error) {
+      handleTradeError(error);
     }
   }
 
@@ -330,8 +364,8 @@ export default function CardTradePage() {
         setMessage(t.invalid);
       }
       setIncoming(null);
-    } catch {
-      setMessage(t.invalid);
+    } catch (error) {
+      handleTradeError(error);
     }
   }
 
@@ -342,7 +376,7 @@ export default function CardTradePage() {
         <img src={qr} alt={qrKind === "confirmation" ? t.finalConfirm : t.create} />
         <strong className="card-trade__countdown">{t.qrValidity}: {remainingLabel}</strong>
         <p>{qrKind === "confirmation" ? t.senderStep : t.expires}</p>
-        {qrKind === "offer" ? <button className="trade-primary" onClick={() => setScannerOpen(true)}>→ {t.scanReceiverReceipt}</button> : null}
+        {qrKind === "offer" ? <button className="trade-primary" disabled={securityBlocked} onClick={() => setScannerOpen(true)}>→ {t.scanReceiverReceipt}</button> : null}
         {qrKind === "confirmation" ? <button className="trade-primary card-trade__main-action" onClick={() => {
           if (qrOfferId) setInventory(finishSenderTrade(qrOfferId));
           setQr("");
@@ -415,6 +449,8 @@ export default function CardTradePage() {
         <div className="card-trade__steps" aria-label={t.protocol}>
           <span>1</span><strong>{t.send}</strong><i aria-hidden="true">→</i><span>2</span><strong>{t.receive}</strong>
         </div>
+        <p className="card-trade__storage-note">🔒 {t.browserStorageWarning}</p>
+        {securityBlocked ? <p className="card-trade__security-block" role="alert">{securityMessage(securityStatus.reason)}</p> : null}
         <div className="card-trade__tabs">
           {tabs.map(([id, label]) => <button key={id} aria-pressed={mode === id} onClick={() => setMode(id)}>{label}</button>)}
         </div>
@@ -439,7 +475,7 @@ export default function CardTradePage() {
                   </select>
                 </label>
                 <div className="card-trade__swap-summary"><span>{t.giveLabel}: <strong>{BONUS_MAPS[key].title}</strong></span><span>⇄</span><span>{t.receiveLabel}: <strong>{BONUS_MAPS[wantedCard === key ? ((Object.keys(BONUS_MAPS) as BonusKey[]).find((candidate) => candidate !== key) ?? "lecce") : wantedCard].title}</strong></span></div>
-                <button className="trade-primary card-trade__main-action" disabled={workingCard !== null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
+                <button className="trade-primary card-trade__main-action" disabled={workingCard !== null || securityBlocked || securityStatus === null} onClick={() => void makeOffer(key)}>{workingCard === key ? t.generating : "1. " + t.create}</button>
                 {qrCard === key ? renderActiveQr() : null}
               </div>
             ))}
@@ -449,7 +485,7 @@ export default function CardTradePage() {
         {mode === "receive" ? (
           <section>
             <h2>{t.receiverTab}</h2>
-            {!receiptQr && !completionOfferId && !incoming ? <button className="trade-primary card-trade__main-action" onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
+            {!receiptQr && !completionOfferId && !incoming ? <button className="trade-primary card-trade__main-action" disabled={securityBlocked || securityStatus === null} onClick={() => setScannerOpen(true)}>1. {t.scanOffer}</button> : null}
             {incoming ? <div className="card-trade__incoming">
               <div className="card-trade__swap-summary card-trade__swap-summary--large">
                 <span>{t.receiveLabel}: <strong>{BONUS_MAPS[incoming.card].title}</strong></span>
@@ -458,7 +494,7 @@ export default function CardTradePage() {
               </div>
               {renderCard(incoming.card)}
               {(inventory.cards[incoming.requestedCard] || 0) >= 2
-                ? <button className="trade-primary card-trade__main-action" onClick={() => void accept()}>2. {t.acceptTrade}</button>
+                ? <button className="trade-primary card-trade__main-action" disabled={securityBlocked || securityStatus === null} onClick={() => void accept()}>2. {t.acceptTrade}</button>
                 : <p className="card-trade__no-duplicate">🔒 {t.missingWanted}</p>}
             </div> : null}
             {receiptQr ? <div className="card-trade__qr card-trade__qr--active"><img src={receiptQr} alt={t.scanReceipt} /><p>{t.receiptStep}</p><button className="trade-primary card-trade__main-action" onClick={() => {
