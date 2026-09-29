@@ -188,3 +188,74 @@ html, body { overflow-x: hidden; }
 .discoveries__collection-action--trade .discoveries__collection-icon{background:#ffffff18;color:#fff}
 .discoveries__collection-action:active{transform:translateY(1px)}
 @media(max-width:600px){.discoveries__collection-nav{grid-template-columns:1fr}}
+
+
+/* Persistent card collection: game vs exchange */
+.discoveries__inventory{
+  padding:18px;
+  border:1px solid #cbd9e8;
+  border-radius:20px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 10px 28px rgba(16,45,80,.08);
+}
+.discoveries__inventory-heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+.discoveries__inventory-heading h2{margin:0 0 4px}
+.discoveries__inventory-heading p{margin:0;color:#5f7487;font-size:.92rem}
+.discoveries__inventory-heading>strong{
+  display:grid;
+  place-items:center;
+  min-width:42px;
+  height:42px;
+  padding:0 10px;
+  border-radius:13px;
+  background:#173d61;
+  color:#fff;
+  font-size:1rem;
+}
+.discoveries__card-tabs{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding:3px 0 12px;
+  scrollbar-width:none;
+}
+.discoveries__card-tabs::-webkit-scrollbar{display:none}
+.discoveries__card-tabs button{
+  flex:0 0 auto;
+  min-height:40px;
+  padding:8px 13px;
+  border:1px solid #cfdae4;
+  border-radius:999px;
+  background:#f5f8fb;
+  color:#496176;
+  font-weight:700;
+  cursor:pointer;
+}
+.discoveries__card-tabs button.is-active{
+  border-color:#173d61;
+  background:#173d61;
+  color:#fff;
+}
+.discoveries__inventory-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.discoveries__inventory-grid .discovery-keepsake{margin:0;height:100%}
+.discoveries__inventory-empty{
+  margin:8px 0 0;
+  padding:14px;
+  border-radius:13px;
+  background:#f3f6f8;
+  color:#667988;
+}
+@media(max-width:700px){
+  .discoveries__inventory-grid{grid-template-columns:1fr}
+  .discoveries__inventory{padding:14px}
+}
