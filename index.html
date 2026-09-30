@@ -63,7 +63,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <title>HIRUNDU – Le Vol d’Aracne</title>
 
@@ -173,24 +173,6 @@
           document.addEventListener("DOMContentLoaded", publishInstallState, { once: true });
         } else {
           publishInstallState();
-        }
-      })();
-    </script>
-
-    <!-- Astuce iOS : Ajouter à l’écran d’accueil -->
-    <script>
-      (function () {
-        const ua = navigator.userAgent || "";
-        const isIOS = /iphone|ipad|ipod/i.test(ua);
-        const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-        if (isIOS && isSafari && !isStandalone) {
-          const tip = document.createElement("div");
-          tip.innerHTML = "Sur iPhone : <b>Partager</b> → <b>Ajouter à l’écran d’accueil</b>";
-          tip.style.cssText =
-            "position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;background:#fff;border:1px solid #ccc;border-radius:12px;padding:10px 12px;font:600 13px system-ui;box-shadow:0 6px 16px rgba(0,0,0,.2);";
-          document.body.appendChild(tip);
-          setTimeout(() => tip.remove(), 8000);
         }
       })();
     </script>

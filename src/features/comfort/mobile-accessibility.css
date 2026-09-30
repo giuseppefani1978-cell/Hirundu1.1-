@@ -1,0 +1,85 @@
+/* Reading screens only: game canvases, pads and practice gestures keep their rules. */
+#root :is(.start-page, .game-guide, .discoveries, .card-trade, .settings-page, .journey-page) {
+  touch-action: pan-y pinch-zoom;
+  overflow-wrap: anywhere;
+}
+
+#root :is(.game-guide, .discoveries, .card-trade, .settings-page) {
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+}
+
+#root .start-page__hero {
+  padding-top: max(clamp(1.6rem, 4.2vw, 4rem), env(safe-area-inset-top));
+  padding-left: max(clamp(1.25rem, 3.6vw, 3.5rem), env(safe-area-inset-left));
+  padding-right: max(clamp(1.25rem, 3.6vw, 3.5rem), env(safe-area-inset-right));
+}
+
+#root :is(.start-page__content, .card-trade__inner, .card-trade__card > div) {
+  min-width: 0;
+}
+
+#root :is(.card-trade, .settings-page, .game-guide, .discoveries, .start-page) :is(button, select, input) {
+  max-width: 100%;
+}
+
+#root :is(.card-trade nav, .game-guide__actions, .game-guide__actions > div, .language-select, .settings-file) {
+  flex-wrap: wrap;
+}
+
+#root .card-trade button {
+  white-space: normal;
+}
+
+#root .card-trade__wanted {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#root .card-trade__wanted select {
+  min-width: 0;
+  width: 100%;
+}
+
+#root .settings-file input[type="file"] {
+  width: 100%;
+  min-width: 0;
+}
+
+#root .settings-file input::file-selector-button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+#root #hirundu-parcours .hp-heading h2 {
+  min-width: 0;
+  flex: 1;
+}
+
+#root #hirundu-parcours .hp-seal {
+  min-width: 1.7em;
+  min-height: 1.7em;
+}
+
+@media (max-width: 360px) {
+  #root .start-page__hero {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  #root :is(.card-trade__card, .discoveries__card, .game-guide__families button) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #root .discoveries__card > * {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  #root .card-trade__card img {
+    width: 100%;
+    height: 120px;
+    min-height: 0;
+  }
+  #root :is(.start-page__content, .game-guide__card, .card-trade header, .card-trade section, .settings-page section) {
+    padding: 14px;
+  }
+}

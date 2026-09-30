@@ -9,6 +9,8 @@ import "leaflet/dist/leaflet.css";
 import "./leaflet-icons";
 import "./ui/styles.css";
 
+import "./features/comfort/mobile-accessibility.css";
+
 import App from "./app"; // <- LOWERCASE to match src/app.tsx
 import { store } from "./store";
 
