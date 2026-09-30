@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('startup cinematic is shown on every fresh app launch and retries autoplay without a tap', async () => {
+test('startup cinematic is shown on every fresh app launch and retries native autoplay without manual fallback', async () => {
   const [app, intro] = await Promise.all([
     readFile(new URL('../src/app.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/routes/StartupIntro.tsx', import.meta.url), 'utf8'),
@@ -18,9 +18,9 @@ test('startup cinematic is shown on every fresh app launch and retries autoplay 
   assert.match(intro, /loadeddata/);
   assert.match(intro, /canplay/);
   assert.match(intro, /pageshow/);
-  assert.match(intro, /hirundu_intro\.webp/);
-  assert.match(intro, /startManualFallback/);
-  assert.match(intro, /currentTime = target/);
+  assert.doesNotMatch(intro, /hirundu_intro\.webp/);
+  assert.doesNotMatch(intro, /startManualFallback/);
+  assert.doesNotMatch(intro, /currentTime = target/);
   assert.doesNotMatch(intro, /pointerdown.*retry/);
 });
 
