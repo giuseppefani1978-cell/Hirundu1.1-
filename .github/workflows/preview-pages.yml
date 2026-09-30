@@ -1,93 +1,30 @@
-name: HIRUNDU PR preview
+name: HIRUNDU PR validation — no Pages deploy
 
 on:
   pull_request:
     branches:
+      - version-1.0
       - main
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: hirundu-pages-preview
-  cancel-in-progress: true
 
 jobs:
-  build-combined-preview:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout production main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: production
-
-      - name: Checkout preview commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: preview
-
-      - name: Use Node 22
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: |
-            production/package-lock.json
-            preview/package-lock.json
-
-      - name: Build current production root
-        working-directory: production
-        run: |
-          npm ci
-          npm test
-          npm run typecheck
-          npm run lint
-          npm run build
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
-
-      - name: Build isolated PR preview
-        working-directory: preview
-        run: |
-          npm ci
-          npm test
-          npm run typecheck
-          npm run lint
-          npm run build -- --base=/Hirundu1.1-/pr-preview/pr-${{ github.event.number }}/
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
-
-      - name: Add preview below production root
-        run: |
-          mkdir -p production/dist/pr-preview/pr-${{ github.event.number }}
-          cp -a preview/dist/. production/dist/pr-preview/pr-${{ github.event.number }}/
-          MAIN_SHA="$(git -C production rev-parse HEAD)"
-          printf '{\n  "sha": "%s",\n  "workflow_run": "%s",\n  "built_at": "%s",\n  "preview": "pr-%s"\n}\n' \
-            "$MAIN_SHA" \
-            "$GITHUB_RUN_ID" \
-            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            "${{ github.event.number }}" \
-            > production/dist/build-info.json
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload combined Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: production/dist
-
-  deploy-combined-preview:
-    needs: build-combined-preview
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy production root plus isolated preview
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Regression tests
+        run: npm test
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Production build
+        run: npm run build
