@@ -22,40 +22,61 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          path: production
+
+      - name: Checkout isolated intro preview
+        uses: actions/checkout@v4
+        with:
+          ref: work/level-intro-redesign-2026-09-30
+          path: preview
+          persist-credentials: false
 
       - name: Use Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: |
+            production/package-lock.json
+            preview/package-lock.json
 
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Regression tests
-        run: npm test
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Production build
-        run: npm run build
-
-      - name: Preserve GitHub Pages routing
+      - name: Validate production
+        working-directory: production
         run: |
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
+          npm ci
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build
 
-      - name: Write build identity
+      - name: Validate and build isolated preview
+        working-directory: preview
         run: |
+          npm ci
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build -- --base=/Hirundu1.1-/preview/level-intro-redesign/
+
+      - name: Assemble production plus isolated preview
+        run: |
+          mkdir -p site
+          cp -R production/dist/. site/
+          mkdir -p site/preview/level-intro-redesign
+          cp -R preview/dist/. site/preview/level-intro-redesign/
+          cp site/index.html site/404.html
+          touch site/.nojekyll
           printf '{\n  "sha": "%s",\n  "workflow_run": "%s",\n  "built_at": "%s"\n}\n' \
             "$GITHUB_SHA" \
             "$GITHUB_RUN_ID" \
             "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            > dist/build-info.json
+            > site/build-info.json
+          printf '{\n  "branch": "%s",\n  "sha": "%s",\n  "built_at": "%s"\n}\n' \
+            "work/level-intro-redesign-2026-09-30" \
+            "$(git -C preview rev-parse HEAD)" \
+            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            > site/preview/level-intro-redesign/preview-info.json
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -63,7 +84,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     if: github.ref == 'refs/heads/main'
@@ -73,6 +94,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy main to GitHub Pages
+      - name: Deploy main plus isolated preview
         id: deployment
         uses: actions/deploy-pages@v4
