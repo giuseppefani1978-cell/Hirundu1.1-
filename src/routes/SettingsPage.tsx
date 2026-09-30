@@ -2,6 +2,7 @@ import React,{useState} from 'react';
 import LanguageSelect from '../ui/LanguageSelect';
 import { readComfort,setComfort } from '../features/comfort/preferences.js';
 import { comfortCopy } from '../features/comfort/copy';
+import IOSInstallHelp from '../features/comfort/IOSInstallHelp';
 import SaveStatus from '../features/comfort/SaveStatus';
 import { syncDurableProgress } from '../progressStorage.js';
 import { prepareSaveExport,restoreSaveImport } from '../features/comfort/saveExport.js';
@@ -15,6 +16,7 @@ export default function SettingsPage(){
   <nav><a href="#/">← {t[1]}</a><LanguageSelect/></nav><h1>{t[0]}</h1>
   <section><h2>{t[0]}</h2>{(['music','sound','effects','reduced','large'] as const).map((key,i)=><label key={key}><input type="checkbox" checked={prefs[key]} onChange={e=>change(key,e.target.checked)}/><span>{t[2+i]}</span></label>)}<p>{t[7]}</p><p>{t[8]}</p></section>
   <section><h2>{t[20]}</h2><SaveStatus/><p>{t[17]}</p><p>{t[19]}</p><button onClick={()=>syncDurableProgress()}>{t[13]}</button><button onClick={download}>{t[14]}</button><label className="settings-file"><span>{t[22]}</span><input type="file" accept="application/json,.json" onChange={e=>{void restore(e.target.files?.[0]);e.currentTarget.value='';}}/></label><p>{t[18]}</p><small>{t[21]} {t[25]}</small></section>
+  <IOSInstallHelp/>
   <p role="status">{notice!==null?t[notice]:''}</p>
  </div></main>;
 }
