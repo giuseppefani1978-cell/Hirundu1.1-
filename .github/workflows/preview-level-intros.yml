@@ -1,0 +1,88 @@
+name: HIRUNDU preview — level intro redesign
+
+on:
+  push:
+    branches:
+      - work/level-intro-redesign-2026-09-30
+    paths:
+      - ".github/workflows/preview-level-intros.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hirundu-pages-preview-level-intros
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current production snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: 2b909151787b4b588cd48a28ddcf7c4822a31be0
+          path: production
+
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/level-intro-redesign-2026-09-30
+          path: preview
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build current production root
+        working-directory: production
+        run: |
+          npm ci
+          npm run build
+
+      - name: Validate and build preview
+        working-directory: preview
+        run: |
+          npm ci
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build -- --base=/Hirundu1.1-/preview/level-intro-redesign/
+
+      - name: Assemble production plus isolated preview
+        run: |
+          mkdir -p site
+          cp -R production/dist/. site/
+          mkdir -p site/preview/level-intro-redesign
+          cp -R preview/dist/. site/preview/level-intro-redesign/
+          cp site/index.html site/404.html
+          touch site/.nojekyll
+          printf '{\n  "preview_branch": "%s",\n  "preview_sha": "%s",\n  "production_sha": "%s",\n  "built_at": "%s"\n}\n' \
+            "work/level-intro-redesign-2026-09-30" \
+            "$GITHUB_SHA" \
+            "2b909151787b4b588cd48a28ddcf7c4822a31be0" \
+            "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            > site/preview/level-intro-redesign/preview-info.json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}preview/level-intro-redesign/
+    steps:
+      - name: Deploy isolated preview
+        id: deployment
+        uses: actions/deploy-pages@v4
