@@ -1,16 +1,21 @@
-name: HIRUNDU PR validation — no Pages deploy
+name: HIRUNDU PR preview
 
 on:
   pull_request:
     branches:
-      - version-1.0
       - main
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hirundu-pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
+  validate-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,3 +33,24 @@ jobs:
         run: npm run lint
       - name: Production build
         run: npm run build
+      - name: Preserve SPA routing
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+      - name: Upload preview artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy-preview:
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy PR preview
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          preview: true
