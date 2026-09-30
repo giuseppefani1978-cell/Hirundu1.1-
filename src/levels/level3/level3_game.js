@@ -245,14 +245,16 @@ export function boot(options = {}){
   if (heroTa) heroTa.src = ASSETS.TARANTULA_URL;
   if (tarAvatar) tarAvatar.src = ASSETS.TARANTULA_URL;
 
+  const introThemes = { 3: 'lecce', 5: 'capo', 7: 'nardo', 9: 'itria' };
+  const introAccents = { 3: '#38bdf8', 5: '#22c55e', 7: '#84cc16', 9: '#8b5cf6' };
   const renderIntroCopy = () => prepareLevelIntro({
-    level: levelId, theme: 'lecce', badge: `${copy.level} ${levelId}`,
+    level: levelId, theme: introThemes[levelId] || 'lecce', badge: `${copy.level} ${levelId}`,
     title: regional ? localize(regional.title) : t.level3.title,
     subtitle: regional ? localize(regional.subtitle) : t.level3.subtitle,
     description: regional ? localize(regional.mission) : copy.mission,
     footnote: copy.reward, startLabel: `▶︎ ${copy.start}`,
     highlight: { title: copy.briefing, body: regional ? localize(regional.mission) : copy.mission },
-    accentColor: '#38bdf8',
+    accentColor: introAccents[levelId] || '#38bdf8',
   });
   renderIntroCopy();
 
