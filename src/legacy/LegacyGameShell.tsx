@@ -247,15 +247,6 @@ const LegacyGameShell = forwardRef<HTMLCanvasElement, LegacyGameShellProps>(func
                 >
                   ▶︎ {copy.start}
                 </button>
-                {onDiscoveriesClick ? (
-                  <button
-                    type="button"
-                    className="overlay-card__secondary"
-                    onClick={onDiscoveriesClick}
-                  >
-                    🎁 {copy.bonus}
-                  </button>
-                ) : null}
               </div>
             </div>
           </div>
