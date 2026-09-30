@@ -401,13 +401,17 @@ export default function CardTradePage() {
   function renderCard(key: BonusKey, count?: number) {
     const data = DISCOVERY_CARDS[key];
     const origins = count === undefined ? [] : Object.entries(getCardOrigins(inventory, key)) as [CardOrigin, number][];
+    const selected = qrCard === key || workingCard === key;
     return (
-      <article className="card-trade__card">
-        <img src={withBase(`assets/${data.image}`)} alt="" />
-        <div>
+      <article className={`card-trade__card${selected ? " is-selected" : ""}`} data-card={key}>
+        <div className="card-trade__card-art">
+          <img src={withBase(`assets/${data.image}`)} alt="" />
+          <span className="card-trade__card-mark" aria-hidden="true">HIRUNDU</span>
+          {count !== undefined ? <strong className="card-trade__card-count">×{count}</strong> : null}
+        </div>
+        <div className="card-trade__card-body">
           <h3>{data.name}</h3>
           <p>{BONUS_MAPS[key].title}</p>
-          {count !== undefined ? <strong>{count} {t.copies}</strong> : null}
           {origins.length ? (
             <div className="card-trade__origins" aria-label={t.origins}>
               {origins.map(([origin, amount]) => <span key={origin}>{labels[origin]} · {amount}</span>)}
@@ -447,7 +451,13 @@ export default function CardTradePage() {
         <nav><a href="#/bonus">← {t.back}</a><LanguageSelect /></nav>
         <header><span>HIRUNDU · CARTES</span><h1>{t.title}</h1><p>{t.intro}</p></header>
         <div className="card-trade__steps" aria-label={t.protocol}>
-          <span>1</span><strong>{t.send}</strong><i aria-hidden="true">→</i><span>2</span><strong>{t.receive}</strong>
+          <div className={`card-trade__step ${mode === "send" ? "is-active" : "is-complete"}`}>
+            <span>1</span><strong>{t.send}</strong>
+          </div>
+          <i aria-hidden="true">→</i>
+          <div className={`card-trade__step ${mode === "receive" ? "is-active" : "is-next"}`}>
+            <span>2</span><strong>{t.receive}</strong>
+          </div>
         </div>
         <p className="card-trade__storage-note">🔒 {t.browserStorageWarning}</p>
         {securityBlocked ? <p className="card-trade__security-block" role="alert">{securityMessage(securityStatus.reason)}</p> : null}
