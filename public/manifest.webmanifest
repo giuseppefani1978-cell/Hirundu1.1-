@@ -1,7 +1,7 @@
 {
-  "name": "Le Vol d’Aracne — Salento",
-  "short_name": "Aracne",
-  "start_url": "./?pwa=20260919",
+  "name": "Hirundu — Bêta privée",
+  "short_name": "Hirundu",
+  "start_url": "./",
   "display": "standalone",
   "scope": "./",
   "background_color": "#a9d6f5",

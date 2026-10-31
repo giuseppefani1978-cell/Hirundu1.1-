@@ -1,23 +1,11 @@
-// src/main.tsx
-import "./style.css"; // Legacy game styles moved next to the entry point
+import "./style.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Provider } from "react-redux";
+import BetaPortal from "./beta/BetaPortal";
 
-// Global styles & map dependencies
-import "leaflet/dist/leaflet.css";
-import "./leaflet-icons";
-import "./ui/styles.css";
-
-import "./features/comfort/mobile-accessibility.css";
-
-import App from "./app"; // <- LOWERCASE to match src/app.tsx
-import { store } from "./store";
-
+// Hirundu Play is invitation-only. The game bundle is imported only after
+// a valid backend session. This is a client-side gate: for strict content
+// secrecy, protect the hosting origin at edge/server level too.
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </React.StrictMode>
+  <React.StrictMode><BetaPortal /></React.StrictMode>
 );

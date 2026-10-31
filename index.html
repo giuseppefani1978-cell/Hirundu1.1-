@@ -21,7 +21,7 @@
       // retry once from the canonical GitHub Pages root with a cache-busting query.
       (() => {
         const RECOVERY_KEY = "hirundu_boot_recovery_20260919";
-        const BASE = "/Hirundu1.1-/";
+        const BASE = "%BASE_URL%";
 
         const showRecovery = () => {
           const root = document.getElementById("root");
@@ -75,7 +75,7 @@
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Le Vol d’Aracne" />
+    <meta name="apple-mobile-web-app-title" content="HIRUNDU" />
 
     <!-- Apple Touch Icons (relatifs) -->
     <link rel="apple-touch-icon" sizes="120x120" href="./apple-touch-icon-120x120.png" />
@@ -99,7 +99,7 @@
     <!-- Désactiver/Nettoyer d’anciens Service Workers -->
     <script>
       if ("serviceWorker" in navigator) {
-        const HIRUNDU_SCOPE = "/Hirundu1.1-/";
+        const HIRUNDU_SCOPE = "%BASE_URL%";
         navigator.serviceWorker.getRegistrations()
           .then(rs => rs
             .filter(r => {

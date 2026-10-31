@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 test('C12 legacy service-worker cleanup is scoped to HIRUNDU', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /HIRUNDU_SCOPE = "\/Hirundu1\.1-\/"/);
+  assert.match(html, /HIRUNDU_SCOPE = "(?:%BASE_URL%|\/Hirundu1\.1-\/)"/);
   assert.match(html, /filter\(r =>/);
   assert.match(html, /hirundu\|aracne/i);
 });
