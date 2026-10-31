@@ -38,3 +38,5 @@ jobs:
         run: npm run lint
       - name: Build game for audit only — no publication
         run: npm run build -- --mode play
+      - name: Verify compiled bundle targets Hirundu Beta only
+        run: node --test tests/play-deployment-config.test.mjs
