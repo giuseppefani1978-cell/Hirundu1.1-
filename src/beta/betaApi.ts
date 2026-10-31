@@ -7,12 +7,11 @@ export type BetaDashboard = { ok: true; testers: BetaTester[]; feedback: BetaFee
 export type BetaReply = { ok?: boolean; error?: string; [key: string]: unknown };
 
 const TOKEN_KEY = "hirundu-play-beta-token-v1";
-const url = (import.meta.env.VITE_HIRUNDU_SUPABASE_URL || "").replace(/\\/$/, "");
+const url = (import.meta.env.VITE_HIRUNDU_SUPABASE_URL || "").replace(/\/$/, "");
 const key = import.meta.env.VITE_HIRUNDU_SUPABASE_PUBLISHABLE_KEY || "";
-const validConfig = /^https:\/\/[a-z0-9-]+\\.supabase\\.co$/.test(url) && key.length > 12;
+const validConfig = /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url) && key.length > 12;
 export const betaConfigured = validConfig;
 const tokenPattern = /^[a-f0-9]{64}$/;
-let volatileToken = "";
 
 function freshToken(): string {
   if (!globalThis.crypto?.getRandomValues) throw new Error("secure_crypto_unavailable");
