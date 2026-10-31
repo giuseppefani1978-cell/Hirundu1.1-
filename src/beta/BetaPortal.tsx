@@ -107,7 +107,7 @@ function Admin({ nickname }: { nickname: string }) {
 }
 
 export default function BetaPortal() {
-  const adminOnly = new URLSearchParams(location.search).has("admin");
+  const adminOnly = new URLSearchParams(location.search).has("admin") || /^\/admin\/?$/.test(location.pathname);
   const [session, setSession] = useState<BetaSession | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(()=>{ betaSession().then(s=>setSession(s)).catch(()=>setSession(null)).finally(()=>setReady(true)); },[]);
