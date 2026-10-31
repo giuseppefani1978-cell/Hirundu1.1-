@@ -10,7 +10,7 @@ test("Vercel publishes the isolated Play build without changing the trip planner
   assert.equal(cfg.framework, "vite");
   assert.equal(cfg.outputDirectory, "dist");
   assert.match(cfg.buildCommand, /--mode play/);
-  assert.ok(cfg.rewrites.some(x => x.source === "/admin" && x.destination === "/index.html"));
+  assert.ok(cfg.redirects.some(x => x.source === "/admin" && x.destination === "/?admin=1"));
   assert.equal(cfg.headers.find(x => x.source === "/(.*)")?.headers.find(h => h.key === "X-Frame-Options")?.value, "DENY");
   const mode = read(".env.play");
   assert.match(mode, /VITE_HIRUNDU_SUPABASE_URL=https:\/\/qlihimhcfsryuhmlmhvn\.supabase\.co/);
