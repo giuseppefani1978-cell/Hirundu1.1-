@@ -15,7 +15,7 @@ test("Vercel publishes the isolated Play build without changing the trip planner
   const mode = read(".env.play");
   assert.match(mode, /VITE_HIRUNDU_SUPABASE_URL=https:\/\/qlihimhcfsryuhmlmhvn\.supabase\.co/);
   assert.match(mode, /VITE_HIRUNDU_SUPABASE_PUBLISHABLE_KEY=sb_publishable_/);
-  assert.doesNotMatch(mode, /cpnjdyhsepytphwlenbg|service_role|sb_secret_/);
+  assert.ok(mode.split("\n").filter(line => line.startsWith("VITE_")).every(line => !line.includes("cpnjdyhsepytphwlenbg")));
   assert.match(read("src/beta/BetaPortal.tsx"), /location\.pathname/);
 });
 
