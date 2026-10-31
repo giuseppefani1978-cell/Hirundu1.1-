@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/Hirundu1.1-/", // ✅ essentiel pour GitHub Pages (sous-dossier du repo)
+  base: "/", // Play beta: dedicated root domain. Production GitHub Pages remains unchanged.
   plugins: [react()],
   server: {
     host: "0.0.0.0",
