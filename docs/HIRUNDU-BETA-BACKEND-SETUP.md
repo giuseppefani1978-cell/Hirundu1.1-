@@ -18,11 +18,11 @@
 
 ## Préparer le serveur (nouveau projet exclusivement)
 
-Après revue de sécurité, utiliser l'éditeur SQL du nouveau projet pour exécuter `docs/sql/hirundu-beta-isolated-backend.sql`. **Il s'agit d'un blueprint contrôlé, pas d'une migration déjà appliquée.**
+**Déjà exécuté le 31 octobre 2026** sur le seul projet Hirundu Beta `qlihimhcfsryuhmlmhvn` via une migration Supabase. Ne pas réexécuter ce script sans nécessité et revue de compatibilité. Les tables du projet Aracne existant n'ont pas été modifiées.
 
 ### Initialiser le premier administrateur
 
-Exécuter ensuite cette requête **une seule fois, dans l'éditeur SQL du nouveau projet**, et **noter le code retourné dans un lieu privé**. Ne jamais l'ajouter au dépôt, à une issue ou à une capture partagée.
+**Déjà réalisé une seule fois sur le nouveau projet.** Le premier code administrateur a été créé et communiqué exclusivement au propriétaire via la conversation. Ne pas réexécuter cette requête, qui ne retournerait d'ailleurs plus de code tant qu'un administrateur existe. Pour tout remplacement du code, utiliser une procédure de rotation sécurisée. Ne jamais l'ajouter au dépôt, à une issue ou à une capture partagée.
 
 ```sql
 with secret as (
@@ -47,7 +47,7 @@ Cette initialisation ne crée pas d'administrateur supplémentaire si un code ad
 ## Configuration Vite (dans l'environnement d'hébergement, pas dans GitHub)
 
 ```text
-VITE_HIRUNDU_SUPABASE_URL=https://<NOUVEAU-PROJET-HIRUNDU>.supabase.co
+VITE_HIRUNDU_SUPABASE_URL=https://qlihimhcfsryuhmlmhvn.supabase.co
 VITE_HIRUNDU_SUPABASE_PUBLISHABLE_KEY=<PUBLISHABLE_KEY_HIRUNDU>
 ```
 
@@ -71,4 +71,4 @@ La branche `play` est destinée à une racine de sous-domaine : `vite.config.ts`
 
 ## État au 31/10/2026
 
-Frontend et prototype SQL conservés sur une **branche feature** et non déployés. Le domaine, les vraies invitations et le nouveau projet Supabase ne sont pas activés. Aucun SQL n'a été exécuté.
+Le **projet Supabase Hirundu Beta est créé et actif** ; migration appliquée, trois tables privées avec RLS, fonction RPC installée, un code administrateur non encore activé et aucune session testeur. Le test de refus sans session est positif et l'inspection des privilèges est concluante. Le frontend reste sur une **branche feature**, **non fusionnée et non publiée**. L'URL `play.myapuliatrip.com` et les paramètres de build de l'hébergeur restent à configurer. Les tests end-to-end navigateur / téléphone et le durcissement de protection de l'origine restent nécessaires.
