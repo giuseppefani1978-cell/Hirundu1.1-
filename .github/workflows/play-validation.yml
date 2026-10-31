@@ -1,0 +1,40 @@
+name: HIRUNDU play — isolated validation (NO DEPLOY)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [play]
+    paths:
+      - '.github/workflows/play-validation.yml'
+      - 'public/beta-admin-preview.html'
+      - 'tests/beta-admin-preview.test.mjs'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [play]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install deterministic dependencies
+        run: npm ci
+      - name: Test beta preview (mock only)
+        run: node --test tests/beta-admin-preview.test.mjs
+      - name: Full game regression suite
+        run: npm test
+      - name: TypeScript check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build game for audit only — no publication
+        run: npm run build
