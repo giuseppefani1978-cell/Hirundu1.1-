@@ -114,7 +114,7 @@ export default function BetaPortal() {
   if(!ready) return <main className="hb-portal"><p>Vérification de l'accès Hirundu…</p></main>;
   if(!session || (adminOnly&&!session.admin)) return <Gate onLogin={setSession} adminOnly={adminOnly}/>;
   if(adminOnly) return <Admin nickname={session.nickname}/>;
-  return <AuthorizedGame />;
+  return <AuthorizedGameShell />;
 }
 
 const AuthorizedGame = React.lazy(()=>import("./BetaGame"));
