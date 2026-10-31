@@ -4,12 +4,7 @@
   "buildCommand": "npm run build -- --mode play",
   "installCommand": "npm ci",
   "outputDirectory": "dist",
-  "rewrites": [
-    {
-      "source": "/admin",
-      "destination": "/index.html"
-    }
-  ],
+  "rewrites": [],
   "headers": [
     {
       "source": "/(.*)",
@@ -40,6 +35,13 @@
           "value": "no-store"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/?admin=1",
+      "permanent": false
     }
   ]
 }
