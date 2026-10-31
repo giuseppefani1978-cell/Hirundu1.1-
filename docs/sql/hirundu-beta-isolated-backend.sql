@@ -50,7 +50,7 @@ revoke all on all sequences in schema hirundu_private from public, anon, authent
 
 -- Public, narrow RPC gateway; never expose private tables to Data API.
 -- All authorization is enforced server-side, and sessions are device-token bound.
-create or replace function public.hirundu_beta(
+create or replace function hirundu_private.beta_impl(
   p_action text,
   p_data jsonb default '{}'::jsonb
 )
@@ -195,8 +195,24 @@ exception
 end
 $hirundu$;
 
--- Restrict execution to RPC clients; private tables remain inaccessible.
-revoke all on function public.hirundu_beta(text,jsonb) from public, anon, authenticated;
-grant execute on function public.hirundu_beta(text,jsonb) to anon, authenticated;
+-- Limit the elevated implementation to a PRIVATE schema (not exposed in Data API).
+revoke all on function hirundu_private.beta_impl(text,jsonb) from public,anon,authenticated;
+grant usage on schema hirundu_private to anon,authenticated;
+grant execute on function hirundu_private.beta_impl(text,jsonb) to anon,authenticated;
+
+-- Public endpoint is strictly invoker; all privileged database work happens
+-- in the private implementation and is controlled by checked bearer tokens.
+create or replace function public.hirundu_beta(
+  p_action text,
+  p_data jsonb default '{}'::jsonb
+) returns jsonb
+language sql
+security invoker
+set search_path = ''
+as $gateway$
+  select hirundu_private.beta_impl(p_action,p_data);
+$gateway$;
+revoke all on function public.hirundu_beta(text,jsonb) from public,anon,authenticated;
+grant execute on function public.hirundu_beta(text,jsonb) to anon,authenticated;
 
 commit;
