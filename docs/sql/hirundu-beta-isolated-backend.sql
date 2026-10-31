@@ -62,6 +62,7 @@ as $hirundu$
 declare
   token text := coalesce((nullif(current_setting('request.headers', true), '')::jsonb ->> 'x-hirundu-beta'), '');
   actor record;
+  has_session boolean := false;
   invite_row hirundu_private.invites%rowtype;
   target uuid;
   code text;
@@ -82,6 +83,7 @@ begin
   join hirundu_private.invites i on i.id=s.invite_id
   where s.token_hash=sha256(convert_to(token,'UTF8'))
     and i.revoked_at is null;
+  has_session := found;
 
   if p_action='activate' then
     code := upper(regexp_replace(coalesce(p_data->>'code',''), '[^A-Fa-f0-9]', '', 'g'));
@@ -89,7 +91,7 @@ begin
     if code !~ '^[A-F0-9]{32}$' or length(nickname) not between 1 and 60 then
       return jsonb_build_object('error','invalid_code');
     end if;
-    if actor.session_id is not null then
+    if has_session then
       return jsonb_build_object('ok',true,'admin',actor.is_admin,'nickname',actor.nickname);
     end if;
     select * into invite_row from hirundu_private.invites
@@ -105,7 +107,7 @@ begin
     return jsonb_build_object('ok',true,'admin',invite_row.is_admin,'nickname',nickname);
   end if;
 
-  if actor.session_id is null then
+  if not has_session then
     return jsonb_build_object('error','beta_required');
   end if;
   if p_action='session' then
