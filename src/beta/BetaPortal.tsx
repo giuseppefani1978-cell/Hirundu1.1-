@@ -127,6 +127,14 @@ export default function BetaPortal() {
   const adminOnly = new URLSearchParams(location.search).has("admin") || /^\/admin\/?$/.test(location.pathname);
   const [session, setSession] = useState<BetaSession | null>(null);
   const [ready, setReady] = useState(false);
+  const portalVisible = !ready || !session || adminOnly;
+  useEffect(() => {
+    // The canvas game uses a viewport scroll lock. Unlock only the invitation
+    // and admin screens, then restore normal gameplay behavior.
+    const nodes = [document.documentElement, document.body];
+    nodes.forEach(node => node.classList.toggle("hb-document-scroll", portalVisible));
+    return () => nodes.forEach(node => node.classList.remove("hb-document-scroll"));
+  }, [portalVisible]);
   useEffect(()=>{ betaSession().then(s=>setSession(s)).catch(()=>setSession(null)).finally(()=>setReady(true)); },[]);
   if(!ready) return <main className="hb-portal"><p>Vérification de l&apos;accès Hirundu…</p></main>;
   if(!session || (adminOnly&&!session.admin)) return <Gate onLogin={setSession} adminOnly={adminOnly}/>;
