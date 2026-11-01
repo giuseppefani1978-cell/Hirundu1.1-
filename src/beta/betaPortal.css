@@ -53,3 +53,29 @@ body.hb-document-scroll #root {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Optional owner's admin shortcut: game remains the default PWA screen. */
+.hb-admin-shortcut {
+  position: fixed;
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  z-index: 100100;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.65);
+  background: rgba(57,34,89,.82);
+  color: #fff !important;
+  text-decoration: none;
+  font: 700 12px/1.2 system-ui,-apple-system,sans-serif;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.hb-admin-shortcut:focus-visible {
+  outline: 3px solid #f7d7ff;
+  outline-offset: 3px;
+}
