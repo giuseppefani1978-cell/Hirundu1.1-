@@ -15,3 +15,41 @@
 .hb-invite-actions button{padding:12px!important;min-height:50px}
 .hb-share-status{min-height:16px;font-size:13px}
 @media(max-width:680px){.hb-invite-form,.hb-invite-actions{grid-template-columns:1fr}.hb-invite-result{padding:14px}.hb-invite-copy-row{flex-direction:column}.hb-invite-copy-row input{font-size:14px}.hb-invite-copy-row button{align-self:stretch}.hb-message-preview{min-height:270px}}
+
+
+/* Beta gate and administration must scroll on iPhone Safari.
+   The game intentionally sets html/body overflow:hidden for canvas gameplay.
+   Scope this override strictly to pages rendering .hb-portal. */
+html:has(.hb-portal),
+body:has(.hb-portal),
+html.hb-document-scroll,
+body.hb-document-scroll {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto !important;
+}
+body:has(.hb-portal) #root,
+body.hb-document-scroll #root {
+  position: relative;
+  width: 100%;
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+}
+.hb-portal {
+  position: relative;
+  width: 100%;
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+  padding-bottom: max(48px, calc(env(safe-area-inset-bottom, 0px) + 28px));
+}
+.hb-invite-result { scroll-margin-top: 20px; }
+@supports (-webkit-touch-callout: none) {
+  html:has(.hb-portal), body:has(.hb-portal),
+  html.hb-document-scroll, body.hb-document-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}
