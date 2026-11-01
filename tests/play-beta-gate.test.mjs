@@ -39,3 +39,16 @@ test("root-domain beta configuration is distinct from old GitHub Pages", () => {
   assert.equal(manifest.orientation, "any");
   assert.equal(manifest.scope, "./");
 });
+
+
+test("iOS beta admin can scroll despite canvas gameplay scroll lock", () => {
+  const globalCss = read("src/style.css");
+  const portalCss = read("src/beta/betaPortal.css");
+  const portal = read("src/beta/BetaPortal.tsx");
+  assert.match(globalCss, /overflow:hidden; overscroll-behavior:none/);
+  assert.match(portalCss, /body\.hb-document-scroll/);
+  assert.match(portalCss, /overflow-y: auto !important/);
+  assert.match(portalCss, /min-height: 100dvh/);
+  assert.match(portal, /classList\.toggle\("hb-document-scroll", portalVisible\)/);
+  assert.match(portal, /classList\.remove\("hb-document-scroll"\)/);
+});
