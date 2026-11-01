@@ -15,6 +15,7 @@ import { initLegacyChrome } from "../legacy/initLegacyChrome";
 import { removeVictoryCTA } from "../bonus_transition.js";
 import { startPerformanceMonitor, stopPerformanceMonitor } from "../game_flow.js";
 import { withBase } from "../paths";
+import { LANG } from "../i18n.js";
 import "./LegacyLevelPage.css";
 
 const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> = {
@@ -31,6 +32,12 @@ const LEVEL_EVENTS: Record<LegacyLevelId, { bonusKey: string; event: string }> =
 
 const TOAST_KEY = "__toast_next__";
 const DEFAULT_VERSION = "v9 · TEST";
+const BOOT_RECOVERY = {
+  fr: { title: "Le niveau ne s'est pas chargé", detail: "Ta progression et tes cartes ne sont pas effacées. Tu peux réessayer ou revenir à l'accueil.", retry: "Réessayer", home: "Accueil" },
+  it: { title: "Il livello non si è caricato", detail: "I progressi e le carte non sono stati cancellati. Riprova o torna alla home.", retry: "Riprova", home: "Home" },
+  en: { title: "The level could not load", detail: "Your progress and cards have not been cleared. Try again or return home.", retry: "Try again", home: "Home" },
+  es: { title: "No se pudo cargar el nivel", detail: "Tus progresos y cartas no se han borrado. Vuelve a intentarlo o regresa al inicio.", retry: "Reintentar", home: "Inicio" },
+} as const;
 
 function storeToast(target: string) {
   try {
@@ -85,10 +92,14 @@ function LegacyLevelPage() {
   const showPerf = params.has("perf") || debug;
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [bootFailed, setBootFailed] = React.useState(false);
+  const [bootAttempt, setBootAttempt] = React.useState(0);
+  const recovery = BOOT_RECOVERY[(LANG in BOOT_RECOVERY ? LANG : "fr") as keyof typeof BOOT_RECOVERY];
   const versionLabel =
     (import.meta.env?.VITE_APP_VERSION as string | undefined) ?? DEFAULT_VERSION;
 
   useEffect(() => {
+    setBootFailed(false);
     try {
       window.APP_VERSION = versionLabel;
     } catch {
@@ -111,7 +122,9 @@ function LegacyLevelPage() {
           window.setTimeout(() => { void preloadNextLevel(level); }, 650);
         }
       } catch (error) {
+        if (cancelled || controller.signal.aborted) return;
         console.error("Unable to boot legacy level", error);
+        setBootFailed(true);
       }
     };
 
@@ -167,12 +180,22 @@ function LegacyLevelPage() {
         // ignore cleanup issues
       }
     };
-  }, [level, navigate, testBattle, debug]);
+  }, [level, navigate, testBattle, debug, bootAttempt, versionLabel]);
 
   return (
     <div className="legacy-level-page">
+      {bootFailed && (
+        <section role="alert" className="legacy-level-page__recovery">
+          <h2>{recovery.title}</h2>
+          <p>{recovery.detail}</p>
+          <div className="legacy-level-page__recovery-actions">
+            <button type="button" onClick={() => setBootAttempt((attempt) => attempt + 1)}>{recovery.retry}</button>
+            <button type="button" onClick={() => navigate("/")}>{recovery.home}</button>
+          </div>
+        </section>
+      )}
       <LegacyGameShell
-        key={`${level}:${testBattle}:${debug}`}
+        key={`${level}:${testBattle}:${debug}:${bootAttempt}`}
         level={level}
         ref={canvasRef}
         versionLabel={versionLabel}
