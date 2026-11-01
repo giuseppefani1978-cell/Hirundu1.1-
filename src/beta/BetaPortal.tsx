@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { LANGUAGES, createIssuedInvitation, invitationMessage, whatsappShareUrl, type InviteLanguage, type IssuedInvitation } from "./invitationText";
 import { activateBeta, betaConfigured, betaRpc, betaSession, type BetaDashboard, type BetaSession } from "./betaApi";
 import "./betaPortal.css";
 
@@ -55,7 +56,11 @@ function Admin({ nickname }: { nickname: string }) {
   const [dashboard, setDashboard] = useState<BetaDashboard | null>(null);
   const [label, setLabel] = useState("");
   const [days, setDays] = useState(14);
-  const [newLink, setNewLink] = useState("");
+  const [issued, setIssued] = useState<IssuedInvitation | null>(null);
+  const [recipient, setRecipient] = useState("");
+  const [language, setLanguage] = useState<InviteLanguage>("fr");
+  const [shareStatus, setShareStatus] = useState("");
+  const shareRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function reload() {
