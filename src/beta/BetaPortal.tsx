@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LANGUAGES, createIssuedInvitation, invitationMessage, whatsappShareUrl, type InviteLanguage, type IssuedInvitation } from "./invitationText";
 import { activateBeta, betaConfigured, betaRpc, betaSession, type BetaDashboard, type BetaSession } from "./betaApi";
 import "./betaPortal.css";
+import InviteShare from "./InviteShare";
 
 function errorText(error: unknown): string {
   const key = error instanceof Error ? error.message : "";
@@ -108,7 +109,7 @@ function Admin({ nickname }: { nickname: string }) {
         <label>Durée<select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={7}>7 jours</option><option value={14}>14 jours</option><option value={30}>30 jours</option></select></label>
         <button type="submit" disabled={busy}>{busy ? "Création…" : "Créer invitation"}</button>
       </form>
-      {issued && <p>Invitation créée</p>}
+      {issued && <div ref={shareRef}><InviteShare issued={issued} language={language} shareText={shareText} shareStatus={shareStatus} copyInvite={copyInvite}/></div>}
       {error && <p role="alert" className="hb-error">{error}</p>}
     </section>
     <section className="hb-card"><div className="hb-inline"><h2>Accès</h2><button type="button" onClick={()=>reload().catch(e=>setError(errorText(e)))}>Actualiser</button></div>
