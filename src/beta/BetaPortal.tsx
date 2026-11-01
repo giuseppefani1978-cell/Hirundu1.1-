@@ -139,8 +139,15 @@ export default function BetaPortal() {
   if(!ready) return <main className="hb-portal"><p>Vérification de l&apos;accès Hirundu…</p></main>;
   if(!session || (adminOnly&&!session.admin)) return <Gate onLogin={setSession} adminOnly={adminOnly}/>;
   if(adminOnly) return <Admin nickname={session.nickname}/>;
-  return <AuthorizedGameShell />;
+  return <AuthorizedGameShell isAdmin={session.admin}/>;
 }
 
 const AuthorizedGame = React.lazy(()=>import("./BetaGame"));
-function AuthorizedGameShell(){return <React.Suspense fallback={<main className="hb-portal">Chargement du jeu…</main>}><AuthorizedGame/></React.Suspense>;}
+function AuthorizedGameShell({isAdmin}: {isAdmin: boolean}) {
+  return <>
+    <React.Suspense fallback={<main className="hb-portal">Chargement du jeu…</main>}>
+      <AuthorizedGame/>
+    </React.Suspense>
+    {isAdmin && <a className="hb-admin-shortcut" href="/?admin=1" aria-label="Ouvrir l'administration Hirundu">⚙ Admin</a>}
+  </>;
+}
