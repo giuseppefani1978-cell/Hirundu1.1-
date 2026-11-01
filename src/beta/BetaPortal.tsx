@@ -69,15 +69,23 @@ function Admin({ nickname }: { nickname: string }) {
   }
   useEffect(() => { reload().catch(e => setError(errorText(e))); }, []);
   async function invite(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setError(""); setNewLink("");
+    event.preventDefault(); setBusy(true); setError(""); setIssued(null); setShareStatus("");
     try {
       const result = await betaRpc("admin_create_invite", {label: label.trim(), days});
-      const origin = new URL(location.href);
-      origin.search = ""; origin.hash = "beta=" + encodeURIComponent(String(result.code));
-      setNewLink(origin.toString());
+      setIssued(createIssuedInvitation(String(result.code), recipient, days));
       setLabel("");
-      await reload();
+      await reload().catch(() => {});
+      requestAnimationFrame(() => shareRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));
     } catch(e){setError(errorText(e));}finally{setBusy(false);}
+  }
+  const shareText = issued ? invitationMessage(issued, language) : "";
+  async function copyInvite(value: string, kind: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setShareStatus(kind + " copié !");
+    } catch {
+      setShareStatus("Copie automatique indisponible. Appuie longuement sur le texte pour le sélectionner.");
+    }
   }
   async function revoke(id: string) {
     if (!confirm("Révoquer cet accès Hirundu ?")) return;
