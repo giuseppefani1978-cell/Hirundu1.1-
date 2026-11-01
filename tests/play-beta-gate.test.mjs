@@ -52,3 +52,16 @@ test("iOS beta admin can scroll despite canvas gameplay scroll lock", () => {
   assert.match(portal, /classList\.toggle\("hb-document-scroll", portalVisible\)/);
   assert.match(portal, /classList\.remove\("hb-document-scroll"\)/);
 });
+
+
+test("only authenticated admins see the small game shortcut; gameplay remains PWA home", () => {
+  const portal = read("src/beta/BetaPortal.tsx");
+  const styles = read("src/beta/betaPortal.css");
+  const manifest = JSON.parse(read("public/manifest.webmanifest"));
+  assert.equal(manifest.start_url, "./");
+  assert.match(portal, /if\(adminOnly\) return <Admin nickname=\{session\.nickname\}/);
+  assert.match(portal, /<AuthorizedGameShell isAdmin=\{session\.admin\}/);
+  assert.match(portal, /\{isAdmin && <a className="hb-admin-shortcut" href="\/\?admin=1"/);
+  assert.match(styles, /\.hb-admin-shortcut\s*\{/);
+  assert.match(portal, /<a href="\/">Retour au jeu<\/a>/);
+});
