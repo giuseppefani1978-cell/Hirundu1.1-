@@ -163,6 +163,17 @@ function drawLevel8Coast(bg){
 }
 function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#369fab';ctx.fillRect(0,0,W,H);const bg=images.coast;if(bg?.naturalWidth)drawLevel8Coast(bg);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.fillStyle='#369fab';
 for(const o of S.obstacles){
+  // Render a high-contrast collision footprint before the sprite. This also
+  // remains visible if the device lacks the emoji font or a sprite asset.
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(o.x,o.y,Math.max(12,o.w/2),Math.max(12,o.h/2),0,0,Math.PI*2);
+  ctx.fillStyle=o.hit?'rgba(255,205,76,.20)':'rgba(255,246,209,.36)';
+  ctx.fill();
+  ctx.lineWidth=3;
+  ctx.strokeStyle=o.hit?'#ffd16b':'#102a43';
+  ctx.stroke();
+  ctx.restore();
   if(trashKinds.includes(o.kind)){
     const glyph={trash:'🗑️',bottle:'🧴',can:'🥫',carton:'🧃'}[o.kind]||'🗑️';
     ctx.save();
