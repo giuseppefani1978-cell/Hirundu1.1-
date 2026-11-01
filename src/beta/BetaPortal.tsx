@@ -100,12 +100,15 @@ function Admin({ nickname }: { nickname: string }) {
     <header className="hb-top"><span className="hb-mark">HIRUNDU <small>ADMINISTRATION BÊTA</small></span><span>Administrateur : {nickname}</span></header>
     <h1>Testeurs et retours</h1><p>Accès attribués exclusivement par l&apos;administrateur. Les cartes et les voyages Aracne ne sont pas gérés ici.</p>
     <div className="hb-stats"><section><b>{testers.length}</b><small>Invitations</small></section><section><b>{testers.filter(x=>!!x.activated_at&&!x.revoked_at).length}</b><small>Actives</small></section><section><b>{testers.filter(x=>!x.activated_at&&!x.revoked_at).length}</b><small>En attente</small></section><section><b>{feedback.length}</b><small>Retours</small></section></div>
-    <section className="hb-card"><h2>Créer une invitation</h2><form className="hb-inline" onSubmit={invite}>
-      <label>Nom interne<input required maxLength={80} value={label} onChange={e=>setLabel(e.target.value)} placeholder="Testeur Android 01"/></label>
-      <label>Expiration<select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={7}>7 jours</option><option value={14}>14 jours</option><option value={30}>30 jours</option></select></label>
-      <button disabled={busy}>{busy ? "Création…" : "Créer l'invitation"}</button>
-    </form>
-      {newLink && <div className="hb-invitelink"><p>Copie et envoie ce lien maintenant. Le code n&apos;est pas stocké en clair sur le serveur.</p><textarea aria-label="Invitation personnelle" readOnly value={newLink}/><button type="button" onClick={()=>navigator.clipboard.writeText(newLink)}>Copier le lien</button><a target="_blank" rel="noopener noreferrer" href={"https://wa.me/?text="+encodeURIComponent("Voici ton invitation personnelle à la bêta Hirundu :\n"+newLink)}>Partager par WhatsApp</a></div>}
+    <section className="hb-card"><h2>Créer une invitation</h2>
+      <form className="hb-invite-form" onSubmit={invite}>
+        <label>Référence interne<input required maxLength={80} value={label} onChange={e=>setLabel(e.target.value)} placeholder="Testeur Android 01"/></label>
+        <label>Prénom (facultatif)<input maxLength={80} value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Marco"/></label>
+        <label>Langue<select value={language} onChange={e=>setLanguage(e.target.value as InviteLanguage)}>{LANGUAGES.map(l=><option key={l.value} value={l.value}>{l.label}</option>)}</select></label>
+        <label>Durée<select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={7}>7 jours</option><option value={14}>14 jours</option><option value={30}>30 jours</option></select></label>
+        <button type="submit" disabled={busy}>{busy ? "Création…" : "Créer invitation"}</button>
+      </form>
+      {issued && <p>Invitation créée</p>}
       {error && <p role="alert" className="hb-error">{error}</p>}
     </section>
     <section className="hb-card"><div className="hb-inline"><h2>Accès</h2><button type="button" onClick={()=>reload().catch(e=>setError(errorText(e)))}>Actualiser</button></div>
