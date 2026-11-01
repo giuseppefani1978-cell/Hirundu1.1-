@@ -300,7 +300,17 @@ $('pauseMusic').onclick=()=>toggleLevelMusic();
 addEventListener('message',e=>{if(e.source!==window.parent||e.origin!==location.origin||e.data?.source!=='hirundu-host')return;if(e.data.type==='install-state'){hostInstallAvailable=!!e.data.available;$('installApp').hidden=state.mode!=='paused'||!hostInstallAvailable}if(e.data.type==='language'&&ui[e.data.lang]){const wasPaused=state.mode==='paused',pausedFrom=state.previous;lang=e.data.lang;translated();labelBridge();if(wasPaused){state.previous=pausedFrom;state.mode='paused';showPause()}}if(e.data.type==='pause')pause()});
 labelBridge();sendHost('ready');
 roundSetup();makeWalls();state.mode='intro';translated();resize();loadAssets();requestAnimationFrame(frame);
-if(typeof matchMedia==='function'){matchMedia('(orientation: landscape)').addEventListener?.('change',syncBattleOrientation);}
+if(typeof matchMedia==='function'){
+ const orientationQuery=matchMedia('(orientation: landscape)');
+ if(typeof orientationQuery.addEventListener==='function')orientationQuery.addEventListener('change',syncBattleOrientation);
+ else if(typeof orientationQuery.addListener==='function')orientationQuery.addListener(syncBattleOrientation);
+}
+addEventListener('orientationchange',syncBattleOrientation);
+addEventListener('pageshow',syncBattleOrientation);
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)pauseLevelMusic();
+ else if(state.mode==='battle'||['ready','flying','transition'].includes(state.mode))playLevelMusic();
+});
 if(document.modelContext?.registerTool){const lifecycle=new AbortController();try{Promise.resolve(document.modelContext.registerTool({name:'read_level3_progress',description:'Read progress in the Aracne rebound prototype.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({mode:state.mode,discoveries:state.found.length,score:state.score,question:state.round<10?place(active()).info:null,inventory:{...state.food},battle:state.mode==='battle'?{playerHP:Battle.data.player.hp,bossHP:Battle.data.boss.hp}:null})},{signal:lifecycle.signal})).catch(()=>{})}catch{}addEventListener('pagehide',()=>lifecycle.abort(),{once:true})}
 
 for(const [id,key] of [['battleLeft','ArrowLeft'],['battleRight','ArrowRight']]){const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(key);canvas.focus({preventScroll:true})});for(const name of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(name,()=>keys.delete(key));}
