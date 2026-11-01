@@ -1025,3 +1025,26 @@ body:not(.battle-active) .targets-list{
     max-height:24px;
   }
 }
+
+/* RC1: transient battle feedback must not obscure the paddle or touch controls.
+   L5 and L7 inherit this shared Arkanoid stylesheet. */
+body.battle-active #message{
+  position:absolute;
+  left:50%;
+  top:76px;
+  bottom:auto;
+  transform:translateX(-50%);
+  max-width:min(72vw,420px);
+  max-height:3.2em;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:4;
+}
+@media (orientation:landscape) and (max-height:460px){
+  body.battle-active #message{
+    top:54px;
+    max-width:58vw;
+    font-size:12px;
+    padding:5px 9px;
+  }
+}
