@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { LANGUAGES, createIssuedInvitation, invitationMessage, whatsappShareUrl, type InviteLanguage, type IssuedInvitation } from "./invitationText";
 import { activateBeta, betaConfigured, betaRpc, betaSession, type BetaDashboard, type BetaSession } from "./betaApi";
 import "./betaPortal.css";
+import InviteShare from "./InviteShare";
 
 function errorText(error: unknown): string {
   const key = error instanceof Error ? error.message : "";
@@ -55,7 +57,11 @@ function Admin({ nickname }: { nickname: string }) {
   const [dashboard, setDashboard] = useState<BetaDashboard | null>(null);
   const [label, setLabel] = useState("");
   const [days, setDays] = useState(14);
-  const [newLink, setNewLink] = useState("");
+  const [issued, setIssued] = useState<IssuedInvitation | null>(null);
+  const [recipient, setRecipient] = useState("");
+  const [language, setLanguage] = useState<InviteLanguage>("fr");
+  const [shareStatus, setShareStatus] = useState("");
+  const shareRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function reload() {
@@ -64,15 +70,23 @@ function Admin({ nickname }: { nickname: string }) {
   }
   useEffect(() => { reload().catch(e => setError(errorText(e))); }, []);
   async function invite(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setError(""); setNewLink("");
+    event.preventDefault(); setBusy(true); setError(""); setIssued(null); setShareStatus("");
     try {
       const result = await betaRpc("admin_create_invite", {label: label.trim(), days});
-      const origin = new URL(location.href);
-      origin.search = ""; origin.hash = "beta=" + encodeURIComponent(String(result.code));
-      setNewLink(origin.toString());
+      setIssued(createIssuedInvitation(String(result.code), recipient, days));
       setLabel("");
-      await reload();
+      await reload().catch(() => {});
+      requestAnimationFrame(() => shareRef.current?.scrollIntoView({behavior:"smooth",block:"start"}));
     } catch(e){setError(errorText(e));}finally{setBusy(false);}
+  }
+  const shareText = issued ? invitationMessage(issued, language) : "";
+  async function copyInvite(value: string, kind: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setShareStatus(kind + " copié !");
+    } catch {
+      setShareStatus("Copie automatique indisponible. Appuie longuement sur le texte pour le sélectionner.");
+    }
   }
   async function revoke(id: string) {
     if (!confirm("Révoquer cet accès Hirundu ?")) return;
@@ -87,12 +101,15 @@ function Admin({ nickname }: { nickname: string }) {
     <header className="hb-top"><span className="hb-mark">HIRUNDU <small>ADMINISTRATION BÊTA</small></span><span>Administrateur : {nickname}</span></header>
     <h1>Testeurs et retours</h1><p>Accès attribués exclusivement par l&apos;administrateur. Les cartes et les voyages Aracne ne sont pas gérés ici.</p>
     <div className="hb-stats"><section><b>{testers.length}</b><small>Invitations</small></section><section><b>{testers.filter(x=>!!x.activated_at&&!x.revoked_at).length}</b><small>Actives</small></section><section><b>{testers.filter(x=>!x.activated_at&&!x.revoked_at).length}</b><small>En attente</small></section><section><b>{feedback.length}</b><small>Retours</small></section></div>
-    <section className="hb-card"><h2>Créer une invitation</h2><form className="hb-inline" onSubmit={invite}>
-      <label>Nom interne<input required maxLength={80} value={label} onChange={e=>setLabel(e.target.value)} placeholder="Testeur Android 01"/></label>
-      <label>Expiration<select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={7}>7 jours</option><option value={14}>14 jours</option><option value={30}>30 jours</option></select></label>
-      <button disabled={busy}>{busy ? "Création…" : "Créer l'invitation"}</button>
-    </form>
-      {newLink && <div className="hb-invitelink"><p>Copie et envoie ce lien maintenant. Le code n&apos;est pas stocké en clair sur le serveur.</p><textarea aria-label="Invitation personnelle" readOnly value={newLink}/><button type="button" onClick={()=>navigator.clipboard.writeText(newLink)}>Copier le lien</button><a target="_blank" rel="noopener noreferrer" href={"https://wa.me/?text="+encodeURIComponent("Voici ton invitation personnelle à la bêta Hirundu :\n"+newLink)}>Partager par WhatsApp</a></div>}
+    <section className="hb-card"><h2>Créer une invitation</h2>
+      <form className="hb-invite-form" onSubmit={invite}>
+        <label>Référence interne<input required maxLength={80} value={label} onChange={e=>setLabel(e.target.value)} placeholder="Testeur Android 01"/></label>
+        <label>Prénom (facultatif)<input maxLength={80} value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="Marco"/></label>
+        <label>Langue<select value={language} onChange={e=>setLanguage(e.target.value as InviteLanguage)}>{LANGUAGES.map(l=><option key={l.value} value={l.value}>{l.label}</option>)}</select></label>
+        <label>Durée<select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={7}>7 jours</option><option value={14}>14 jours</option><option value={30}>30 jours</option></select></label>
+        <button type="submit" disabled={busy}>{busy ? "Création…" : "Créer invitation"}</button>
+      </form>
+      {issued && <div ref={shareRef}><InviteShare issued={issued} language={language} shareText={shareText} shareStatus={shareStatus} copyInvite={copyInvite}/></div>}
       {error && <p role="alert" className="hb-error">{error}</p>}
     </section>
     <section className="hb-card"><div className="hb-inline"><h2>Accès</h2><button type="button" onClick={()=>reload().catch(e=>setError(errorText(e)))}>Actualiser</button></div>
@@ -110,12 +127,27 @@ export default function BetaPortal() {
   const adminOnly = new URLSearchParams(location.search).has("admin") || /^\/admin\/?$/.test(location.pathname);
   const [session, setSession] = useState<BetaSession | null>(null);
   const [ready, setReady] = useState(false);
+  const portalVisible = !ready || !session || adminOnly;
+  useEffect(() => {
+    // The canvas game uses a viewport scroll lock. Unlock only the invitation
+    // and admin screens, then restore normal gameplay behavior.
+    const nodes = [document.documentElement, document.body];
+    nodes.forEach(node => node.classList.toggle("hb-document-scroll", portalVisible));
+    return () => nodes.forEach(node => node.classList.remove("hb-document-scroll"));
+  }, [portalVisible]);
   useEffect(()=>{ betaSession().then(s=>setSession(s)).catch(()=>setSession(null)).finally(()=>setReady(true)); },[]);
   if(!ready) return <main className="hb-portal"><p>Vérification de l&apos;accès Hirundu…</p></main>;
   if(!session || (adminOnly&&!session.admin)) return <Gate onLogin={setSession} adminOnly={adminOnly}/>;
   if(adminOnly) return <Admin nickname={session.nickname}/>;
-  return <AuthorizedGameShell />;
+  return <AuthorizedGameShell isAdmin={session.admin}/>;
 }
 
 const AuthorizedGame = React.lazy(()=>import("./BetaGame"));
-function AuthorizedGameShell(){return <React.Suspense fallback={<main className="hb-portal">Chargement du jeu…</main>}><AuthorizedGame/></React.Suspense>;}
+function AuthorizedGameShell({isAdmin}: {isAdmin: boolean}) {
+  return <>
+    <React.Suspense fallback={<main className="hb-portal">Chargement du jeu…</main>}>
+      <AuthorizedGame/>
+    </React.Suspense>
+    {isAdmin && <a className="hb-admin-shortcut" href="/?admin=1" aria-label="Ouvrir l'administration Hirundu">⚙ Admin</a>}
+  </>;
+}
